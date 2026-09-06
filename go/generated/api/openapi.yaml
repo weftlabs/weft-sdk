@@ -854,7 +854,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/FetchErrorResponse"
           description: |
-            Settlement signing failed on Weft's side (`SETTLEMENT_FAILED`).
+            Merchant connection failure (`MERCHANT_CONNECTION_FAILED`) or
+            settlement signing failed on Weft's side (`SETTLEMENT_FAILED`).
+            For merchant failures, `details.phase` identifies challenge or paid;
+            paid requests may have moved funds. Reuse the same idempotency key.
             `details.reason` carries a stable payment sentence.
             `details.protocol` names a direct payment rail when that is safe and
             useful. It is absent for automatic-funding failures so provider,
@@ -4320,6 +4323,7 @@ components:
           - WALLET_SETUP_INCOMPLETE
           - MERCHANT_RETURNED_NON_402
           - MERCHANT_TIMEOUT
+          - MERCHANT_CONNECTION_FAILED
           - PAID_DELIVERY_FAILED
           - DELIVERY_REPLAY_UNAVAILABLE
           - ARTIFACT_TOO_LARGE
