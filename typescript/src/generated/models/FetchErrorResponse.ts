@@ -90,6 +90,7 @@ export const FetchErrorResponseErrorEnum = {
     IdempotencyConflict: 'IDEMPOTENCY_CONFLICT',
     AccountClosing: 'ACCOUNT_CLOSING',
     ExceededMaxCost: 'EXCEEDED_MAX_COST',
+    FundingPending: 'FUNDING_PENDING',
     InsufficientBalance: 'INSUFFICIENT_BALANCE',
     PaymentAuthorizationRequired: 'PAYMENT_AUTHORIZATION_REQUIRED',
     WalletSetupIncomplete: 'WALLET_SETUP_INCOMPLETE',
