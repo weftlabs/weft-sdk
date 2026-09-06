@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -29,12 +29,12 @@ class FetchResponse(BaseModel):
     status: StrictInt = Field(description="HTTP status returned by the upstream after the payment or SIWX authentication retry.")
     headers: Dict[str, StrictStr] = Field(description="Response headers from the upstream.")
     body_base64: StrictStr = Field(description="Base64-encoded response body. Empty string for empty bodies.")
-    paid_usd: StrictStr = Field(description="USD amount actually settled on-chain. \"0.00\" for any charge that hasn't (yet, or ever) settled — a signed hold is not yet spend. See `held_usd` for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal. ")
-    held_usd: StrictStr = Field(description="The nominal charge amount when `paid_usd` is \"0.00\" — a hold awaiting settlement, or a charge that failed/expired without ever settling. `null` once `paid_usd` reflects the real settlement. Same format as `paid_usd`: exact to the micro-dollar, minimum two decimals. ")
+    paid_usd: Optional[StrictStr] = Field(description="USD amount actually settled on-chain. \"0.00\" for any charge that hasn't (yet, or ever) settled — a signed hold is not yet spend. See `held_usd` for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal. ")
+    held_usd: Optional[StrictStr] = Field(description="The nominal charge amount when `paid_usd` is \"0.00\" — a hold awaiting settlement, or a charge that failed/expired without ever settling. `null` once `paid_usd` reflects the real settlement. Same format as `paid_usd`: exact to the micro-dollar, minimum two decimals. ")
     payment_status: StrictStr = Field(description="Agent-facing settlement status. `not_required` means SIWX wallet authentication returned the response without payment. `pending` = signed, no refusal signal yet (settlement may still land, e.g. x402's async facilitator webhook). `declined-pending` = the merchant refused but the authorization isn't provably dead yet. `declined` / `expired` / `reverted` are terminal — the money never moved (or, for `reverted`, moved and then reversed on-chain) and never will for this charge. ")
-    tx_hash: StrictStr = Field(description="Settlement transaction hash. Null until a settlement hash has been reported.")
+    tx_hash: Optional[StrictStr] = Field(description="Settlement transaction hash. Null until a settlement hash has been reported.")
     protocol: StrictStr = Field(description="Payment protocol selected for this fetch.")
-    artifact_id: StrictInt = Field(description="Internal artifact identifier if the response was persisted; `null` otherwise.")
+    artifact_id: Optional[StrictInt] = Field(description="Internal artifact identifier if the response was persisted; `null` otherwise.")
     __properties: ClassVar[List[str]] = ["status", "headers", "body_base64", "paid_usd", "held_usd", "payment_status", "tx_hash", "protocol", "artifact_id"]
 
     @field_validator('payment_status')
@@ -90,6 +90,26 @@ class FetchResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if paid_usd (nullable) is None
+        # and model_fields_set contains the field
+        if self.paid_usd is None and "paid_usd" in self.model_fields_set:
+            _dict['paid_usd'] = None
+
+        # set to None if held_usd (nullable) is None
+        # and model_fields_set contains the field
+        if self.held_usd is None and "held_usd" in self.model_fields_set:
+            _dict['held_usd'] = None
+
+        # set to None if tx_hash (nullable) is None
+        # and model_fields_set contains the field
+        if self.tx_hash is None and "tx_hash" in self.model_fields_set:
+            _dict['tx_hash'] = None
+
+        # set to None if artifact_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.artifact_id is None and "artifact_id" in self.model_fields_set:
+            _dict['artifact_id'] = None
+
         return _dict
 
     @classmethod

@@ -4231,6 +4231,7 @@ components:
             micro-dollar, minimum two decimals; parse as a decimal rather than
             string-comparing against a bare zero literal.
           example: "0.002"
+          nullable: true
           type: string
           nullable: true
         held_usd:
@@ -4241,6 +4242,7 @@ components:
             Same format as `paid_usd`: exact to the micro-dollar, minimum two
             decimals.
           example: "0.002"
+          nullable: true
           type: string
           nullable: true
         payment_status:
@@ -4266,6 +4268,7 @@ components:
         tx_hash:
           description: Settlement transaction hash. Null until a settlement hash has
             been reported.
+          nullable: true
           type: string
           nullable: true
         protocol:
@@ -4277,6 +4280,7 @@ components:
         artifact_id:
           description: Internal artifact identifier if the response was persisted;
             `null` otherwise.
+          nullable: true
           type: integer
           nullable: true
       required:

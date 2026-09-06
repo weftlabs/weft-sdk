@@ -28,17 +28,17 @@ type FetchResponse struct {
 	// Base64-encoded response body. Empty string for empty bodies.
 	BodyBase64 string `json:"body_base64"`
 	// USD amount actually settled on-chain. \"0.00\" for any charge that hasn't (yet, or ever) settled — a signed hold is not yet spend. See `held_usd` for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal.
-	PaidUsd string `json:"paid_usd"`
+	PaidUsd NullableString `json:"paid_usd"`
 	// The nominal charge amount when `paid_usd` is \"0.00\" — a hold awaiting settlement, or a charge that failed/expired without ever settling. `null` once `paid_usd` reflects the real settlement. Same format as `paid_usd`: exact to the micro-dollar, minimum two decimals.
-	HeldUsd string `json:"held_usd"`
+	HeldUsd NullableString `json:"held_usd"`
 	// Agent-facing settlement status. `not_required` means SIWX wallet authentication returned the response without payment. `pending` = signed, no refusal signal yet (settlement may still land, e.g. x402's async facilitator webhook). `declined-pending` = the merchant refused but the authorization isn't provably dead yet. `declined` / `expired` / `reverted` are terminal — the money never moved (or, for `reverted`, moved and then reversed on-chain) and never will for this charge.
 	PaymentStatus string `json:"payment_status"`
 	// Settlement transaction hash. Null until a settlement hash has been reported.
-	TxHash string `json:"tx_hash"`
+	TxHash NullableString `json:"tx_hash"`
 	// Payment protocol selected for this fetch.
 	Protocol string `json:"protocol"`
 	// Internal artifact identifier if the response was persisted; `null` otherwise.
-	ArtifactId int32 `json:"artifact_id"`
+	ArtifactId NullableInt32 `json:"artifact_id"`
 }
 
 type _FetchResponse FetchResponse
@@ -47,7 +47,7 @@ type _FetchResponse FetchResponse
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewFetchResponse(status int32, headers map[string]string, bodyBase64 string, paidUsd string, heldUsd string, paymentStatus string, txHash string, protocol string, artifactId int32) *FetchResponse {
+func NewFetchResponse(status int32, headers map[string]string, bodyBase64 string, paidUsd NullableString, heldUsd NullableString, paymentStatus string, txHash NullableString, protocol string, artifactId NullableInt32) *FetchResponse {
 	this := FetchResponse{}
 	this.Status = status
 	this.Headers = headers
@@ -142,51 +142,55 @@ func (o *FetchResponse) SetBodyBase64(v string) {
 }
 
 // GetPaidUsd returns the PaidUsd field value
+// If the value is explicit nil, the zero value for string will be returned
 func (o *FetchResponse) GetPaidUsd() string {
-	if o == nil {
+	if o == nil || o.PaidUsd.Get() == nil {
 		var ret string
 		return ret
 	}
 
-	return o.PaidUsd
+	return *o.PaidUsd.Get()
 }
 
 // GetPaidUsdOk returns a tuple with the PaidUsd field value
 // and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
 func (o *FetchResponse) GetPaidUsdOk() (*string, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return &o.PaidUsd, true
+	return o.PaidUsd.Get(), o.PaidUsd.IsSet()
 }
 
 // SetPaidUsd sets field value
 func (o *FetchResponse) SetPaidUsd(v string) {
-	o.PaidUsd = v
+	o.PaidUsd.Set(&v)
 }
 
 // GetHeldUsd returns the HeldUsd field value
+// If the value is explicit nil, the zero value for string will be returned
 func (o *FetchResponse) GetHeldUsd() string {
-	if o == nil {
+	if o == nil || o.HeldUsd.Get() == nil {
 		var ret string
 		return ret
 	}
 
-	return o.HeldUsd
+	return *o.HeldUsd.Get()
 }
 
 // GetHeldUsdOk returns a tuple with the HeldUsd field value
 // and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
 func (o *FetchResponse) GetHeldUsdOk() (*string, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return &o.HeldUsd, true
+	return o.HeldUsd.Get(), o.HeldUsd.IsSet()
 }
 
 // SetHeldUsd sets field value
 func (o *FetchResponse) SetHeldUsd(v string) {
-	o.HeldUsd = v
+	o.HeldUsd.Set(&v)
 }
 
 // GetPaymentStatus returns the PaymentStatus field value
@@ -214,27 +218,29 @@ func (o *FetchResponse) SetPaymentStatus(v string) {
 }
 
 // GetTxHash returns the TxHash field value
+// If the value is explicit nil, the zero value for string will be returned
 func (o *FetchResponse) GetTxHash() string {
-	if o == nil {
+	if o == nil || o.TxHash.Get() == nil {
 		var ret string
 		return ret
 	}
 
-	return o.TxHash
+	return *o.TxHash.Get()
 }
 
 // GetTxHashOk returns a tuple with the TxHash field value
 // and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
 func (o *FetchResponse) GetTxHashOk() (*string, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return &o.TxHash, true
+	return o.TxHash.Get(), o.TxHash.IsSet()
 }
 
 // SetTxHash sets field value
 func (o *FetchResponse) SetTxHash(v string) {
-	o.TxHash = v
+	o.TxHash.Set(&v)
 }
 
 // GetProtocol returns the Protocol field value
@@ -262,27 +268,29 @@ func (o *FetchResponse) SetProtocol(v string) {
 }
 
 // GetArtifactId returns the ArtifactId field value
+// If the value is explicit nil, the zero value for int32 will be returned
 func (o *FetchResponse) GetArtifactId() int32 {
-	if o == nil {
+	if o == nil || o.ArtifactId.Get() == nil {
 		var ret int32
 		return ret
 	}
 
-	return o.ArtifactId
+	return *o.ArtifactId.Get()
 }
 
 // GetArtifactIdOk returns a tuple with the ArtifactId field value
 // and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
 func (o *FetchResponse) GetArtifactIdOk() (*int32, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return &o.ArtifactId, true
+	return o.ArtifactId.Get(), o.ArtifactId.IsSet()
 }
 
 // SetArtifactId sets field value
 func (o *FetchResponse) SetArtifactId(v int32) {
-	o.ArtifactId = v
+	o.ArtifactId.Set(&v)
 }
 
 func (o FetchResponse) MarshalJSON() ([]byte, error) {
@@ -298,12 +306,12 @@ func (o FetchResponse) ToMap() (map[string]interface{}, error) {
 	toSerialize["status"] = o.Status
 	toSerialize["headers"] = o.Headers
 	toSerialize["body_base64"] = o.BodyBase64
-	toSerialize["paid_usd"] = o.PaidUsd
-	toSerialize["held_usd"] = o.HeldUsd
+	toSerialize["paid_usd"] = o.PaidUsd.Get()
+	toSerialize["held_usd"] = o.HeldUsd.Get()
 	toSerialize["payment_status"] = o.PaymentStatus
-	toSerialize["tx_hash"] = o.TxHash
+	toSerialize["tx_hash"] = o.TxHash.Get()
 	toSerialize["protocol"] = o.Protocol
-	toSerialize["artifact_id"] = o.ArtifactId
+	toSerialize["artifact_id"] = o.ArtifactId.Get()
 	return toSerialize, nil
 }
 

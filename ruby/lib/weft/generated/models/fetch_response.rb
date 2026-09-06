@@ -108,6 +108,10 @@ module Weft
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'paid_usd',
+        :'held_usd',
+        :'tx_hash',
+        :'artifact_id'
       ])
     end
 
@@ -201,28 +205,12 @@ module Weft
         invalid_properties.push('invalid value for "body_base64", body_base64 cannot be nil.')
       end
 
-      if @paid_usd.nil?
-        invalid_properties.push('invalid value for "paid_usd", paid_usd cannot be nil.')
-      end
-
-      if @held_usd.nil?
-        invalid_properties.push('invalid value for "held_usd", held_usd cannot be nil.')
-      end
-
       if @payment_status.nil?
         invalid_properties.push('invalid value for "payment_status", payment_status cannot be nil.')
       end
 
-      if @tx_hash.nil?
-        invalid_properties.push('invalid value for "tx_hash", tx_hash cannot be nil.')
-      end
-
       if @protocol.nil?
         invalid_properties.push('invalid value for "protocol", protocol cannot be nil.')
-      end
-
-      if @artifact_id.nil?
-        invalid_properties.push('invalid value for "artifact_id", artifact_id cannot be nil.')
       end
 
       invalid_properties
@@ -235,16 +223,12 @@ module Weft
       return false if @status.nil?
       return false if @headers.nil?
       return false if @body_base64.nil?
-      return false if @paid_usd.nil?
-      return false if @held_usd.nil?
       return false if @payment_status.nil?
       payment_status_validator = EnumAttributeValidator.new('String', ["settled", "pending", "declined-pending", "declined", "expired", "reverted", "not_required"])
       return false unless payment_status_validator.valid?(@payment_status)
-      return false if @tx_hash.nil?
       return false if @protocol.nil?
       protocol_validator = EnumAttributeValidator.new('String', ["x402", "mpp"])
       return false unless protocol_validator.valid?(@protocol)
-      return false if @artifact_id.nil?
       true
     end
 
@@ -278,26 +262,6 @@ module Weft
       @body_base64 = body_base64
     end
 
-    # Custom attribute writer method with validation
-    # @param [Object] paid_usd Value to be assigned
-    def paid_usd=(paid_usd)
-      if paid_usd.nil?
-        fail ArgumentError, 'paid_usd cannot be nil'
-      end
-
-      @paid_usd = paid_usd
-    end
-
-    # Custom attribute writer method with validation
-    # @param [Object] held_usd Value to be assigned
-    def held_usd=(held_usd)
-      if held_usd.nil?
-        fail ArgumentError, 'held_usd cannot be nil'
-      end
-
-      @held_usd = held_usd
-    end
-
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] payment_status Object to be assigned
     def payment_status=(payment_status)
@@ -308,16 +272,6 @@ module Weft
       @payment_status = payment_status
     end
 
-    # Custom attribute writer method with validation
-    # @param [Object] tx_hash Value to be assigned
-    def tx_hash=(tx_hash)
-      if tx_hash.nil?
-        fail ArgumentError, 'tx_hash cannot be nil'
-      end
-
-      @tx_hash = tx_hash
-    end
-
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] protocol Object to be assigned
     def protocol=(protocol)
@@ -326,16 +280,6 @@ module Weft
         fail ArgumentError, "invalid value for \"protocol\", must be one of #{validator.allowable_values}."
       end
       @protocol = protocol
-    end
-
-    # Custom attribute writer method with validation
-    # @param [Object] artifact_id Value to be assigned
-    def artifact_id=(artifact_id)
-      if artifact_id.nil?
-        fail ArgumentError, 'artifact_id cannot be nil'
-      end
-
-      @artifact_id = artifact_id
     end
 
     # Checks equality by comparing each attribute.

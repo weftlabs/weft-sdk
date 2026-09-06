@@ -74,7 +74,7 @@ export interface FetchResponse {
      * @type {string}
      * @memberof FetchResponse
      */
-    paidUsd: string;
+    paidUsd: string | null;
     /**
      * The nominal charge amount when `paid_usd` is "0.00" — a hold
      * awaiting settlement, or a charge that failed/expired without ever
@@ -85,7 +85,7 @@ export interface FetchResponse {
      * @type {string}
      * @memberof FetchResponse
      */
-    heldUsd: string;
+    heldUsd: string | null;
     /**
      * Agent-facing settlement status. `not_required` means SIWX wallet
      * authentication returned the response without payment. `pending` = signed, no refusal
@@ -105,7 +105,7 @@ export interface FetchResponse {
      * @type {string}
      * @memberof FetchResponse
      */
-    txHash: string;
+    txHash: string | null;
     /**
      * Payment protocol selected for this fetch.
      * @type {string}
@@ -117,7 +117,7 @@ export interface FetchResponse {
      * @type {number}
      * @memberof FetchResponse
      */
-    artifactId: number;
+    artifactId: number | null;
 }
 
 

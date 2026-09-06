@@ -1,8 +1,11 @@
-from unittest.mock import MagicMock
+import json
+from unittest.mock import MagicMock, patch
 
 import pytest
+from urllib3 import HTTPResponse
 
 from weft_sdk import Client
+from weft_sdk.generated.rest import RESTResponse
 
 
 def test_requires_buyer_api_key() -> None:
@@ -48,3 +51,41 @@ def test_paid_fetch_requires_cost_and_idempotency() -> None:
         client.fetch(url="https://merchant.example", max_cost_usd="", idempotency_key="retry")
     with pytest.raises(ValueError, match="idempotency_key is required"):
         client.fetch(url="https://merchant.example", max_cost_usd="0.05", idempotency_key="")
+
+
+@pytest.mark.parametrize("artifact_id", [42, None])
+def test_fetch_deserializes_siwx_receipt_without_payment(artifact_id: int | None) -> None:
+    receipt = {
+        "status": 200,
+        "headers": {"content-type": "application/json"},
+        "body_base64": "e30=",
+        "paid_usd": "0.00",
+        "held_usd": None,
+        "payment_status": "not_required",
+        "tx_hash": None,
+        "protocol": "x402",
+        "artifact_id": artifact_id,
+    }
+    response = RESTResponse(
+        HTTPResponse(
+            body=json.dumps(receipt).encode(),
+            status=200,
+            headers={"content-type": "application/json"},
+        )
+    )
+    client = Client(api_key="wk_test")
+    with patch.object(client._api_client, "call_api", return_value=response) as transport:
+        result = client.fetch(
+            url="https://merchant.example/runs/1",
+            max_cost_usd="0",
+            method="GET",
+            idempotency_key="poll-1",
+        )
+    assert transport.call_count == 1
+    assert result.payment_status == "not_required"
+    assert result.paid_usd == "0.00"
+    assert result.held_usd is None
+    assert result.tx_hash is None
+    assert result.artifact_id == artifact_id
+    assert result.body_base64 == "e30="
+    assert result.to_dict() == receipt

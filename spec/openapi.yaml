@@ -2738,7 +2738,7 @@ components:
           type: string
           description: Base64-encoded response body. Empty string for empty bodies.
         paid_usd:
-          type: string
+          type: [string, "null"]
           nullable: true
           description: |
             USD amount actually settled on-chain. "0.00" for any charge that
@@ -2748,7 +2748,7 @@ components:
             string-comparing against a bare zero literal.
           example: "0.002"
         held_usd:
-          type: string
+          type: [string, "null"]
           nullable: true
           description: |
             The nominal charge amount when `paid_usd` is "0.00" — a hold
@@ -2771,7 +2771,7 @@ components:
             for this charge.
           example: pending
         tx_hash:
-          type: string
+          type: [string, "null"]
           nullable: true
           description: Settlement transaction hash. Null until a settlement hash has been reported.
         protocol:
@@ -2779,7 +2779,7 @@ components:
           enum: [x402, mpp]
           description: Payment protocol selected for this fetch.
         artifact_id:
-          type: integer
+          type: [integer, "null"]
           nullable: true
           description: Internal artifact identifier if the response was persisted; `null` otherwise.
     FetchErrorResponse:
