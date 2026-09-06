@@ -96,6 +96,7 @@ export const FetchErrorResponseErrorEnum = {
     WalletSetupIncomplete: 'WALLET_SETUP_INCOMPLETE',
     MerchantReturnedNon402: 'MERCHANT_RETURNED_NON_402',
     MerchantTimeout: 'MERCHANT_TIMEOUT',
+    MerchantConnectionFailed: 'MERCHANT_CONNECTION_FAILED',
     PaidDeliveryFailed: 'PAID_DELIVERY_FAILED',
     DeliveryReplayUnavailable: 'DELIVERY_REPLAY_UNAVAILABLE',
     ArtifactTooLarge: 'ARTIFACT_TOO_LARGE',
