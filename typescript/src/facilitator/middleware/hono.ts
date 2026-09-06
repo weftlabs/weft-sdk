@@ -4,7 +4,6 @@ import {
   PaywallProvider,
   SETTLEMENT_OVERRIDES_HEADER,
   withPrivateCacheControl,
-  x402HTTPResourceServer,
   x402ResourceServer,
   HTTPAdapter,
 } from "@x402/core/server";
@@ -23,6 +22,7 @@ import {
   type ResumeVerifiedPayment,
 } from "./replay";
 import {
+  WeftHTTPResourceServer,
   isFacilitatorUnavailable,
   isFacilitatorUnavailableResponse,
   isJsonResponse,
@@ -277,7 +277,7 @@ export function weftPaymentMiddlewareHono(
     });
   }
 
-  const httpServer = new x402HTTPResourceServer(
+  const httpServer = new WeftHTTPResourceServer(
     resourceServer,
     applyProductIdentity(routes, config ?? {}),
   );

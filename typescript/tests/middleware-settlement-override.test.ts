@@ -240,9 +240,9 @@ const requirements = {
 
 type CustomFailure = boolean | "text" | { body: unknown; contentType: string };
 
-function routes(customFailure: CustomFailure = false) {
+function routes(customFailure: CustomFailure = false, method = "GET") {
   return {
-    "GET /quote": {
+    [`${method} /quote`]: {
       accepts: {
         scheme: "exact",
         network: NETWORK,
@@ -354,16 +354,17 @@ async function drivePaidRequest(
     body?: string;
     cacheControl?: string;
     paymentHeader?: string;
+    method?: string;
   } = {},
 ): Promise<Response | undefined> {
   const middleware = weftPaymentMiddlewareHono(
-    routes(options.customFailure),
+    routes(options.customFailure, options.method?.toUpperCase()),
     config(options.upfront, options.resumeVerifiedPayment),
   );
 
   const c = {
     req: {
-      method: "GET",
+      method: options.method ?? "GET",
       path: "/quote",
       url: "https://api.acme.test/quote",
       header: (name: string) =>
@@ -435,6 +436,7 @@ async function driveExpressRequest(
     handlerThrows?: Error;
     paymentResponseBeforeError?: unknown[];
     paymentHeader?: string;
+    method?: string;
   } = {},
 ): Promise<{
   status: number;
@@ -443,14 +445,14 @@ async function driveExpressRequest(
   emittedChunks: unknown[];
 }> {
   const middleware = weftPaymentMiddleware(
-    routes(options.customFailure),
+    routes(options.customFailure, options.method?.toUpperCase()),
     config(options.upfront, options.resumeVerifiedPayment),
   );
   const headers: Record<string, string | string[]> = {};
   let body: unknown;
   const emittedChunks: unknown[] = [];
   const req = {
-    method: "GET",
+    method: options.method ?? "GET",
     path: "/quote",
     protocol: "https",
     headers: {
@@ -644,6 +646,67 @@ describe("settlement overrides reach the facilitator", () => {
       amount: METERED_ATOMIC,
     });
   });
+});
+
+describe("protected request method reaches settlement", () => {
+  it.each([
+    ["Hono", false],
+    ["Express", false],
+    ["Hono", true],
+    ["Express", true],
+  ] as const)(
+    "uses the seller method for %s upfront=%s instead of buyer metadata",
+    async (adapter, upfront) => {
+      stubFacilitator();
+      const buyerPayload = { ...paymentPayload(upfront), httpMethod: "DELETE" };
+      const options = {
+        upfront,
+        method: "post",
+        paymentHeader: safeBase64Encode(JSON.stringify(buyerPayload)),
+      };
+      const response =
+        adapter === "Hono"
+          ? await drivePaidRequest(false, options)
+          : await driveExpressRequest(false, options);
+
+      expect(response.status).toBe(200);
+      expect(settleBodies).toHaveLength(1);
+      expect(settleBodies[0]?.paymentPayload).toMatchObject({
+        httpMethod: "POST",
+      });
+      expect(buyerPayload.httpMethod).toBe("DELETE");
+    },
+  );
+
+  it.each(["Hono", "Express"])(
+    "clones the verified buyer payload and adds the uppercase live %s method",
+    async (adapter) => {
+      stubFacilitator();
+      const stored: ReplayResult = {
+        paymentPayload: paymentPayload(),
+        paymentRequirements: requirements,
+        declaredExtensions: { [EXTENSION_KEY]: EXTENSION_DECLARATION },
+      };
+
+      if (adapter === "Hono") {
+        await drivePaidRequest(false, {
+          method: "post",
+          resumeVerifiedPayment: () => stored,
+        });
+      } else {
+        await driveExpressRequest(false, {
+          method: "post",
+          resumeVerifiedPayment: () => stored,
+        });
+      }
+
+      expect(settleBodies[0]?.paymentPayload).toEqual({
+        ...stored.paymentPayload,
+        httpMethod: "POST",
+      });
+      expect(stored.paymentPayload).not.toHaveProperty("httpMethod");
+    },
+  );
 });
 
 describe("declared extensions reach settlement hooks", () => {
@@ -1036,7 +1099,11 @@ describe("verified payment replay", () => {
     expect(response?.status).toBe(200);
     expect(verifyCalls).toBe(0);
     expect(handlerRuns.count).toBe(1);
-    expect(settleBodies[0]?.paymentPayload).toEqual(stored.paymentPayload);
+    expect(settleBodies[0]?.paymentPayload).toEqual({
+      ...stored.paymentPayload,
+      httpMethod: "GET",
+    });
+    expect(stored.paymentPayload).not.toHaveProperty("httpMethod");
     expect(settleBodies[0]?.paymentRequirements).toMatchObject({
       amount: METERED_ATOMIC,
     });
@@ -1055,7 +1122,11 @@ describe("verified payment replay", () => {
     expect(response.status).toBe(200);
     expect(verifyCalls).toBe(0);
     expect(handlerRuns.count).toBe(1);
-    expect(settleBodies[0]?.paymentPayload).toEqual(stored.paymentPayload);
+    expect(settleBodies[0]?.paymentPayload).toEqual({
+      ...stored.paymentPayload,
+      httpMethod: "GET",
+    });
+    expect(stored.paymentPayload).not.toHaveProperty("httpMethod");
     expect(settleBodies[0]?.paymentRequirements).toMatchObject({
       amount: METERED_ATOMIC,
     });

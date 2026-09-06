@@ -1,3 +1,4 @@
+import { x402HTTPResourceServer } from "@x402/core/server";
 import { decodePaymentResponseHeader } from "@x402/core/http";
 import { FACILITATOR_UNAVAILABLE_ERROR } from "../client";
 
@@ -78,4 +79,19 @@ export function serializeResponseBody(
   return typeof response.body === "string"
     ? response.body
     : String(response.body ?? "");
+}
+
+/** Observe the seller method at both before-handler and after-handler settlement. */
+export class WeftHTTPResourceServer extends x402HTTPResourceServer {
+  override processSettlement(
+    ...args: Parameters<x402HTTPResourceServer["processSettlement"]>
+  ) {
+    const request = args[3]?.request;
+    const method = request?.method ?? request?.adapter.getMethod();
+    if (method) {
+      const payload = { ...args[0], httpMethod: method.toUpperCase() };
+      args[0] = payload;
+    }
+    return super.processSettlement(...args);
+  }
 }
