@@ -236,20 +236,20 @@ jobs:
           AUTH_HEADER="Authorization: Basic $(printf 'x-access-token:%s' "$BOT_TOKEN" | base64 | tr -d '\n')"
           git config --local http.https://github.com/.extraheader "$AUTH_HEADER"
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          SDK_SOURCE_SHA="$(git rev-parse HEAD)"
           git add -A
           if git diff --cached --quiet; then
             echo "No bump diff to commit — main is already at v$VERSION"
           else
             git commit -m "release: v$VERSION"
           fi
-          git tag "v$VERSION"
-          git tag "go/v$VERSION"
-          # Push the bump commit AND both tags in a single invocation so the
+          # Verify main still matches the source that passed staging e2e, then
+          # push the bump commit AND both tags atomically so the
           # update is all-or-nothing: either main advances to release:v$VERSION
           # with both tags present (triggering the per-language publishers —
           # typescript.yml/python.yml/ruby.yml on `v*`, go.yml on `go/v*`), or
           # nothing moves. A split push could leave main bumped with no tags
           # (no publish fires) and a re-run hitting inconsistent
           # "tag exists / no bump diff" recovery paths.
-          git push origin HEAD:main "v$VERSION" "go/v$VERSION"
+          ./scripts/push-release-refs.sh "$VERSION" "$SDK_SOURCE_SHA"
           echo "Pushed v$VERSION and go/v$VERSION on commit $(git rev-parse HEAD)"

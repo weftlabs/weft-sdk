@@ -8,7 +8,7 @@
     "format:check": "pnpm --recursive --if-present run format:check",
     "hooks:pre-push": "pnpm run lint:check && pnpm run format:check && pnpm --recursive --if-present run test:unit",
     "lint:check": "pnpm --recursive --if-present run lint:check",
-    "test": "node --test scripts/publish-npm-archives.test.mjs && pnpm --recursive --if-present run test:unit && pnpm run test:artifacts",
+    "test": "node --test scripts/publish-npm-archives.test.mjs scripts/push-release-refs.test.mjs && pnpm --recursive --if-present run test:unit && pnpm run test:artifacts",
     "test:artifacts": "pnpm run build && node scripts/test-typescript-quickstarts.mjs && node scripts/test-seller-quickstarts.mjs && node scripts/test-cli-delivery.mjs"
   },
   "pnpm": {
