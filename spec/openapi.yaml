@@ -656,9 +656,18 @@ paths:
           2. On `402 Payment Required`, selects a supported x402 or MPP challenge.
           3. Compares the asking price to `max_cost_usd` and the
              buyer's policy (`max_tx_usd`, daily/weekly limits).
-          4. Authorizes payment from the buyer's wallet on the selected rail.
-          5. Replays the request with the protocol-specific payment credential.
-          6. Streams the upstream artifact back, base64-encoded under
+          4. If an eligible mainnet MPP challenge finds its Tempo token short,
+             creates or adopts a buyer-owned Base-to-Tempo refill and returns
+             `409 FUNDING_PENDING` with `details.reason=funding_active`. If an
+             overlapping payment invalidates the balance observation before a
+             bridge is created, the same retryable response carries
+             `details.reason=balance_changed`. The caller retries the identical
+             fetch after `details.retry_after_seconds`; that later request
+             obtains a fresh challenge and reruns rail selection and all payment
+             controls.
+          5. Authorizes payment from the buyer's wallet on the selected rail.
+          6. Replays the request with the protocol-specific payment credential.
+          7. Streams the upstream artifact back, base64-encoded under
               `body_base64`, with `paid_usd`, `held_usd`, `payment_status`,
               `tx_hash`, and `protocol`. `paid_usd`
              is "0.00" until the charge is CONFIRMED settled — a signed-but-
@@ -760,10 +769,15 @@ paths:
             Or `ACCOUNT_CLOSING` — account closure has started, so the wallet
             cannot reserve a new payment.
 
+            Or `FUNDING_PENDING` — retry after `details.retry_after_seconds`.
+            `details.reason` is `funding_active` when a buyer-owned Base-to-Tempo
+            refill exists, or `balance_changed` when an overlapping payment
+            invalidated the balance observation before funding could start.
+
             Or `DELIVERY_REPLAY_UNAVAILABLE` — the merchant already returned a
             successful response for this settled MPP payment, but Weft could
             not persist its bytes for replay. The merchant is not called again;
-            `details.tx_hash` identifies the settled payment. All four use
+            `details.tx_hash` identifies the settled payment. All five use
             `FetchErrorResponse`.
           content:
             application/json:
@@ -804,12 +818,10 @@ paths:
         "502":
           description: |
             Settlement signing failed on Weft's side (`SETTLEMENT_FAILED`).
-            `details.reason` carries the wallet-provider sentence and
-            `details.protocol` names the rail it failed on (`x402` or `mpp`) —
-            a 402 may announce both, and Weft picks one, so the rail is not
-            derivable from the merchant or the URL. Absent only when the
-            failure happened while building the credential, which already
-            identifies its own rail.
+            `details.reason` carries a stable payment sentence.
+            `details.protocol` names a direct payment rail when that is safe and
+            useful. It is absent for automatic-funding failures so provider,
+            bridge, and retry details stay internal.
           content:
             application/json:
               schema:
@@ -2786,6 +2798,7 @@ components:
             - IDEMPOTENCY_CONFLICT
             - ACCOUNT_CLOSING
             - EXCEEDED_MAX_COST
+            - FUNDING_PENDING
             - INSUFFICIENT_BALANCE
             - PAYMENT_AUTHORIZATION_REQUIRED
             - WALLET_SETUP_INCOMPLETE
