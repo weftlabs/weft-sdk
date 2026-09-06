@@ -72,6 +72,29 @@ retain their version 1 output. There is one fetch operation for every body size.
 Hosts can still limit the text shown to a model; use the saved path when stdout
 is clipped.
 
+## Retrieve a wallet-protected result
+
+After a paid submission, use the provider's result URL with the same Weft buyer
+credential. For providers that support x402 Sign-In-With-X (SIWX), request HTTPS
+GET with a zero spending ceiling:
+
+```sh
+weft fetch "https://merchant.example/runs/your-run-id" \
+  --method GET --max-cost-usd 0
+```
+
+Weft obtains a fresh challenge and signs it with the buyer wallet used for
+payment. The provider must support smart-wallet signatures and issue a valid
+challenge for that exact resource. Retrieval does not fall back to payment.
+A successful response has `paymentStatus: "not_required"`, `paidUsd: "0.00"`,
+null `heldUsd` and `txHash`, and an `artifactId`. The CLI saves its body and
+receipt as described above.
+
+Repeat this GET to poll the job until the provider's documented terminal state.
+Each call reads fresh provider state, even with the same idempotency key. Do not
+repeat the paid submission to check job status. An unsafe or rejected challenge
+returns `SIWX_RETRIEVAL_FAILED`; increasing the spending ceiling is not a remedy.
+
 ## With no credential: agent bootstrap and human claim
 
 An agent that has no Weft credential can start by itself. The flow needs the

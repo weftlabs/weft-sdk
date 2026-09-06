@@ -18,6 +18,15 @@ import { mapValues } from '../runtime';
  * bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`,
  * `tx_hash`, and `protocol` describe the payment and settlement state.
  *
+ * To retrieve a SIWX-protected result, use HTTPS GET with
+ * `max_cost_usd: "0"`. Weft signs a fresh, resource-bound challenge with
+ * the same buyer wallet. Retrieval never falls back to payment and
+ * returns `not_required`, zero paid amount, and null held amount and
+ * transaction hash. Polls are fresh, including with repeated idempotency
+ * keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`.
+ * Providers must support smart-wallet signatures. Auth-only challenges
+ * also use this path; positive-budget purchases retain payment behavior.
+ *
  * `paid_usd` is "0.00" (never the nominal charge amount) until the
  * charge is CONFIRMED settled on-chain — a signed-but-unsettled hold
  * reports its amount in `held_usd` instead. This is a deliberate
@@ -38,7 +47,7 @@ import { mapValues } from '../runtime';
  */
 export interface FetchResponse {
     /**
-     * HTTP status returned by the upstream after the paid replay.
+     * HTTP status returned by the upstream after the payment or SIWX authentication retry.
      * @type {number}
      * @memberof FetchResponse
      */
@@ -78,7 +87,8 @@ export interface FetchResponse {
      */
     heldUsd: string;
     /**
-     * Agent-facing settlement status. `pending` = signed, no refusal
+     * Agent-facing settlement status. `not_required` means SIWX wallet
+     * authentication returned the response without payment. `pending` = signed, no refusal
      * signal yet (settlement may still land, e.g. x402's async
      * facilitator webhook). `declined-pending` = the merchant refused
      * but the authorization isn't provably dead yet. `declined` /
@@ -120,7 +130,8 @@ export const FetchResponsePaymentStatusEnum = {
     DeclinedPending: 'declined-pending',
     Declined: 'declined',
     Expired: 'expired',
-    Reverted: 'reverted'
+    Reverted: 'reverted',
+    NotRequired: 'not_required'
 } as const;
 export type FetchResponsePaymentStatusEnum = typeof FetchResponsePaymentStatusEnum[keyof typeof FetchResponsePaymentStatusEnum];
 

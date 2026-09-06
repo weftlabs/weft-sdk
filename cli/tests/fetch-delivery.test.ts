@@ -89,6 +89,62 @@ function fixture(
 }
 
 describe("fetch result delivery", () => {
+  it.each(["0", "0.00"])(
+    "delivers SIWX retrieval with a %s spending ceiling",
+    async (ceiling) => {
+      const bytes = Buffer.from('{"status":"COMPLETED","output":{"value":1}}');
+      const f = fixture(bytes);
+      f.fetchApi.mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({
+              ...receipt,
+              held_usd: null,
+              payment_status: "not_required",
+              headers: { "content-type": "application/json" },
+              body_base64: bytes.toString("base64"),
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+      );
+      expect(
+        await runCli(
+          [
+            "fetch",
+            "https://merchant.example/runs/1",
+            "--method",
+            "GET",
+            "--max-cost-usd",
+            ceiling,
+          ],
+          f.dependencies,
+        ),
+      ).toBe(EXIT_SUCCESS);
+      expect(f.fetchApi).toHaveBeenCalledTimes(1);
+      expect(
+        JSON.parse(String(f.fetchApi.mock.calls[0][1]?.body)),
+      ).toMatchObject({
+        url: "https://merchant.example/runs/1",
+        method: "GET",
+        max_cost_usd: ceiling,
+      });
+      const output = JSON.parse(f.out[0]);
+      expect(output.data).toMatchObject({
+        paymentStatus: "not_required",
+        paidUsd: "0.00",
+        heldUsd: null,
+        txHash: null,
+        artifactId: 42,
+        body: bytes.toString("utf8"),
+      });
+      expect(readFileSync(output.meta.saved_path)).toEqual(bytes);
+      expect(
+        JSON.parse(readFileSync(output.meta.receipt_path, "utf8")).data
+          .paymentStatus,
+      ).toBe("not_required");
+    },
+  );
+
   it.each([49_999, 50_001, 199_999, 200_001])(
     "saves and returns every text byte at %i characters in one fetch",
     async (size) => {
