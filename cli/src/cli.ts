@@ -1116,11 +1116,11 @@ export async function runCli(
         );
       }
       const maxCostUsd = requiredOption(parsed.options, "max-cost-usd");
-      if (!/^\d+(?:\.\d+)?$/.test(maxCostUsd) || Number(maxCostUsd) <= 0) {
+      if (!/^\d+(?:\.\d+)?$/.test(maxCostUsd)) {
         throw new CliError(
           EXIT_USAGE,
           "INVALID_ARGUMENT",
-          "--max-cost-usd must be a positive decimal",
+          "--max-cost-usd must be a non-negative decimal",
         );
       }
       const method = parsed.options.get("method");

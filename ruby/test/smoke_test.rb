@@ -23,4 +23,24 @@ class SmokeTest < Minitest::Test
     assert_instance_of Weft::UserPrincipal, principal
     assert_nil principal.wallet
   end
+
+  def test_siwx_response_preserves_null_receipt_fields
+    [42, nil].each do |artifact_id|
+      receipt = {
+        status: 200, headers: { 'content-type' => 'application/json' },
+        body_base64: 'e30=', paid_usd: '0.00', held_usd: nil,
+        payment_status: 'not_required', tx_hash: nil, protocol: 'x402',
+        artifact_id: artifact_id
+      }
+      response = Struct.new(:body, :headers).new(JSON.generate(receipt), {})
+      result = Weft::ApiClient.new.deserialize(response, 'FetchResponse')
+
+      assert_equal 'not_required', result.payment_status
+      assert_equal '0.00', result.paid_usd
+      assert_nil result.held_usd
+      assert_nil result.tx_hash
+      assert_equal receipt, result.to_hash
+    end
+  end
+
 end

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { WeftClient } from "../src/client";
+import {
+  FetchResponsePaymentStatusEnum,
+  FetchResponseToJSON,
+} from "../src/generated/models/FetchResponse";
 
 function jsonResponse(value: unknown): Response {
   return new Response(JSON.stringify(value), {
@@ -87,6 +91,55 @@ describe("WeftClient", () => {
       max_cost_usd: "0.10",
     });
   });
+
+  it.each([42, null])(
+    "retrieves SIWX results with a zero ceiling and artifact %s",
+    async (artifactId) => {
+      const fetchApi = vi.fn(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+          jsonResponse({
+            status: 200,
+            headers: { "content-type": "application/json" },
+            body_base64: "e30=",
+            paid_usd: "0.00",
+            held_usd: null,
+            payment_status: "not_required",
+            tx_hash: null,
+            protocol: "x402",
+            artifact_id: artifactId,
+          }),
+      );
+      const client = new WeftClient({ apiKey: "wk_test", fetchApi });
+      const result = await client.fetch(
+        {
+          url: "https://merchant.example/runs/1",
+          method: "GET",
+          maxCostUsd: "0",
+        },
+        { idempotencyKey: "poll-1" },
+      );
+      expect(
+        JSON.parse(String(fetchApi.mock.calls[0]?.[1]?.body)),
+      ).toMatchObject({
+        method: "GET",
+        max_cost_usd: "0",
+        url: "https://merchant.example/runs/1",
+      });
+      expect(result).toMatchObject({
+        paymentStatus: FetchResponsePaymentStatusEnum.NotRequired,
+        paidUsd: "0.00",
+        heldUsd: null,
+        txHash: null,
+        artifactId,
+        bodyBase64: "e30=",
+      });
+      expect(FetchResponseToJSON(result)).toMatchObject({
+        held_usd: null,
+        tx_hash: null,
+        artifact_id: artifactId,
+      });
+    },
+  );
 
   it("requires an API key and a max cost", async () => {
     expect(() => new WeftClient({ apiKey: " " })).toThrow("apiKey is required");

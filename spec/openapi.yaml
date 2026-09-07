@@ -2700,6 +2700,15 @@ components:
         bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`,
         `tx_hash`, and `protocol` describe the payment and settlement state.
 
+        To retrieve a SIWX-protected result, use HTTPS GET with
+        `max_cost_usd: "0"`. Weft signs a fresh, resource-bound challenge with
+        the same buyer wallet. Retrieval never falls back to payment and
+        returns `not_required`, zero paid amount, and null held amount and
+        transaction hash. Polls are fresh, including with repeated idempotency
+        keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`.
+        Providers must support smart-wallet signatures. Auth-only challenges
+        also use this path; positive-budget purchases retain payment behavior.
+
         `paid_usd` is "0.00" (never the nominal charge amount) until the
         charge is CONFIRMED settled on-chain — a signed-but-unsettled hold
         reports its amount in `held_usd` instead. This is a deliberate
@@ -2718,7 +2727,7 @@ components:
       properties:
         status:
           type: integer
-          description: HTTP status returned by the upstream after the paid replay.
+          description: HTTP status returned by the upstream after the payment or SIWX authentication retry.
           example: 200
         headers:
           type: object
@@ -2729,7 +2738,7 @@ components:
           type: string
           description: Base64-encoded response body. Empty string for empty bodies.
         paid_usd:
-          type: string
+          type: [string, "null"]
           nullable: true
           description: |
             USD amount actually settled on-chain. "0.00" for any charge that
@@ -2739,7 +2748,7 @@ components:
             string-comparing against a bare zero literal.
           example: "0.002"
         held_usd:
-          type: string
+          type: [string, "null"]
           nullable: true
           description: |
             The nominal charge amount when `paid_usd` is "0.00" — a hold
@@ -2750,9 +2759,10 @@ components:
           example: "0.002"
         payment_status:
           type: string
-          enum: [settled, pending, declined-pending, declined, expired, reverted]
+          enum: [settled, pending, declined-pending, declined, expired, reverted, not_required]
           description: |
-            Agent-facing settlement status. `pending` = signed, no refusal
+            Agent-facing settlement status. `not_required` means SIWX wallet
+            authentication returned the response without payment. `pending` = signed, no refusal
             signal yet (settlement may still land, e.g. x402's async
             facilitator webhook). `declined-pending` = the merchant refused
             but the authorization isn't provably dead yet. `declined` /
@@ -2761,7 +2771,7 @@ components:
             for this charge.
           example: pending
         tx_hash:
-          type: string
+          type: [string, "null"]
           nullable: true
           description: Settlement transaction hash. Null until a settlement hash has been reported.
         protocol:
@@ -2769,7 +2779,7 @@ components:
           enum: [x402, mpp]
           description: Payment protocol selected for this fetch.
         artifact_id:
-          type: integer
+          type: [integer, "null"]
           nullable: true
           description: Internal artifact identifier if the response was persisted; `null` otherwise.
     FetchErrorResponse:

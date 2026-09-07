@@ -83,6 +83,34 @@ console.log({ idempotencyKey, artifact });
 Do not create a new key for a retry of the same logical purchase. The CLI
 generates a key automatically and returns it in its success envelope.
 
+## Retrieve a wallet-protected result
+
+For an x402 Sign-In-With-X (SIWX) result endpoint, use the same buyer credential
+as the paid submission and set an explicit zero ceiling:
+
+```js
+const result = await weft.fetch(
+  {
+    url: "https://merchant.example/runs/your-run-id",
+    method: "GET",
+    maxCostUsd: "0",
+  },
+  { idempotencyKey: "poll-your-run-id" },
+);
+console.log(result.paymentStatus, result.artifactId, result.bodyBase64);
+```
+
+Weft signs a fresh, resource-bound challenge with the buyer wallet. No local
+wallet key is needed. The provider must support smart-wallet signatures and
+issue a valid HTTPS challenge for the requested resource. Retrieval never
+falls back to payment. Success returns `paymentStatus: "not_required"`,
+`paidUsd: "0.00"`, and null `heldUsd` and `txHash`.
+
+Repeat this GET until the provider reports a terminal job state. Polls read
+fresh provider state even when the idempotency key is repeated. Do not repeat
+the paid submission to poll. `SIWX_RETRIEVAL_FAILED` means the challenge was
+unsafe or authentication failed; keep the zero ceiling when investigating.
+
 ## CLI
 
 The `weft` executable is published separately as `@weftlabs/cli`.

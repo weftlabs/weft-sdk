@@ -18,30 +18,30 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
 class FetchResponse(BaseModel):
     """
-    Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
+    Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state.  To retrieve a SIWX-protected result, use HTTPS GET with `max_cost_usd: \"0\"`. Weft signs a fresh, resource-bound challenge with the same buyer wallet. Retrieval never falls back to payment and returns `not_required`, zero paid amount, and null held amount and transaction hash. Polls are fresh, including with repeated idempotency keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`. Providers must support smart-wallet signatures. Auth-only challenges also use this path; positive-budget purchases retain payment behavior.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
     """ # noqa: E501
-    status: StrictInt = Field(description="HTTP status returned by the upstream after the paid replay.")
+    status: StrictInt = Field(description="HTTP status returned by the upstream after the payment or SIWX authentication retry.")
     headers: Dict[str, StrictStr] = Field(description="Response headers from the upstream.")
     body_base64: StrictStr = Field(description="Base64-encoded response body. Empty string for empty bodies.")
-    paid_usd: StrictStr = Field(description="USD amount actually settled on-chain. \"0.00\" for any charge that hasn't (yet, or ever) settled — a signed hold is not yet spend. See `held_usd` for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal. ")
-    held_usd: StrictStr = Field(description="The nominal charge amount when `paid_usd` is \"0.00\" — a hold awaiting settlement, or a charge that failed/expired without ever settling. `null` once `paid_usd` reflects the real settlement. Same format as `paid_usd`: exact to the micro-dollar, minimum two decimals. ")
-    payment_status: StrictStr = Field(description="Agent-facing settlement status. `pending` = signed, no refusal signal yet (settlement may still land, e.g. x402's async facilitator webhook). `declined-pending` = the merchant refused but the authorization isn't provably dead yet. `declined` / `expired` / `reverted` are terminal — the money never moved (or, for `reverted`, moved and then reversed on-chain) and never will for this charge. ")
-    tx_hash: StrictStr = Field(description="Settlement transaction hash. Null until a settlement hash has been reported.")
+    paid_usd: Optional[StrictStr] = Field(description="USD amount actually settled on-chain. \"0.00\" for any charge that hasn't (yet, or ever) settled — a signed hold is not yet spend. See `held_usd` for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal. ")
+    held_usd: Optional[StrictStr] = Field(description="The nominal charge amount when `paid_usd` is \"0.00\" — a hold awaiting settlement, or a charge that failed/expired without ever settling. `null` once `paid_usd` reflects the real settlement. Same format as `paid_usd`: exact to the micro-dollar, minimum two decimals. ")
+    payment_status: StrictStr = Field(description="Agent-facing settlement status. `not_required` means SIWX wallet authentication returned the response without payment. `pending` = signed, no refusal signal yet (settlement may still land, e.g. x402's async facilitator webhook). `declined-pending` = the merchant refused but the authorization isn't provably dead yet. `declined` / `expired` / `reverted` are terminal — the money never moved (or, for `reverted`, moved and then reversed on-chain) and never will for this charge. ")
+    tx_hash: Optional[StrictStr] = Field(description="Settlement transaction hash. Null until a settlement hash has been reported.")
     protocol: StrictStr = Field(description="Payment protocol selected for this fetch.")
-    artifact_id: StrictInt = Field(description="Internal artifact identifier if the response was persisted; `null` otherwise.")
+    artifact_id: Optional[StrictInt] = Field(description="Internal artifact identifier if the response was persisted; `null` otherwise.")
     __properties: ClassVar[List[str]] = ["status", "headers", "body_base64", "paid_usd", "held_usd", "payment_status", "tx_hash", "protocol", "artifact_id"]
 
     @field_validator('payment_status')
     def payment_status_validate_enum(cls, value):
         """Validates the enum"""
-        if value not in set(['settled', 'pending', 'declined-pending', 'declined', 'expired', 'reverted']):
-            raise ValueError("must be one of enum values ('settled', 'pending', 'declined-pending', 'declined', 'expired', 'reverted')")
+        if value not in set(['settled', 'pending', 'declined-pending', 'declined', 'expired', 'reverted', 'not_required']):
+            raise ValueError("must be one of enum values ('settled', 'pending', 'declined-pending', 'declined', 'expired', 'reverted', 'not_required')")
         return value
 
     @field_validator('protocol')
@@ -90,6 +90,26 @@ class FetchResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if paid_usd (nullable) is None
+        # and model_fields_set contains the field
+        if self.paid_usd is None and "paid_usd" in self.model_fields_set:
+            _dict['paid_usd'] = None
+
+        # set to None if held_usd (nullable) is None
+        # and model_fields_set contains the field
+        if self.held_usd is None and "held_usd" in self.model_fields_set:
+            _dict['held_usd'] = None
+
+        # set to None if tx_hash (nullable) is None
+        # and model_fields_set contains the field
+        if self.tx_hash is None and "tx_hash" in self.model_fields_set:
+            _dict['tx_hash'] = None
+
+        # set to None if artifact_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.artifact_id is None and "artifact_id" in self.model_fields_set:
+            _dict['artifact_id'] = None
+
         return _dict
 
     @classmethod
