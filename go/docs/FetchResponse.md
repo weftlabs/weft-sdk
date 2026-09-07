@@ -4,21 +4,21 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Status** | **int32** | HTTP status returned by the upstream after the payment or SIWX authentication retry. |
+**Status** | **int32** | HTTP status returned by the upstream after the paid replay. |
 **Headers** | **map[string]string** | Response headers from the upstream. |
 **BodyBase64** | **string** | Base64-encoded response body. Empty string for empty bodies. |
-**PaidUsd** | **NullableString** | USD amount actually settled on-chain. \&quot;0.00\&quot; for any charge that hasn&#39;t (yet, or ever) settled — a signed hold is not yet spend. See &#x60;held_usd&#x60; for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal.  |
-**HeldUsd** | **NullableString** | The nominal charge amount when &#x60;paid_usd&#x60; is \&quot;0.00\&quot; — a hold awaiting settlement, or a charge that failed/expired without ever settling. &#x60;null&#x60; once &#x60;paid_usd&#x60; reflects the real settlement. Same format as &#x60;paid_usd&#x60;: exact to the micro-dollar, minimum two decimals.  |
-**PaymentStatus** | **string** | Agent-facing settlement status. &#x60;not_required&#x60; means SIWX wallet authentication returned the response without payment. &#x60;pending&#x60; &#x3D; signed, no refusal signal yet (settlement may still land, e.g. x402&#39;s async facilitator webhook). &#x60;declined-pending&#x60; &#x3D; the merchant refused but the authorization isn&#39;t provably dead yet. &#x60;declined&#x60; / &#x60;expired&#x60; / &#x60;reverted&#x60; are terminal — the money never moved (or, for &#x60;reverted&#x60;, moved and then reversed on-chain) and never will for this charge.  |
-**TxHash** | **NullableString** | Settlement transaction hash. Null until a settlement hash has been reported. |
+**PaidUsd** | **string** | USD amount actually settled on-chain. \&quot;0.00\&quot; for any charge that hasn&#39;t (yet, or ever) settled — a signed hold is not yet spend. See &#x60;held_usd&#x60; for the nominal amount in that case. Exact to the micro-dollar, minimum two decimals; parse as a decimal rather than string-comparing against a bare zero literal.  |
+**HeldUsd** | **string** | The nominal charge amount when &#x60;paid_usd&#x60; is \&quot;0.00\&quot; — a hold awaiting settlement, or a charge that failed/expired without ever settling. &#x60;null&#x60; once &#x60;paid_usd&#x60; reflects the real settlement. Same format as &#x60;paid_usd&#x60;: exact to the micro-dollar, minimum two decimals.  |
+**PaymentStatus** | **string** | Agent-facing settlement status. &#x60;pending&#x60; &#x3D; signed, no refusal signal yet (settlement may still land, e.g. x402&#39;s async facilitator webhook). &#x60;declined-pending&#x60; &#x3D; the merchant refused but the authorization isn&#39;t provably dead yet. &#x60;declined&#x60; / &#x60;expired&#x60; / &#x60;reverted&#x60; are terminal — the money never moved (or, for &#x60;reverted&#x60;, moved and then reversed on-chain) and never will for this charge.  |
+**TxHash** | **string** | Settlement transaction hash. Null until a settlement hash has been reported. |
 **Protocol** | **string** | Payment protocol selected for this fetch. |
-**ArtifactId** | **NullableInt32** | Internal artifact identifier if the response was persisted; &#x60;null&#x60; otherwise. |
+**ArtifactId** | **int32** | Internal artifact identifier if the response was persisted; &#x60;null&#x60; otherwise. |
 
 ## Methods
 
 ### NewFetchResponse
 
-`func NewFetchResponse(status int32, headers map[string]string, bodyBase64 string, paidUsd NullableString, heldUsd NullableString, paymentStatus string, txHash NullableString, protocol string, artifactId NullableInt32, ) *FetchResponse`
+`func NewFetchResponse(status int32, headers map[string]string, bodyBase64 string, paidUsd string, heldUsd string, paymentStatus string, txHash string, protocol string, artifactId int32, ) *FetchResponse`
 
 NewFetchResponse instantiates a new FetchResponse object
 This constructor will assign default values to properties that have it defined,
@@ -113,16 +113,6 @@ and a boolean to check if the value has been set.
 SetPaidUsd sets PaidUsd field to given value.
 
 
-### SetPaidUsdNil
-
-`func (o *FetchResponse) SetPaidUsdNil(b bool)`
-
- SetPaidUsdNil sets the value for PaidUsd to be an explicit nil
-
-### UnsetPaidUsd
-`func (o *FetchResponse) UnsetPaidUsd()`
-
-UnsetPaidUsd ensures that no value is present for PaidUsd, not even an explicit nil
 ### GetHeldUsd
 
 `func (o *FetchResponse) GetHeldUsd() string`
@@ -143,16 +133,6 @@ and a boolean to check if the value has been set.
 SetHeldUsd sets HeldUsd field to given value.
 
 
-### SetHeldUsdNil
-
-`func (o *FetchResponse) SetHeldUsdNil(b bool)`
-
- SetHeldUsdNil sets the value for HeldUsd to be an explicit nil
-
-### UnsetHeldUsd
-`func (o *FetchResponse) UnsetHeldUsd()`
-
-UnsetHeldUsd ensures that no value is present for HeldUsd, not even an explicit nil
 ### GetPaymentStatus
 
 `func (o *FetchResponse) GetPaymentStatus() string`
@@ -193,16 +173,6 @@ and a boolean to check if the value has been set.
 SetTxHash sets TxHash field to given value.
 
 
-### SetTxHashNil
-
-`func (o *FetchResponse) SetTxHashNil(b bool)`
-
- SetTxHashNil sets the value for TxHash to be an explicit nil
-
-### UnsetTxHash
-`func (o *FetchResponse) UnsetTxHash()`
-
-UnsetTxHash ensures that no value is present for TxHash, not even an explicit nil
 ### GetProtocol
 
 `func (o *FetchResponse) GetProtocol() string`
@@ -243,15 +213,5 @@ and a boolean to check if the value has been set.
 SetArtifactId sets ArtifactId field to given value.
 
 
-### SetArtifactIdNil
-
-`func (o *FetchResponse) SetArtifactIdNil(b bool)`
-
- SetArtifactIdNil sets the value for ArtifactId to be an explicit nil
-
-### UnsetArtifactId
-`func (o *FetchResponse) UnsetArtifactId()`
-
-UnsetArtifactId ensures that no value is present for ArtifactId, not even an explicit nil
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
