@@ -14,9 +14,9 @@ require 'date'
 require 'time'
 
 module Weft
-  # Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state.  To retrieve a SIWX-protected result, use HTTPS GET with `max_cost_usd: \"0\"`. Weft signs a fresh, resource-bound challenge with the same buyer wallet. Retrieval never falls back to payment and returns `not_required`, zero paid amount, and null held amount and transaction hash. Polls are fresh, including with repeated idempotency keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`. Providers must support smart-wallet signatures. Auth-only challenges also use this path; positive-budget purchases retain payment behavior.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
+  # Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
   class FetchResponse < ApiModelBase
-    # HTTP status returned by the upstream after the payment or SIWX authentication retry.
+    # HTTP status returned by the upstream after the paid replay.
     attr_accessor :status
 
     # Response headers from the upstream.
@@ -31,7 +31,7 @@ module Weft
     # The nominal charge amount when `paid_usd` is \"0.00\" — a hold awaiting settlement, or a charge that failed/expired without ever settling. `null` once `paid_usd` reflects the real settlement. Same format as `paid_usd`: exact to the micro-dollar, minimum two decimals.
     attr_accessor :held_usd
 
-    # Agent-facing settlement status. `not_required` means SIWX wallet authentication returned the response without payment. `pending` = signed, no refusal signal yet (settlement may still land, e.g. x402's async facilitator webhook). `declined-pending` = the merchant refused but the authorization isn't provably dead yet. `declined` / `expired` / `reverted` are terminal — the money never moved (or, for `reverted`, moved and then reversed on-chain) and never will for this charge.
+    # Agent-facing settlement status. `pending` = signed, no refusal signal yet (settlement may still land, e.g. x402's async facilitator webhook). `declined-pending` = the merchant refused but the authorization isn't provably dead yet. `declined` / `expired` / `reverted` are terminal — the money never moved (or, for `reverted`, moved and then reversed on-chain) and never will for this charge.
     attr_accessor :payment_status
 
     # Settlement transaction hash. Null until a settlement hash has been reported.
@@ -108,10 +108,6 @@ module Weft
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
-        :'paid_usd',
-        :'held_usd',
-        :'tx_hash',
-        :'artifact_id'
       ])
     end
 
@@ -205,12 +201,28 @@ module Weft
         invalid_properties.push('invalid value for "body_base64", body_base64 cannot be nil.')
       end
 
+      if @paid_usd.nil?
+        invalid_properties.push('invalid value for "paid_usd", paid_usd cannot be nil.')
+      end
+
+      if @held_usd.nil?
+        invalid_properties.push('invalid value for "held_usd", held_usd cannot be nil.')
+      end
+
       if @payment_status.nil?
         invalid_properties.push('invalid value for "payment_status", payment_status cannot be nil.')
       end
 
+      if @tx_hash.nil?
+        invalid_properties.push('invalid value for "tx_hash", tx_hash cannot be nil.')
+      end
+
       if @protocol.nil?
         invalid_properties.push('invalid value for "protocol", protocol cannot be nil.')
+      end
+
+      if @artifact_id.nil?
+        invalid_properties.push('invalid value for "artifact_id", artifact_id cannot be nil.')
       end
 
       invalid_properties
@@ -223,12 +235,16 @@ module Weft
       return false if @status.nil?
       return false if @headers.nil?
       return false if @body_base64.nil?
+      return false if @paid_usd.nil?
+      return false if @held_usd.nil?
       return false if @payment_status.nil?
-      payment_status_validator = EnumAttributeValidator.new('String', ["settled", "pending", "declined-pending", "declined", "expired", "reverted", "not_required"])
+      payment_status_validator = EnumAttributeValidator.new('String', ["settled", "pending", "declined-pending", "declined", "expired", "reverted"])
       return false unless payment_status_validator.valid?(@payment_status)
+      return false if @tx_hash.nil?
       return false if @protocol.nil?
       protocol_validator = EnumAttributeValidator.new('String', ["x402", "mpp"])
       return false unless protocol_validator.valid?(@protocol)
+      return false if @artifact_id.nil?
       true
     end
 
@@ -262,14 +278,44 @@ module Weft
       @body_base64 = body_base64
     end
 
+    # Custom attribute writer method with validation
+    # @param [Object] paid_usd Value to be assigned
+    def paid_usd=(paid_usd)
+      if paid_usd.nil?
+        fail ArgumentError, 'paid_usd cannot be nil'
+      end
+
+      @paid_usd = paid_usd
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] held_usd Value to be assigned
+    def held_usd=(held_usd)
+      if held_usd.nil?
+        fail ArgumentError, 'held_usd cannot be nil'
+      end
+
+      @held_usd = held_usd
+    end
+
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] payment_status Object to be assigned
     def payment_status=(payment_status)
-      validator = EnumAttributeValidator.new('String', ["settled", "pending", "declined-pending", "declined", "expired", "reverted", "not_required"])
+      validator = EnumAttributeValidator.new('String', ["settled", "pending", "declined-pending", "declined", "expired", "reverted"])
       unless validator.valid?(payment_status)
         fail ArgumentError, "invalid value for \"payment_status\", must be one of #{validator.allowable_values}."
       end
       @payment_status = payment_status
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] tx_hash Value to be assigned
+    def tx_hash=(tx_hash)
+      if tx_hash.nil?
+        fail ArgumentError, 'tx_hash cannot be nil'
+      end
+
+      @tx_hash = tx_hash
     end
 
     # Custom attribute writer method checking allowed values (enum).
@@ -280,6 +326,16 @@ module Weft
         fail ArgumentError, "invalid value for \"protocol\", must be one of #{validator.allowable_values}."
       end
       @protocol = protocol
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] artifact_id Value to be assigned
+    def artifact_id=(artifact_id)
+      if artifact_id.nil?
+        fail ArgumentError, 'artifact_id cannot be nil'
+      end
+
+      @artifact_id = artifact_id
     end
 
     # Checks equality by comparing each attribute.
