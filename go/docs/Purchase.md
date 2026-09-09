@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **Network** | **string** |  |
 **Protocol** | **NullableString** |  |
 **Context** | **NullableString** |  |
+**SearchId** | **NullableString** | Search trace ID used to attribute this purchase, when available. |
+**AttributionStatus** | **string** |  |
 **TxHash** | **NullableString** |  |
 **RejectReason** | **NullableString** |  |
 **FailureReason** | **NullableString** |  |
@@ -23,7 +25,7 @@ Name | Type | Description | Notes
 
 ### NewPurchase
 
-`func NewPurchase(id int32, status string, amountUsd string, recipientAddress string, network string, protocol NullableString, context NullableString, txHash NullableString, rejectReason NullableString, failureReason NullableString, idempotencyKey NullableString, signedAt time.Time, settledAt NullableTime, artifact NullablePurchaseArtifact, ) *Purchase`
+`func NewPurchase(id int32, status string, amountUsd string, recipientAddress string, network string, protocol NullableString, context NullableString, searchId NullableString, attributionStatus string, txHash NullableString, rejectReason NullableString, failureReason NullableString, idempotencyKey NullableString, signedAt time.Time, settledAt NullableTime, artifact NullablePurchaseArtifact, ) *Purchase`
 
 NewPurchase instantiates a new Purchase object
 This constructor will assign default values to properties that have it defined,
@@ -198,6 +200,56 @@ SetContext sets Context field to given value.
 `func (o *Purchase) UnsetContext()`
 
 UnsetContext ensures that no value is present for Context, not even an explicit nil
+### GetSearchId
+
+`func (o *Purchase) GetSearchId() string`
+
+GetSearchId returns the SearchId field if non-nil, zero value otherwise.
+
+### GetSearchIdOk
+
+`func (o *Purchase) GetSearchIdOk() (*string, bool)`
+
+GetSearchIdOk returns a tuple with the SearchId field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetSearchId
+
+`func (o *Purchase) SetSearchId(v string)`
+
+SetSearchId sets SearchId field to given value.
+
+
+### SetSearchIdNil
+
+`func (o *Purchase) SetSearchIdNil(b bool)`
+
+ SetSearchIdNil sets the value for SearchId to be an explicit nil
+
+### UnsetSearchId
+`func (o *Purchase) UnsetSearchId()`
+
+UnsetSearchId ensures that no value is present for SearchId, not even an explicit nil
+### GetAttributionStatus
+
+`func (o *Purchase) GetAttributionStatus() string`
+
+GetAttributionStatus returns the AttributionStatus field if non-nil, zero value otherwise.
+
+### GetAttributionStatusOk
+
+`func (o *Purchase) GetAttributionStatusOk() (*string, bool)`
+
+GetAttributionStatusOk returns a tuple with the AttributionStatus field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAttributionStatus
+
+`func (o *Purchase) SetAttributionStatus(v string)`
+
+SetAttributionStatus sets AttributionStatus field to given value.
+
+
 ### GetTxHash
 
 `func (o *Purchase) GetTxHash() string`

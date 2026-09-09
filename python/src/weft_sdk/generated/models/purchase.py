@@ -35,6 +35,8 @@ class Purchase(BaseModel):
     network: StrictStr
     protocol: Optional[StrictStr]
     context: Optional[StrictStr]
+    search_id: Optional[StrictStr] = Field(description="Search trace ID used to attribute this purchase, when available.")
+    attribution_status: StrictStr
     tx_hash: Optional[StrictStr]
     reject_reason: Optional[StrictStr]
     failure_reason: Optional[StrictStr]
@@ -42,7 +44,7 @@ class Purchase(BaseModel):
     signed_at: datetime
     settled_at: Optional[datetime]
     artifact: Optional[PurchaseArtifact]
-    __properties: ClassVar[List[str]] = ["id", "status", "amount_usd", "recipient_address", "network", "protocol", "context", "tx_hash", "reject_reason", "failure_reason", "idempotency_key", "signed_at", "settled_at", "artifact"]
+    __properties: ClassVar[List[str]] = ["id", "status", "amount_usd", "recipient_address", "network", "protocol", "context", "search_id", "attribution_status", "tx_hash", "reject_reason", "failure_reason", "idempotency_key", "signed_at", "settled_at", "artifact"]
 
     @field_validator('status')
     def status_validate_enum(cls, value):
@@ -59,6 +61,13 @@ class Purchase(BaseModel):
 
         if value not in set(['mpp', 'x402']):
             raise ValueError("must be one of enum values ('mpp', 'x402')")
+        return value
+
+    @field_validator('attribution_status')
+    def attribution_status_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['attributed', 'unattributed']):
+            raise ValueError("must be one of enum values ('attributed', 'unattributed')")
         return value
 
     model_config = ConfigDict(
@@ -113,6 +122,11 @@ class Purchase(BaseModel):
         if self.context is None and "context" in self.model_fields_set:
             _dict['context'] = None
 
+        # set to None if search_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.search_id is None and "search_id" in self.model_fields_set:
+            _dict['search_id'] = None
+
         # set to None if tx_hash (nullable) is None
         # and model_fields_set contains the field
         if self.tx_hash is None and "tx_hash" in self.model_fields_set:
@@ -162,6 +176,8 @@ class Purchase(BaseModel):
             "network": obj.get("network"),
             "protocol": obj.get("protocol"),
             "context": obj.get("context"),
+            "search_id": obj.get("search_id"),
+            "attribution_status": obj.get("attribution_status"),
             "tx_hash": obj.get("tx_hash"),
             "reject_reason": obj.get("reject_reason"),
             "failure_reason": obj.get("failure_reason"),

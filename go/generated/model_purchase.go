@@ -25,18 +25,21 @@ type Purchase struct {
 	Id     int32  `json:"id"`
 	Status string `json:"status"`
 	// Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount.
-	AmountUsd        string                   `json:"amount_usd"`
-	RecipientAddress string                   `json:"recipient_address"`
-	Network          string                   `json:"network"`
-	Protocol         NullableString           `json:"protocol"`
-	Context          NullableString           `json:"context"`
-	TxHash           NullableString           `json:"tx_hash"`
-	RejectReason     NullableString           `json:"reject_reason"`
-	FailureReason    NullableString           `json:"failure_reason"`
-	IdempotencyKey   NullableString           `json:"idempotency_key"`
-	SignedAt         time.Time                `json:"signed_at"`
-	SettledAt        NullableTime             `json:"settled_at"`
-	Artifact         NullablePurchaseArtifact `json:"artifact"`
+	AmountUsd        string         `json:"amount_usd"`
+	RecipientAddress string         `json:"recipient_address"`
+	Network          string         `json:"network"`
+	Protocol         NullableString `json:"protocol"`
+	Context          NullableString `json:"context"`
+	// Search trace ID used to attribute this purchase, when available.
+	SearchId          NullableString           `json:"search_id"`
+	AttributionStatus string                   `json:"attribution_status"`
+	TxHash            NullableString           `json:"tx_hash"`
+	RejectReason      NullableString           `json:"reject_reason"`
+	FailureReason     NullableString           `json:"failure_reason"`
+	IdempotencyKey    NullableString           `json:"idempotency_key"`
+	SignedAt          time.Time                `json:"signed_at"`
+	SettledAt         NullableTime             `json:"settled_at"`
+	Artifact          NullablePurchaseArtifact `json:"artifact"`
 }
 
 type _Purchase Purchase
@@ -45,7 +48,7 @@ type _Purchase Purchase
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewPurchase(id int32, status string, amountUsd string, recipientAddress string, network string, protocol NullableString, context NullableString, txHash NullableString, rejectReason NullableString, failureReason NullableString, idempotencyKey NullableString, signedAt time.Time, settledAt NullableTime, artifact NullablePurchaseArtifact) *Purchase {
+func NewPurchase(id int32, status string, amountUsd string, recipientAddress string, network string, protocol NullableString, context NullableString, searchId NullableString, attributionStatus string, txHash NullableString, rejectReason NullableString, failureReason NullableString, idempotencyKey NullableString, signedAt time.Time, settledAt NullableTime, artifact NullablePurchaseArtifact) *Purchase {
 	this := Purchase{}
 	this.Id = id
 	this.Status = status
@@ -54,6 +57,8 @@ func NewPurchase(id int32, status string, amountUsd string, recipientAddress str
 	this.Network = network
 	this.Protocol = protocol
 	this.Context = context
+	this.SearchId = searchId
+	this.AttributionStatus = attributionStatus
 	this.TxHash = txHash
 	this.RejectReason = rejectReason
 	this.FailureReason = failureReason
@@ -242,6 +247,56 @@ func (o *Purchase) GetContextOk() (*string, bool) {
 // SetContext sets field value
 func (o *Purchase) SetContext(v string) {
 	o.Context.Set(&v)
+}
+
+// GetSearchId returns the SearchId field value
+// If the value is explicit nil, the zero value for string will be returned
+func (o *Purchase) GetSearchId() string {
+	if o == nil || o.SearchId.Get() == nil {
+		var ret string
+		return ret
+	}
+
+	return *o.SearchId.Get()
+}
+
+// GetSearchIdOk returns a tuple with the SearchId field value
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *Purchase) GetSearchIdOk() (*string, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.SearchId.Get(), o.SearchId.IsSet()
+}
+
+// SetSearchId sets field value
+func (o *Purchase) SetSearchId(v string) {
+	o.SearchId.Set(&v)
+}
+
+// GetAttributionStatus returns the AttributionStatus field value
+func (o *Purchase) GetAttributionStatus() string {
+	if o == nil {
+		var ret string
+		return ret
+	}
+
+	return o.AttributionStatus
+}
+
+// GetAttributionStatusOk returns a tuple with the AttributionStatus field value
+// and a boolean to check if the value has been set.
+func (o *Purchase) GetAttributionStatusOk() (*string, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return &o.AttributionStatus, true
+}
+
+// SetAttributionStatus sets field value
+func (o *Purchase) SetAttributionStatus(v string) {
+	o.AttributionStatus = v
 }
 
 // GetTxHash returns the TxHash field value
@@ -441,6 +496,8 @@ func (o Purchase) ToMap() (map[string]interface{}, error) {
 	toSerialize["network"] = o.Network
 	toSerialize["protocol"] = o.Protocol.Get()
 	toSerialize["context"] = o.Context.Get()
+	toSerialize["search_id"] = o.SearchId.Get()
+	toSerialize["attribution_status"] = o.AttributionStatus
 	toSerialize["tx_hash"] = o.TxHash.Get()
 	toSerialize["reject_reason"] = o.RejectReason.Get()
 	toSerialize["failure_reason"] = o.FailureReason.Get()
@@ -463,6 +520,8 @@ func (o *Purchase) UnmarshalJSON(data []byte) (err error) {
 		"network",
 		"protocol",
 		"context",
+		"search_id",
+		"attribution_status",
 		"tx_hash",
 		"reject_reason",
 		"failure_reason",

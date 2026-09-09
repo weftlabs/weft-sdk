@@ -2144,12 +2144,14 @@ components:
         reject_reason: reject_reason
         failure_reason: failure_reason
         network: network
+        search_id: search_id
         artifact: ""
         protocol: mpp
         context: context
         signed_at: 2000-01-23T04:56:07.000+00:00
         idempotency_key: idempotency_key
         id: 0
+        attribution_status: attributed
         settled_at: 2000-01-23T04:56:07.000+00:00
         status: signed
       properties:
@@ -2186,6 +2188,16 @@ components:
           nullable: true
           type: string
           nullable: true
+        search_id:
+          description: "Search trace ID used to attribute this purchase, when available."
+          nullable: true
+          type: string
+          nullable: true
+        attribution_status:
+          enum:
+          - attributed
+          - unattributed
+          type: string
         tx_hash:
           nullable: true
           type: string
@@ -2217,6 +2229,7 @@ components:
       required:
       - amount_usd
       - artifact
+      - attribution_status
       - context
       - failure_reason
       - id
@@ -2225,6 +2238,7 @@ components:
       - protocol
       - recipient_address
       - reject_reason
+      - search_id
       - settled_at
       - signed_at
       - status
@@ -2262,12 +2276,14 @@ components:
           reject_reason: reject_reason
           failure_reason: failure_reason
           network: network
+          search_id: search_id
           artifact: ""
           protocol: mpp
           context: context
           signed_at: 2000-01-23T04:56:07.000+00:00
           idempotency_key: idempotency_key
           id: 0
+          attribution_status: attributed
           settled_at: 2000-01-23T04:56:07.000+00:00
           status: signed
         - amount_usd: amount_usd
@@ -2276,12 +2292,14 @@ components:
           reject_reason: reject_reason
           failure_reason: failure_reason
           network: network
+          search_id: search_id
           artifact: ""
           protocol: mpp
           context: context
           signed_at: 2000-01-23T04:56:07.000+00:00
           idempotency_key: idempotency_key
           id: 0
+          attribution_status: attributed
           settled_at: 2000-01-23T04:56:07.000+00:00
           status: signed
       properties:
@@ -2303,12 +2321,14 @@ components:
           reject_reason: reject_reason
           failure_reason: failure_reason
           network: network
+          search_id: search_id
           artifact: ""
           protocol: mpp
           context: context
           signed_at: 2000-01-23T04:56:07.000+00:00
           idempotency_key: idempotency_key
           id: 0
+          attribution_status: attributed
           settled_at: 2000-01-23T04:56:07.000+00:00
           status: signed
       properties:
