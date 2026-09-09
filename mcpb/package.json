@@ -5,6 +5,6 @@
   "description": "Weft MCP Bundle (Claude Desktop extension) — bridges to the hosted Weft MCP server.",
   "packageManager": "pnpm@10.33.4",
   "dependencies": {
-    "mcp-remote": "0.8.2"
+    "mcp-remote": "0.8.3"
   }
 }
