@@ -30,6 +30,11 @@ module Weft
 
     attr_accessor :context
 
+    # Search trace ID used to attribute this purchase, when available.
+    attr_accessor :search_id
+
+    attr_accessor :attribution_status
+
     attr_accessor :tx_hash
 
     attr_accessor :reject_reason
@@ -76,6 +81,8 @@ module Weft
         :'network' => :'network',
         :'protocol' => :'protocol',
         :'context' => :'context',
+        :'search_id' => :'search_id',
+        :'attribution_status' => :'attribution_status',
         :'tx_hash' => :'tx_hash',
         :'reject_reason' => :'reject_reason',
         :'failure_reason' => :'failure_reason',
@@ -106,6 +113,8 @@ module Weft
         :'network' => :'String',
         :'protocol' => :'String',
         :'context' => :'String',
+        :'search_id' => :'String',
+        :'attribution_status' => :'String',
         :'tx_hash' => :'String',
         :'reject_reason' => :'String',
         :'failure_reason' => :'String',
@@ -121,6 +130,7 @@ module Weft
       Set.new([
         :'protocol',
         :'context',
+        :'search_id',
         :'tx_hash',
         :'reject_reason',
         :'failure_reason',
@@ -186,6 +196,18 @@ module Weft
         self.context = attributes[:'context']
       else
         self.context = nil
+      end
+
+      if attributes.key?(:'search_id')
+        self.search_id = attributes[:'search_id']
+      else
+        self.search_id = nil
+      end
+
+      if attributes.key?(:'attribution_status')
+        self.attribution_status = attributes[:'attribution_status']
+      else
+        self.attribution_status = nil
       end
 
       if attributes.key?(:'tx_hash')
@@ -256,6 +278,10 @@ module Weft
         invalid_properties.push('invalid value for "network", network cannot be nil.')
       end
 
+      if @attribution_status.nil?
+        invalid_properties.push('invalid value for "attribution_status", attribution_status cannot be nil.')
+      end
+
       if @signed_at.nil?
         invalid_properties.push('invalid value for "signed_at", signed_at cannot be nil.')
       end
@@ -276,6 +302,9 @@ module Weft
       return false if @network.nil?
       protocol_validator = EnumAttributeValidator.new('String', ["mpp", "x402"])
       return false unless protocol_validator.valid?(@protocol)
+      return false if @attribution_status.nil?
+      attribution_status_validator = EnumAttributeValidator.new('String', ["attributed", "unattributed"])
+      return false unless attribution_status_validator.valid?(@attribution_status)
       return false if @signed_at.nil?
       true
     end
@@ -340,6 +369,16 @@ module Weft
       @protocol = protocol
     end
 
+    # Custom attribute writer method checking allowed values (enum).
+    # @param [Object] attribution_status Object to be assigned
+    def attribution_status=(attribution_status)
+      validator = EnumAttributeValidator.new('String', ["attributed", "unattributed"])
+      unless validator.valid?(attribution_status)
+        fail ArgumentError, "invalid value for \"attribution_status\", must be one of #{validator.allowable_values}."
+      end
+      @attribution_status = attribution_status
+    end
+
     # Custom attribute writer method with validation
     # @param [Object] signed_at Value to be assigned
     def signed_at=(signed_at)
@@ -362,6 +401,8 @@ module Weft
           network == o.network &&
           protocol == o.protocol &&
           context == o.context &&
+          search_id == o.search_id &&
+          attribution_status == o.attribution_status &&
           tx_hash == o.tx_hash &&
           reject_reason == o.reject_reason &&
           failure_reason == o.failure_reason &&
@@ -380,7 +421,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [id, status, amount_usd, recipient_address, network, protocol, context, tx_hash, reject_reason, failure_reason, idempotency_key, signed_at, settled_at, artifact].hash
+      [id, status, amount_usd, recipient_address, network, protocol, context, search_id, attribution_status, tx_hash, reject_reason, failure_reason, idempotency_key, signed_at, settled_at, artifact].hash
     end
 
     # Builds the object from hash

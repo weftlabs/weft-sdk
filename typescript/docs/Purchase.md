@@ -13,6 +13,8 @@ Name | Type
 `network` | string
 `protocol` | string
 `context` | string
+`searchId` | string
+`attributionStatus` | string
 `txHash` | string
 `rejectReason` | string
 `failureReason` | string
@@ -35,6 +37,8 @@ const example = {
   "network": null,
   "protocol": null,
   "context": null,
+  "searchId": null,
+  "attributionStatus": null,
   "txHash": null,
   "rejectReason": null,
   "failureReason": null,

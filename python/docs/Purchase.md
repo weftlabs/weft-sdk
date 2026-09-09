@@ -12,6 +12,8 @@ Name | Type | Description | Notes
 **network** | **str** |  |
 **protocol** | **str** |  |
 **context** | **str** |  |
+**search_id** | **str** | Search trace ID used to attribute this purchase, when available. |
+**attribution_status** | **str** |  |
 **tx_hash** | **str** |  |
 **reject_reason** | **str** |  |
 **failure_reason** | **str** |  |

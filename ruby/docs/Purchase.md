@@ -11,6 +11,8 @@
 | **network** | **String** |  |  |
 | **protocol** | **String** |  |  |
 | **context** | **String** |  |  |
+| **search_id** | **String** | Search trace ID used to attribute this purchase, when available. |  |
+| **attribution_status** | **String** |  |  |
 | **tx_hash** | **String** |  |  |
 | **reject_reason** | **String** |  |  |
 | **failure_reason** | **String** |  |  |
@@ -32,6 +34,8 @@ instance = Weft::Purchase.new(
   network: null,
   protocol: null,
   context: null,
+  search_id: null,
+  attribution_status: null,
   tx_hash: null,
   reject_reason: null,
   failure_reason: null,

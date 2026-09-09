@@ -70,6 +70,18 @@ export interface Purchase {
      */
     context: string | null;
     /**
+     * Search trace ID used to attribute this purchase, when available.
+     * @type {string}
+     * @memberof Purchase
+     */
+    searchId: string | null;
+    /**
+     *
+     * @type {string}
+     * @memberof Purchase
+     */
+    attributionStatus: PurchaseAttributionStatusEnum;
+    /**
      *
      * @type {string}
      * @memberof Purchase
@@ -137,6 +149,15 @@ export const PurchaseProtocolEnum = {
 } as const;
 export type PurchaseProtocolEnum = typeof PurchaseProtocolEnum[keyof typeof PurchaseProtocolEnum];
 
+/**
+ * @export
+ */
+export const PurchaseAttributionStatusEnum = {
+    Attributed: 'attributed',
+    Unattributed: 'unattributed'
+} as const;
+export type PurchaseAttributionStatusEnum = typeof PurchaseAttributionStatusEnum[keyof typeof PurchaseAttributionStatusEnum];
+
 
 /**
  * Check if a given object implements the Purchase interface.
@@ -149,6 +170,8 @@ export function instanceOfPurchase(value: object): value is Purchase {
     if (!('network' in value) || value['network'] === undefined) return false;
     if (!('protocol' in value) || value['protocol'] === undefined) return false;
     if (!('context' in value) || value['context'] === undefined) return false;
+    if (!('searchId' in value) || value['searchId'] === undefined) return false;
+    if (!('attributionStatus' in value) || value['attributionStatus'] === undefined) return false;
     if (!('txHash' in value) || value['txHash'] === undefined) return false;
     if (!('rejectReason' in value) || value['rejectReason'] === undefined) return false;
     if (!('failureReason' in value) || value['failureReason'] === undefined) return false;
@@ -176,6 +199,8 @@ export function PurchaseFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'network': json['network'],
         'protocol': json['protocol'],
         'context': json['context'],
+        'searchId': json['search_id'],
+        'attributionStatus': json['attribution_status'],
         'txHash': json['tx_hash'],
         'rejectReason': json['reject_reason'],
         'failureReason': json['failure_reason'],
@@ -204,6 +229,8 @@ export function PurchaseToJSONTyped(value?: Purchase | null, ignoreDiscriminator
         'network': value['network'],
         'protocol': value['protocol'],
         'context': value['context'],
+        'search_id': value['searchId'],
+        'attribution_status': value['attributionStatus'],
         'tx_hash': value['txHash'],
         'reject_reason': value['rejectReason'],
         'failure_reason': value['failureReason'],

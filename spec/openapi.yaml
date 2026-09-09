@@ -1748,6 +1748,13 @@ components:
         context:
           type: [string, "null"]
           nullable: true
+        search_id:
+          type: [string, "null"]
+          nullable: true
+          description: Search trace ID used to attribute this purchase, when available.
+        attribution_status:
+          type: string
+          enum: [attributed, unattributed]
         tx_hash:
           type: [string, "null"]
           nullable: true
@@ -1780,6 +1787,8 @@ components:
         - network
         - protocol
         - context
+        - search_id
+        - attribution_status
         - tx_hash
         - reject_reason
         - failure_reason
