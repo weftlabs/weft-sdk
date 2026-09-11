@@ -1081,6 +1081,54 @@ describe("weft CLI", () => {
     });
   });
 
+  it("forwards --body JSON and --header on fetch", async () => {
+    const io = capture();
+    const fetchApi = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            status: 200,
+            headers: {},
+            body_base64: "",
+            paid_usd: "0",
+            held_usd: "0",
+            payment_status: "free",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    );
+    expect(
+      await runCli(
+        [
+          "fetch",
+          "https://win.oneshotagent.com/v1/tools/enrich/profile",
+          "--max-cost-usd",
+          "0.05",
+          "--method",
+          "POST",
+          "--body",
+          '{"linkedin_url":"https://www.linkedin.com/in/x/"}',
+          "--header",
+          "X-Agent-ID: agent-1",
+          "--raw",
+        ],
+        {
+          ...io,
+          env: {
+            WEFT_API_KEY: "wk_test",
+            WEFT_BASE_URL: "https://api.example",
+          },
+          fetchApi,
+          generateIdempotencyKey: () => "body-key",
+        },
+      ),
+    ).toBe(EXIT_SUCCESS);
+    const sent = JSON.parse(String(fetchApi.mock.calls[0][1]?.body ?? "{}"));
+    expect(sent.method).toBe("POST");
+    expect(sent.body).toBe('{"linkedin_url":"https://www.linkedin.com/in/x/"}');
+    expect(sent.headers).toEqual({ "X-Agent-ID": "agent-1" });
+  });
+
   it("returns the paid-fetch retry identity after an uncertain failure", async () => {
     const io = capture();
     const fetchApi = vi.fn(async () => {
