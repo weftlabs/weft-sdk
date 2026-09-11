@@ -90,7 +90,7 @@
     "prettier": "3.9.6",
     "tsup": "^8.4.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "files": [
     "dist",
