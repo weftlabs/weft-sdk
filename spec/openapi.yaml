@@ -7,7 +7,7 @@
 openapi: 3.1.0
 info:
   title: Weft API
-  version: 0.26.5
+  version: 0.26.6
   description: |
     The Weft API powers the `weft` CLI, the hosted MCP server
     (`weft.network/mcp`), and third-party applications that discover and pay
