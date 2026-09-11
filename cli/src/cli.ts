@@ -422,11 +422,18 @@ function parseArgs(args: string[]): ParsedArgs {
 }
 
 function positiveInteger(
-  value: string | true | undefined,
+  value: string | true | string[] | undefined,
   option: string,
   maximum?: number,
 ): number | undefined {
   if (value == null) return undefined;
+  if (typeof value !== "string") {
+    throw new CliError(
+      EXIT_USAGE,
+      "INVALID_ARGUMENT",
+      `${option} must be a positive integer`,
+    );
+  }
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new CliError(
