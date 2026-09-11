@@ -29,8 +29,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/weftlabs/weft-sdk"
-Documentation = "https://github.com/weftlabs/weft-sdk"
+Homepage = "https://weftlabs.com"
+Documentation = "https://weft.network/docs"
 Repository = "https://github.com/weftlabs/weft-sdk"
 
 [build-system]

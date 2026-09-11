@@ -70,6 +70,7 @@
   ],
   "author": "Weft Labs",
   "license": "Apache-2.0",
+  "homepage": "https://weftlabs.com",
   "repository": {
     "type": "git",
     "url": "https://github.com/weftlabs/weft-sdk"

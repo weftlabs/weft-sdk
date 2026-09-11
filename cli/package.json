@@ -33,6 +33,7 @@
   ],
   "author": "Weft Labs",
   "license": "Apache-2.0",
+  "homepage": "https://weftlabs.com/x402/cli",
   "repository": {
     "type": "git",
     "url": "https://github.com/weftlabs/weft-sdk",

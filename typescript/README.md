@@ -194,7 +194,9 @@ const result = await searchApi.search({
 
 See the [API reference](https://weft.network/docs) and
 [OpenAPI document](https://weft.network/docs/openapi.yaml) for the full
-contract.
+contract. Guides: [x402 in Next.js](https://weftlabs.com/x402/nextjs),
+[Weft CLI](https://weftlabs.com/x402/cli), and the
+[x402 protocol](https://weftlabs.com/protocols/x402).
 
 ## Facilitator integration
 
