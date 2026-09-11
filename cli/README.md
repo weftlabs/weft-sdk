@@ -19,6 +19,9 @@ npx --package @weftlabs/cli weft me
 npx --package @weftlabs/cli weft search "weather data API"
 npx --package @weftlabs/cli weft fetch "https://merchant.example/data" \
   --max-cost-usd 0.05
+npx --package @weftlabs/cli weft fetch "https://merchant.example/search" \
+  --max-cost-usd 0.05 --method POST \
+  --body '{"q":"berlin"}' --header "X-Agent-ID: demo"
 npx --package @weftlabs/cli weft --help
 ```
 

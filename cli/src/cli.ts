@@ -97,10 +97,12 @@ const COMMAND_HELP = {
   fetch: {
     description: "Fetch a URL within an explicit spending limit",
     usage:
-      "weft fetch <url> --max-cost-usd <amount> [--method <method>] [--idempotency-key <key>] [--raw]",
+      "weft fetch <url> --max-cost-usd <amount> [--method <method>] [--body <json>] [--header <name:value>] [--idempotency-key <key>] [--raw]",
     options: [
       "--max-cost-usd <amount>",
       "--method <method>",
+      "--body <json>",
+      "--header <name:value>",
       "--idempotency-key <key>",
       "--raw",
     ],
@@ -1103,6 +1105,8 @@ export async function runCli(
       ensureOnly(parsed.options, [
         "max-cost-usd",
         "method",
+        "body",
+        "header",
         "idempotency-key",
         "raw",
       ]);
@@ -1124,6 +1128,35 @@ export async function runCli(
         );
       }
       const method = parsed.options.get("method");
+      const rawBody = parsed.options.get("body");
+      let body: PaidFetchRequest["body"];
+      if (typeof rawBody === "string") {
+        try {
+          JSON.parse(rawBody);
+        } catch {
+          throw new CliError(
+            EXIT_USAGE,
+            "INVALID_ARGUMENT",
+            "--body must be JSON",
+          );
+        }
+        body = rawBody;
+      }
+      const rawHeader = parsed.options.get("header");
+      let headers: PaidFetchRequest["headers"];
+      if (typeof rawHeader === "string") {
+        const colon = rawHeader.indexOf(":");
+        if (colon <= 0) {
+          throw new CliError(
+            EXIT_USAGE,
+            "INVALID_ARGUMENT",
+            "--header must be Name:Value",
+          );
+        }
+        headers = {
+          [rawHeader.slice(0, colon).trim()]: rawHeader.slice(colon + 1).trim(),
+        };
+      }
       const request: PaidFetchRequest = {
         url: parsed.positionals[0],
         maxCostUsd,
@@ -1131,6 +1164,8 @@ export async function runCli(
           typeof method === "string"
             ? (method.toUpperCase() as PaidFetchRequest["method"])
             : undefined,
+        body,
+        headers,
       };
       const explicitKey = parsed.options.get("idempotency-key");
       idempotencyKey =
