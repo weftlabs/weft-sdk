@@ -101,6 +101,7 @@ __all__ = [
     "SearchErrorResponse",
     "SearchExecutionModeFilter",
     "SearchFilterSpec",
+    "SearchHelperDocs",
     "SearchMethodFilter",
     "SearchPaymentOffer",
     "SearchPriceAtomicFilter",
@@ -210,6 +211,7 @@ from weft_sdk.generated.models.search_endpoint_price import SearchEndpointPrice 
 from weft_sdk.generated.models.search_error_response import SearchErrorResponse as SearchErrorResponse
 from weft_sdk.generated.models.search_execution_mode_filter import SearchExecutionModeFilter as SearchExecutionModeFilter
 from weft_sdk.generated.models.search_filter_spec import SearchFilterSpec as SearchFilterSpec
+from weft_sdk.generated.models.search_helper_docs import SearchHelperDocs as SearchHelperDocs
 from weft_sdk.generated.models.search_method_filter import SearchMethodFilter as SearchMethodFilter
 from weft_sdk.generated.models.search_payment_offer import SearchPaymentOffer as SearchPaymentOffer
 from weft_sdk.generated.models.search_price_atomic_filter import SearchPriceAtomicFilter as SearchPriceAtomicFilter

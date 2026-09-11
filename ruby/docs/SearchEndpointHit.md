@@ -14,6 +14,8 @@
 | **access_methods** | [**Array&lt;SearchAccessMethod&gt;**](SearchAccessMethod.md) |  | [optional] |
 | **service** | [**SearchCuratedService**](SearchCuratedService.md) |  | [optional] |
 | **operation** | [**SearchCuratedOperation**](SearchCuratedOperation.md) |  | [optional] |
+| **docs** | [**SearchHelperDocs**](SearchHelperDocs.md) |  | [optional] |
+| **contract_url** | **String** | Content-addressed Weft contract for the complete operation, alternatives, evidence, and known gaps. Authenticated GET.  | [optional] |
 | **output_schema** | **Object** |  | [optional] |
 | **output** | **Object** |  | [optional] |
 | **execution** | [**SearchCuratedExecution**](SearchCuratedExecution.md) |  | [optional] |
@@ -43,6 +45,8 @@ instance = Weft::SearchEndpointHit.new(
   access_methods: null,
   service: null,
   operation: null,
+  docs: null,
+  contract_url: null,
   output_schema: null,
   output: null,
   execution: null,

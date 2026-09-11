@@ -16,6 +16,8 @@ Name | Type
 `accessMethods` | [Array&lt;SearchAccessMethod&gt;](SearchAccessMethod.md)
 `service` | [SearchCuratedService](SearchCuratedService.md)
 `operation` | [SearchCuratedOperation](SearchCuratedOperation.md)
+`docs` | [SearchHelperDocs](SearchHelperDocs.md)
+`contractUrl` | string
 `outputSchema` | object
 `output` | object
 `execution` | [SearchCuratedExecution](SearchCuratedExecution.md)
@@ -46,6 +48,8 @@ const example = {
   "accessMethods": null,
   "service": null,
   "operation": null,
+  "docs": null,
+  "contractUrl": null,
   "outputSchema": null,
   "output": null,
   "execution": null,

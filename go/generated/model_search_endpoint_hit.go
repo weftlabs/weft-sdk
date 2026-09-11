@@ -27,10 +27,13 @@ type SearchEndpointHit struct {
 	Call            *SearchEndpointCall  `json:"call,omitempty"`
 	Price           *SearchEndpointPrice `json:"price,omitempty"`
 	// The settlement routes this endpoint's own 402 challenge published — one entry per rail × network × asset × payee it accepts. Sibling of `call`: that block says how to shape the request, this says how to pay for it, so a caller can settle with its OWN x402/mpp SDK instead of guessing. A list because rails are irreducibly plural. Order is the provider's own preference order. Honest-empty when the pipeline observed no challenge.
-	Payment       []SearchPaymentOffer      `json:"payment,omitempty"`
-	AccessMethods []SearchAccessMethod      `json:"access_methods,omitempty"`
-	Service       *SearchCuratedService     `json:"service,omitempty"`
-	Operation     *SearchCuratedOperation   `json:"operation,omitempty"`
+	Payment       []SearchPaymentOffer    `json:"payment,omitempty"`
+	AccessMethods []SearchAccessMethod    `json:"access_methods,omitempty"`
+	Service       *SearchCuratedService   `json:"service,omitempty"`
+	Operation     *SearchCuratedOperation `json:"operation,omitempty"`
+	Docs          *SearchHelperDocs       `json:"docs,omitempty"`
+	// Content-addressed Weft contract for the complete operation, alternatives, evidence, and known gaps. Authenticated GET.
+	ContractUrl   *string                   `json:"contract_url,omitempty"`
 	OutputSchema  map[string]interface{}    `json:"output_schema,omitempty"`
 	Output        map[string]interface{}    `json:"output,omitempty"`
 	Execution     *SearchCuratedExecution   `json:"execution,omitempty"`
@@ -384,6 +387,70 @@ func (o *SearchEndpointHit) HasOperation() bool {
 // SetOperation gets a reference to the given SearchCuratedOperation and assigns it to the Operation field.
 func (o *SearchEndpointHit) SetOperation(v SearchCuratedOperation) {
 	o.Operation = &v
+}
+
+// GetDocs returns the Docs field value if set, zero value otherwise.
+func (o *SearchEndpointHit) GetDocs() SearchHelperDocs {
+	if o == nil || IsNil(o.Docs) {
+		var ret SearchHelperDocs
+		return ret
+	}
+	return *o.Docs
+}
+
+// GetDocsOk returns a tuple with the Docs field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchEndpointHit) GetDocsOk() (*SearchHelperDocs, bool) {
+	if o == nil || IsNil(o.Docs) {
+		return nil, false
+	}
+	return o.Docs, true
+}
+
+// HasDocs returns a boolean if a field has been set.
+func (o *SearchEndpointHit) HasDocs() bool {
+	if o != nil && !IsNil(o.Docs) {
+		return true
+	}
+
+	return false
+}
+
+// SetDocs gets a reference to the given SearchHelperDocs and assigns it to the Docs field.
+func (o *SearchEndpointHit) SetDocs(v SearchHelperDocs) {
+	o.Docs = &v
+}
+
+// GetContractUrl returns the ContractUrl field value if set, zero value otherwise.
+func (o *SearchEndpointHit) GetContractUrl() string {
+	if o == nil || IsNil(o.ContractUrl) {
+		var ret string
+		return ret
+	}
+	return *o.ContractUrl
+}
+
+// GetContractUrlOk returns a tuple with the ContractUrl field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchEndpointHit) GetContractUrlOk() (*string, bool) {
+	if o == nil || IsNil(o.ContractUrl) {
+		return nil, false
+	}
+	return o.ContractUrl, true
+}
+
+// HasContractUrl returns a boolean if a field has been set.
+func (o *SearchEndpointHit) HasContractUrl() bool {
+	if o != nil && !IsNil(o.ContractUrl) {
+		return true
+	}
+
+	return false
+}
+
+// SetContractUrl gets a reference to the given string and assigns it to the ContractUrl field.
+func (o *SearchEndpointHit) SetContractUrl(v string) {
+	o.ContractUrl = &v
 }
 
 // GetOutputSchema returns the OutputSchema field value if set, zero value otherwise.
@@ -809,6 +876,12 @@ func (o SearchEndpointHit) ToMap() (map[string]interface{}, error) {
 	}
 	if !IsNil(o.Operation) {
 		toSerialize["operation"] = o.Operation
+	}
+	if !IsNil(o.Docs) {
+		toSerialize["docs"] = o.Docs
+	}
+	if !IsNil(o.ContractUrl) {
+		toSerialize["contract_url"] = o.ContractUrl
 	}
 	if !IsNil(o.OutputSchema) {
 		toSerialize["output_schema"] = o.OutputSchema

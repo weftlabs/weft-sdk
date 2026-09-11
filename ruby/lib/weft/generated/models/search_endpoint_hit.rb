@@ -36,6 +36,11 @@ module Weft
 
     attr_accessor :operation
 
+    attr_accessor :docs
+
+    # Content-addressed Weft contract for the complete operation, alternatives, evidence, and known gaps. Authenticated GET.
+    attr_accessor :contract_url
+
     attr_accessor :output_schema
 
     attr_accessor :output
@@ -99,6 +104,8 @@ module Weft
         :'access_methods' => :'access_methods',
         :'service' => :'service',
         :'operation' => :'operation',
+        :'docs' => :'docs',
+        :'contract_url' => :'contract_url',
         :'output_schema' => :'output_schema',
         :'output' => :'output',
         :'execution' => :'execution',
@@ -137,6 +144,8 @@ module Weft
         :'access_methods' => :'Array<SearchAccessMethod>',
         :'service' => :'SearchCuratedService',
         :'operation' => :'SearchCuratedOperation',
+        :'docs' => :'SearchHelperDocs',
+        :'contract_url' => :'String',
         :'output_schema' => :'Object',
         :'output' => :'Object',
         :'execution' => :'SearchCuratedExecution',
@@ -216,6 +225,14 @@ module Weft
 
       if attributes.key?(:'operation')
         self.operation = attributes[:'operation']
+      end
+
+      if attributes.key?(:'docs')
+        self.docs = attributes[:'docs']
+      end
+
+      if attributes.key?(:'contract_url')
+        self.contract_url = attributes[:'contract_url']
       end
 
       if attributes.key?(:'output_schema')
@@ -309,6 +326,8 @@ module Weft
           access_methods == o.access_methods &&
           service == o.service &&
           operation == o.operation &&
+          docs == o.docs &&
+          contract_url == o.contract_url &&
           output_schema == o.output_schema &&
           output == o.output &&
           execution == o.execution &&
@@ -332,7 +351,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [endpoint_id, url, resource_type, primary_protocol, call, price, payment, access_methods, service, operation, output_schema, output, execution, callability, compatibility, source, operator_type, operated_by_id, settled_via_facilitator_id, settlements, last_verified_at, latency_p50_ms].hash
+      [endpoint_id, url, resource_type, primary_protocol, call, price, payment, access_methods, service, operation, docs, contract_url, output_schema, output, execution, callability, compatibility, source, operator_type, operated_by_id, settled_via_facilitator_id, settlements, last_verified_at, latency_p50_ms].hash
     end
 
     # Builds the object from hash

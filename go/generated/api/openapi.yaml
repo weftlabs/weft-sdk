@@ -2886,6 +2886,7 @@ components:
               snapshot_version: 7
               catalog: curated_marketplace
               captured_at: 2000-01-23T04:56:07.000+00:00
+            contract_url: https://openapi-generator.tech
             settled_via_facilitator_id: settled_via_facilitator_id
             url: url
             operator_type: first_party
@@ -2896,6 +2897,11 @@ components:
               input_schema: "{}"
               example_response: ""
             output: "{}"
+            docs:
+              website: https://openapi-generator.tech
+              llms_txt: https://openapi-generator.tech
+              api: https://openapi-generator.tech
+              homepage: https://openapi-generator.tech
             access_methods:
             - weft_fetch:
                 reason: reason
@@ -2974,6 +2980,7 @@ components:
               snapshot_version: 7
               catalog: curated_marketplace
               captured_at: 2000-01-23T04:56:07.000+00:00
+            contract_url: https://openapi-generator.tech
             settled_via_facilitator_id: settled_via_facilitator_id
             url: url
             operator_type: first_party
@@ -2984,6 +2991,11 @@ components:
               input_schema: "{}"
               example_response: ""
             output: "{}"
+            docs:
+              website: https://openapi-generator.tech
+              llms_txt: https://openapi-generator.tech
+              api: https://openapi-generator.tech
+              homepage: https://openapi-generator.tech
             access_methods:
             - weft_fetch:
                 reason: reason
@@ -3073,6 +3085,7 @@ components:
               snapshot_version: 7
               catalog: curated_marketplace
               captured_at: 2000-01-23T04:56:07.000+00:00
+            contract_url: https://openapi-generator.tech
             settled_via_facilitator_id: settled_via_facilitator_id
             url: url
             operator_type: first_party
@@ -3083,6 +3096,11 @@ components:
               input_schema: "{}"
               example_response: ""
             output: "{}"
+            docs:
+              website: https://openapi-generator.tech
+              llms_txt: https://openapi-generator.tech
+              api: https://openapi-generator.tech
+              homepage: https://openapi-generator.tech
             access_methods:
             - weft_fetch:
                 reason: reason
@@ -3161,6 +3179,7 @@ components:
               snapshot_version: 7
               catalog: curated_marketplace
               captured_at: 2000-01-23T04:56:07.000+00:00
+            contract_url: https://openapi-generator.tech
             settled_via_facilitator_id: settled_via_facilitator_id
             url: url
             operator_type: first_party
@@ -3171,6 +3190,11 @@ components:
               input_schema: "{}"
               example_response: ""
             output: "{}"
+            docs:
+              website: https://openapi-generator.tech
+              llms_txt: https://openapi-generator.tech
+              api: https://openapi-generator.tech
+              homepage: https://openapi-generator.tech
             access_methods:
             - weft_fetch:
                 reason: reason
@@ -3413,6 +3437,7 @@ components:
             snapshot_version: 7
             catalog: curated_marketplace
             captured_at: 2000-01-23T04:56:07.000+00:00
+          contract_url: https://openapi-generator.tech
           settled_via_facilitator_id: settled_via_facilitator_id
           url: url
           operator_type: first_party
@@ -3423,6 +3448,11 @@ components:
             input_schema: "{}"
             example_response: ""
           output: "{}"
+          docs:
+            website: https://openapi-generator.tech
+            llms_txt: https://openapi-generator.tech
+            api: https://openapi-generator.tech
+            homepage: https://openapi-generator.tech
           access_methods:
           - weft_fetch:
               reason: reason
@@ -3501,6 +3531,7 @@ components:
             snapshot_version: 7
             catalog: curated_marketplace
             captured_at: 2000-01-23T04:56:07.000+00:00
+          contract_url: https://openapi-generator.tech
           settled_via_facilitator_id: settled_via_facilitator_id
           url: url
           operator_type: first_party
@@ -3511,6 +3542,11 @@ components:
             input_schema: "{}"
             example_response: ""
           output: "{}"
+          docs:
+            website: https://openapi-generator.tech
+            llms_txt: https://openapi-generator.tech
+            api: https://openapi-generator.tech
+            homepage: https://openapi-generator.tech
           access_methods:
           - weft_fetch:
               reason: reason
@@ -3643,6 +3679,7 @@ components:
           snapshot_version: 7
           catalog: curated_marketplace
           captured_at: 2000-01-23T04:56:07.000+00:00
+        contract_url: https://openapi-generator.tech
         settled_via_facilitator_id: settled_via_facilitator_id
         url: url
         operator_type: first_party
@@ -3653,6 +3690,11 @@ components:
           input_schema: "{}"
           example_response: ""
         output: "{}"
+        docs:
+          website: https://openapi-generator.tech
+          llms_txt: https://openapi-generator.tech
+          api: https://openapi-generator.tech
+          homepage: https://openapi-generator.tech
         access_methods:
         - weft_fetch:
             reason: reason
@@ -3756,6 +3798,14 @@ components:
           $ref: "#/components/schemas/SearchCuratedService"
         operation:
           $ref: "#/components/schemas/SearchCuratedOperation"
+        docs:
+          $ref: "#/components/schemas/SearchHelperDocs"
+        contract_url:
+          description: |
+            Content-addressed Weft contract for the complete operation,
+            alternatives, evidence, and known gaps. Authenticated GET.
+          format: uri
+          type: string
         output_schema:
           type: object
           nullable: true
@@ -4010,6 +4060,29 @@ components:
       - contract_version
       - reason
       - state
+    SearchHelperDocs:
+      additionalProperties: false
+      description: |
+        Free helper links for the upstream provider. GET these URLs.
+        Do not send them through `weft_fetch`.
+      example:
+        website: https://openapi-generator.tech
+        llms_txt: https://openapi-generator.tech
+        api: https://openapi-generator.tech
+        homepage: https://openapi-generator.tech
+      properties:
+        website:
+          format: uri
+          type: string
+        homepage:
+          format: uri
+          type: string
+        api:
+          format: uri
+          type: string
+        llms_txt:
+          format: uri
+          type: string
     SearchCuratedService:
       example:
         name: name

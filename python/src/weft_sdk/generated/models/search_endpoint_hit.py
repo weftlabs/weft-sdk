@@ -28,6 +28,7 @@ from weft_sdk.generated.models.search_curated_service import SearchCuratedServic
 from weft_sdk.generated.models.search_curated_source import SearchCuratedSource
 from weft_sdk.generated.models.search_endpoint_call import SearchEndpointCall
 from weft_sdk.generated.models.search_endpoint_price import SearchEndpointPrice
+from weft_sdk.generated.models.search_helper_docs import SearchHelperDocs
 from weft_sdk.generated.models.search_payment_offer import SearchPaymentOffer
 from typing import Optional, Set
 from typing_extensions import Self
@@ -46,6 +47,8 @@ class SearchEndpointHit(BaseModel):
     access_methods: Optional[List[SearchAccessMethod]] = None
     service: Optional[SearchCuratedService] = None
     operation: Optional[SearchCuratedOperation] = None
+    docs: Optional[SearchHelperDocs] = None
+    contract_url: Optional[StrictStr] = Field(default=None, description="Content-addressed Weft contract for the complete operation, alternatives, evidence, and known gaps. Authenticated GET. ")
     output_schema: Optional[Dict[str, Any]] = None
     output: Optional[Dict[str, Any]] = None
     execution: Optional[SearchCuratedExecution] = None
@@ -58,7 +61,7 @@ class SearchEndpointHit(BaseModel):
     settlements: Optional[StrictInt] = Field(default=None, description="Count of payments observed settling against this endpoint by ANYONE (chain-indexed), not just by Weft — the reliability signal a caller can act on. Null when unknown. ")
     last_verified_at: Optional[datetime] = Field(default=None, description="When Weft last CONFIRMED this endpoint answers — the most recent conclusive probe. Null when never probed, or when the latest probe errored: an endpoint we last failed to reach has no current verification. ")
     latency_p50_ms: Optional[StrictInt] = Field(default=None, description="Median time-to-first-byte in ms across the endpoint's probe call set. First-byte latency, not full-response time. Null when unmeasured (never 0). ")
-    __properties: ClassVar[List[str]] = ["endpoint_id", "url", "resource_type", "primary_protocol", "call", "price", "payment", "access_methods", "service", "operation", "output_schema", "output", "execution", "callability", "compatibility", "source", "operator_type", "operated_by_id", "settled_via_facilitator_id", "settlements", "last_verified_at", "latency_p50_ms"]
+    __properties: ClassVar[List[str]] = ["endpoint_id", "url", "resource_type", "primary_protocol", "call", "price", "payment", "access_methods", "service", "operation", "docs", "contract_url", "output_schema", "output", "execution", "callability", "compatibility", "source", "operator_type", "operated_by_id", "settled_via_facilitator_id", "settlements", "last_verified_at", "latency_p50_ms"]
 
     @field_validator('operator_type')
     def operator_type_validate_enum(cls, value):
@@ -135,6 +138,9 @@ class SearchEndpointHit(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of operation
         if self.operation:
             _dict['operation'] = self.operation.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of docs
+        if self.docs:
+            _dict['docs'] = self.docs.to_dict()
         # override the default output from pydantic by calling `to_dict()` of execution
         if self.execution:
             _dict['execution'] = self.execution.to_dict()
@@ -166,6 +172,8 @@ class SearchEndpointHit(BaseModel):
             "access_methods": [SearchAccessMethod.from_dict(_item) for _item in obj["access_methods"]] if obj.get("access_methods") is not None else None,
             "service": SearchCuratedService.from_dict(obj["service"]) if obj.get("service") is not None else None,
             "operation": SearchCuratedOperation.from_dict(obj["operation"]) if obj.get("operation") is not None else None,
+            "docs": SearchHelperDocs.from_dict(obj["docs"]) if obj.get("docs") is not None else None,
+            "contract_url": obj.get("contract_url"),
             "output_schema": obj.get("output_schema"),
             "output": obj.get("output"),
             "execution": SearchCuratedExecution.from_dict(obj["execution"]) if obj.get("execution") is not None else None,
