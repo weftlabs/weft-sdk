@@ -1125,9 +1125,7 @@ describe("weft CLI", () => {
     ).toBe(EXIT_SUCCESS);
     const sent = JSON.parse(String(fetchApi.mock.calls[0][1]?.body ?? "{}"));
     expect(sent.method).toBe("POST");
-    expect(sent.body).toBe(
-      '{"linkedin_url":"https://www.linkedin.com/in/x/"}',
-    );
+    expect(sent.body).toBe('{"linkedin_url":"https://www.linkedin.com/in/x/"}');
     expect(sent.headers).toEqual({ "X-Agent-ID": "agent-1" });
   });
 
