@@ -15,6 +15,8 @@ Name | Type | Description | Notes
 **access_methods** | [**List[SearchAccessMethod]**](SearchAccessMethod.md) |  | [optional]
 **service** | [**SearchCuratedService**](SearchCuratedService.md) |  | [optional]
 **operation** | [**SearchCuratedOperation**](SearchCuratedOperation.md) |  | [optional]
+**docs** | [**SearchHelperDocs**](SearchHelperDocs.md) |  | [optional]
+**contract_url** | **str** | Content-addressed Weft contract for the complete operation, alternatives, evidence, and known gaps. Authenticated GET.  | [optional]
 **output_schema** | **object** |  | [optional]
 **output** | **object** |  | [optional]
 **execution** | [**SearchCuratedExecution**](SearchCuratedExecution.md) |  | [optional]

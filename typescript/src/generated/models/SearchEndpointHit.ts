@@ -69,6 +69,13 @@ import {
     SearchCuratedExecutionToJSON,
     SearchCuratedExecutionToJSONTyped,
 } from './SearchCuratedExecution';
+import type { SearchHelperDocs } from './SearchHelperDocs';
+import {
+    SearchHelperDocsFromJSON,
+    SearchHelperDocsFromJSONTyped,
+    SearchHelperDocsToJSON,
+    SearchHelperDocsToJSONTyped,
+} from './SearchHelperDocs';
 import type { SearchEndpointPrice } from './SearchEndpointPrice';
 import {
     SearchEndpointPriceFromJSON,
@@ -150,6 +157,20 @@ export interface SearchEndpointHit {
      * @memberof SearchEndpointHit
      */
     operation?: SearchCuratedOperation;
+    /**
+     *
+     * @type {SearchHelperDocs}
+     * @memberof SearchEndpointHit
+     */
+    docs?: SearchHelperDocs;
+    /**
+     * Content-addressed Weft contract for the complete operation,
+     * alternatives, evidence, and known gaps. Authenticated GET.
+     *
+     * @type {string}
+     * @memberof SearchEndpointHit
+     */
+    contractUrl?: string;
     /**
      *
      * @type {object}
@@ -275,6 +296,8 @@ export function SearchEndpointHitFromJSONTyped(json: any, ignoreDiscriminator: b
         'accessMethods': json['access_methods'] == null ? undefined : ((json['access_methods'] as Array<any>).map(SearchAccessMethodFromJSON)),
         'service': json['service'] == null ? undefined : SearchCuratedServiceFromJSON(json['service']),
         'operation': json['operation'] == null ? undefined : SearchCuratedOperationFromJSON(json['operation']),
+        'docs': json['docs'] == null ? undefined : SearchHelperDocsFromJSON(json['docs']),
+        'contractUrl': json['contract_url'] == null ? undefined : json['contract_url'],
         'outputSchema': json['output_schema'] == null ? undefined : json['output_schema'],
         'output': json['output'] == null ? undefined : json['output'],
         'execution': json['execution'] == null ? undefined : SearchCuratedExecutionFromJSON(json['execution']),
@@ -311,6 +334,8 @@ export function SearchEndpointHitToJSONTyped(value?: SearchEndpointHit | null, i
         'access_methods': value['accessMethods'] == null ? undefined : ((value['accessMethods'] as Array<any>).map(SearchAccessMethodToJSON)),
         'service': SearchCuratedServiceToJSON(value['service']),
         'operation': SearchCuratedOperationToJSON(value['operation']),
+        'docs': SearchHelperDocsToJSON(value['docs']),
+        'contract_url': value['contractUrl'],
         'output_schema': value['outputSchema'],
         'output': value['output'],
         'execution': SearchCuratedExecutionToJSON(value['execution']),

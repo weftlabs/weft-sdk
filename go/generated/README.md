@@ -204,6 +204,7 @@ Class | Method | HTTP request | Description
  - [SearchErrorResponse](docs/SearchErrorResponse.md)
  - [SearchExecutionModeFilter](docs/SearchExecutionModeFilter.md)
  - [SearchFilterSpec](docs/SearchFilterSpec.md)
+ - [SearchHelperDocs](docs/SearchHelperDocs.md)
  - [SearchMethodFilter](docs/SearchMethodFilter.md)
  - [SearchPaymentOffer](docs/SearchPaymentOffer.md)
  - [SearchPriceAtomicFilter](docs/SearchPriceAtomicFilter.md)

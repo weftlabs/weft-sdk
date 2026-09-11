@@ -63,6 +63,7 @@ export * from './SearchEndpointPrice';
 export * from './SearchErrorResponse';
 export * from './SearchExecutionModeFilter';
 export * from './SearchFilterSpec';
+export * from './SearchHelperDocs';
 export * from './SearchMethodFilter';
 export * from './SearchPaymentOffer';
 export * from './SearchPriceAtomicFilter';

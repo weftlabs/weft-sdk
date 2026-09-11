@@ -14,6 +14,8 @@ Name | Type | Description | Notes
 **AccessMethods** | Pointer to [**[]SearchAccessMethod**](SearchAccessMethod.md) |  | [optional]
 **Service** | Pointer to [**SearchCuratedService**](SearchCuratedService.md) |  | [optional]
 **Operation** | Pointer to [**SearchCuratedOperation**](SearchCuratedOperation.md) |  | [optional]
+**Docs** | Pointer to [**SearchHelperDocs**](SearchHelperDocs.md) |  | [optional]
+**ContractUrl** | Pointer to **string** | Content-addressed Weft contract for the complete operation, alternatives, evidence, and known gaps. Authenticated GET.  | [optional]
 **OutputSchema** | Pointer to **map[string]interface{}** |  | [optional]
 **Output** | Pointer to **map[string]interface{}** |  | [optional]
 **Execution** | Pointer to [**SearchCuratedExecution**](SearchCuratedExecution.md) |  | [optional]
@@ -295,6 +297,56 @@ SetOperation sets Operation field to given value.
 `func (o *SearchEndpointHit) HasOperation() bool`
 
 HasOperation returns a boolean if a field has been set.
+
+### GetDocs
+
+`func (o *SearchEndpointHit) GetDocs() SearchHelperDocs`
+
+GetDocs returns the Docs field if non-nil, zero value otherwise.
+
+### GetDocsOk
+
+`func (o *SearchEndpointHit) GetDocsOk() (*SearchHelperDocs, bool)`
+
+GetDocsOk returns a tuple with the Docs field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetDocs
+
+`func (o *SearchEndpointHit) SetDocs(v SearchHelperDocs)`
+
+SetDocs sets Docs field to given value.
+
+### HasDocs
+
+`func (o *SearchEndpointHit) HasDocs() bool`
+
+HasDocs returns a boolean if a field has been set.
+
+### GetContractUrl
+
+`func (o *SearchEndpointHit) GetContractUrl() string`
+
+GetContractUrl returns the ContractUrl field if non-nil, zero value otherwise.
+
+### GetContractUrlOk
+
+`func (o *SearchEndpointHit) GetContractUrlOk() (*string, bool)`
+
+GetContractUrlOk returns a tuple with the ContractUrl field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetContractUrl
+
+`func (o *SearchEndpointHit) SetContractUrl(v string)`
+
+SetContractUrl sets ContractUrl field to given value.
+
+### HasContractUrl
+
+`func (o *SearchEndpointHit) HasContractUrl() bool`
+
+HasContractUrl returns a boolean if a field has been set.
 
 ### GetOutputSchema
 

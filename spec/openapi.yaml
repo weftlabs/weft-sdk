@@ -2366,6 +2366,14 @@ components:
           $ref: "#/components/schemas/SearchCuratedService"
         operation:
           $ref: "#/components/schemas/SearchCuratedOperation"
+        docs:
+          $ref: "#/components/schemas/SearchHelperDocs"
+        contract_url:
+          type: string
+          format: uri
+          description: |
+            Content-addressed Weft contract for the complete operation,
+            alternatives, evidence, and known gaps. Authenticated GET.
         output_schema:
           type: object
           nullable: true
@@ -2569,6 +2577,25 @@ components:
           type: string
         contract_version:
           type: integer
+    SearchHelperDocs:
+      type: object
+      additionalProperties: false
+      description: |
+        Free helper links for the upstream provider. GET these URLs.
+        Do not send them through `weft_fetch`.
+      properties:
+        website:
+          type: string
+          format: uri
+        homepage:
+          type: string
+          format: uri
+        api:
+          type: string
+          format: uri
+        llms_txt:
+          type: string
+          format: uri
     SearchCuratedService:
       type: object
       required: [id, name]
