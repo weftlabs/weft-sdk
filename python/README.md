@@ -79,3 +79,4 @@ except WeftError as error:
   backoff and reuse the idempotency key for a paid fetch.
 
 See the [API reference](https://weft.network/docs) for the complete contract.
+Product guides live on [weftlabs.com](https://weftlabs.com).

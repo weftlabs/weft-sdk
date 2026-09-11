@@ -95,8 +95,16 @@ contract, but has not yet passed a clean-install buyer quickstart gate.
 
 ## Reference and support
 
+- [Weft Labs](https://weftlabs.com)
 - [API reference](https://weft.network/docs)
 - [OpenAPI document](https://weft.network/docs/openapi.yaml)
+- [Weft CLI guide](https://weftlabs.com/x402/cli)
+- [x402 in Next.js](https://weftlabs.com/x402/nextjs)
+- [Learn](https://weftlabs.com/learn)
+- [x402 protocol](https://weftlabs.com/protocols/x402)
+- [MPP](https://weftlabs.com/protocols/mpp)
+- [How AI agents buy APIs](https://weftlabs.com/learn/how-ai-agents-buy-apis)
+- [AI agent payments](https://weftlabs.com/learn/ai-agent-payments)
 - [TypeScript package guide](typescript/README.md)
 - [Python package guide](python/README.md)
 - [GitHub issues](https://github.com/weftlabs/weft-sdk/issues)

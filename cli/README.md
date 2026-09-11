@@ -1,7 +1,8 @@
 # Weft CLI
 
 Use Weft from a shell or an autonomous agent. Application code should use the
-separate [`@weftlabs/sdk`](../typescript/README.md) package.
+separate [`@weftlabs/sdk`](../typescript/README.md) package. The human-oriented
+CLI guide is at [weftlabs.com/x402/cli](https://weftlabs.com/x402/cli).
 
 The CLI prints one versioned JSON object per command. It accepts credentials
 through `--api-key-stdin`, `WEFT_API_KEY`, or its protected local credential
