@@ -17,6 +17,7 @@ def test_generated_buyer_models_accept_contract_nulls():
             "network": "base_sepolia",
             "protocol": None,
             "context": None,
+            "attribution_status": "unattributed",
             "tx_hash": None,
             "reject_reason": "insufficient_balance",
             "failure_reason": None,
