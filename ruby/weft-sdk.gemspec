@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = 'weft-sdk'
-  spec.version       = '0.26.7'
+  spec.version       = '0.26.8'
   spec.authors       = ['Weft Labs']
   spec.summary       = 'Unified Weft SDK for the Weft API and x402 Facilitator'
   spec.license       = 'Apache-2.0'
