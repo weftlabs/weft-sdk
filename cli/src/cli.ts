@@ -97,12 +97,12 @@ const COMMAND_HELP = {
   fetch: {
     description: "Fetch a URL within an explicit spending limit",
     usage:
-      "weft fetch <url> --max-cost-usd <amount> [--method <method>] [--body <json>] [--header <name:value>] [--idempotency-key <key>] [--raw]",
+      "weft fetch <url> --max-cost-usd <amount> [--method <method>] [--body <json>] [--header <name:value>]... [--idempotency-key <key>] [--raw]",
     options: [
       "--max-cost-usd <amount>",
       "--method <method>",
       "--body <json>",
-      "--header <name:value>",
+      "--header <name:value> (repeatable)",
       "--idempotency-key <key>",
       "--raw",
     ],
@@ -213,7 +213,7 @@ interface ParsedArgs {
   apiKeyStdin: boolean;
   baseUrl?: string;
   positionals: string[];
-  options: Map<string, string | true>;
+  options: Map<string, string | true | string[]>;
 }
 
 class CliError extends Error {
@@ -370,7 +370,7 @@ function parseArgs(args: string[]): ParsedArgs {
   let apiKeyStdin = false;
   let baseUrl: string | undefined;
   const positionals: string[] = [];
-  const options = new Map<string, string | true>();
+  const options = new Map<string, string | true | string[]>();
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -382,7 +382,19 @@ function parseArgs(args: string[]): ParsedArgs {
       options.set(arg.slice(2), true);
     } else if (arg.startsWith("--")) {
       const [value, nextIndex] = takeValue(args, index, arg);
-      options.set(arg.slice(2), value);
+      const name = arg.slice(2);
+      if (name === "header") {
+        const previous = options.get(name);
+        if (typeof previous === "string") {
+          options.set(name, [previous, value]);
+        } else if (Array.isArray(previous)) {
+          previous.push(value);
+        } else {
+          options.set(name, value);
+        }
+      } else {
+        options.set(name, value);
+      }
       index = nextIndex;
     } else if (!command) {
       if (!COMMANDS.includes(arg as Command)) {
@@ -434,7 +446,7 @@ function positiveInteger(
 }
 
 function requiredOption(
-  options: Map<string, string | true>,
+  options: Map<string, string | true | string[]>,
   name: string,
 ): string {
   const value = options.get(name);
@@ -442,6 +454,35 @@ function requiredOption(
     throw new CliError(EXIT_USAGE, "MISSING_ARGUMENT", `--${name} is required`);
   }
   return value;
+}
+
+function fetchHeaders(
+  raw: string | true | string[] | undefined,
+  hasJsonBody: boolean,
+): PaidFetchRequest["headers"] {
+  const values =
+    typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
+  const headers: Record<string, string> = {};
+  for (const rawHeader of values) {
+    const colon = rawHeader.indexOf(":");
+    if (colon <= 0) {
+      throw new CliError(
+        EXIT_USAGE,
+        "INVALID_ARGUMENT",
+        "--header must be Name:Value",
+      );
+    }
+    headers[rawHeader.slice(0, colon).trim()] = rawHeader
+      .slice(colon + 1)
+      .trim();
+  }
+  if (
+    hasJsonBody &&
+    !Object.keys(headers).some((name) => name.toLowerCase() === "content-type")
+  ) {
+    headers["content-type"] = "application/json";
+  }
+  return Object.keys(headers).length > 0 ? headers : undefined;
 }
 
 function baseApiUrl(
@@ -573,7 +614,7 @@ function withCredentials(
 }
 
 function ensureOnly(
-  options: Map<string, string | true>,
+  options: Map<string, string | true | string[]>,
   allowed: string[],
 ): void {
   for (const name of options.keys()) {
@@ -1142,21 +1183,10 @@ export async function runCli(
         }
         body = rawBody;
       }
-      const rawHeader = parsed.options.get("header");
-      let headers: PaidFetchRequest["headers"];
-      if (typeof rawHeader === "string") {
-        const colon = rawHeader.indexOf(":");
-        if (colon <= 0) {
-          throw new CliError(
-            EXIT_USAGE,
-            "INVALID_ARGUMENT",
-            "--header must be Name:Value",
-          );
-        }
-        headers = {
-          [rawHeader.slice(0, colon).trim()]: rawHeader.slice(colon + 1).trim(),
-        };
-      }
+      const headers = fetchHeaders(
+        parsed.options.get("header"),
+        typeof rawBody === "string",
+      );
       const request: PaidFetchRequest = {
         url: parsed.positionals[0],
         maxCostUsd,

@@ -22,6 +22,7 @@ npx --package @weftlabs/cli weft fetch "https://merchant.example/data" \
 npx --package @weftlabs/cli weft fetch "https://merchant.example/search" \
   --max-cost-usd 0.05 --method POST \
   --body '{"q":"berlin"}' --header "X-Agent-ID: demo"
+# Repeat --header as needed. JSON --body sets Content-Type if you omit it.
 npx --package @weftlabs/cli weft --help
 ```
 
@@ -198,13 +199,13 @@ existing account.
 
 ### Bootstrap states
 
-| Status | Meaning | Agent action |
-| --- | --- | --- |
-| `pending` | Waiting for the human. Search works. | Poll at the returned interval. |
-| `claimed` | The human approved. The same bearer is durable with the fixed post-claim capabilities. | Continue with normal commands. |
-| `rejected` | The human declined. Terminal. | Stop and start a new bootstrap. |
-| `expired` | The 30-minute window closed unclaimed. Terminal. | Start a new bootstrap. |
-| `revoked` | The human disconnected the credential. Terminal; all later authentication fails. | Start a new bootstrap only if the human requests it. |
+| Status     | Meaning                                                                                | Agent action                                         |
+| ---------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `pending`  | Waiting for the human. Search works.                                                   | Poll at the returned interval.                       |
+| `claimed`  | The human approved. The same bearer is durable with the fixed post-claim capabilities. | Continue with normal commands.                       |
+| `rejected` | The human declined. Terminal.                                                          | Stop and start a new bootstrap.                      |
+| `expired`  | The 30-minute window closed unclaimed. Terminal.                                       | Start a new bootstrap.                               |
+| `revoked`  | The human disconnected the credential. Terminal; all later authentication fails.       | Start a new bootstrap only if the human requests it. |
 
 `weft auth status` returns `claimed` after approval and keeps the same bearer.
 It does not register an OAuth client or call `/oauth/token`.
