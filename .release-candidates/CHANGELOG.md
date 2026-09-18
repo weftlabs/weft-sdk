@@ -1,4 +1,4 @@
-# Changelog — OpenAPI 0.26.10 (2026-09-16)
+# Changelog — OpenAPI 0.26.10 (2026-09-18)
 
 _No API surface changes detected between the previous and current spec._
 
