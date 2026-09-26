@@ -129,9 +129,20 @@ enable the Git hooks with:
 
 ```sh
 mise install
+mise exec -- pnpm install --frozen-lockfile
+mise exec -- uv sync --project python --python "$(mise which python)" --frozen --group dev
+cd ruby
+mise exec -- bundle config set --local path vendor/bundle
+mise exec -- bundle config set --local frozen true
+mise exec -- bundle install
+cd ..
+mise exec -- go -C go mod download
 mise exec -- lefthook install
 ```
 
 Pre-commit checks lint or format staged files only. Pre-push runs whole-repo
-lint plus the four deterministic unit-test suites. Builds, generated-code
-checks, type checks, quickstarts, and network tests remain in CI.
+lint and format checks plus the TypeScript SDK, Python, Ruby, and Go unit tests.
+The Python hook uses the installed environment without dependency sync. Run the
+setup commands again after dependency changes. CLI tests need a built SDK, so
+they remain in CI with builds, generated-code checks, type checks, quickstarts,
+and network tests.
