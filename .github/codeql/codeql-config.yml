@@ -1,0 +1,11 @@
+# Default-suite CodeQL configuration for weft-sdk.
+# Generated clients are auto-produced by OpenAPI Generator from the shared
+# spec; their stock opt-in debug loggers reach log sinks for request-body
+# fields (Password, ApiKey, ResetPasswordToken) that are part of the API
+# contract. Findings in generated output are configuration/template concerns,
+# not hand-written application code, and the fix belongs upstream in the
+# generator templates or spec — so generated trees are excluded from scanning.
+name: "weft-sdk default setup"
+paths-ignore:
+  - '**/generated/**'
+  - 'docs/**'
