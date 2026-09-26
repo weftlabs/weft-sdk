@@ -5,12 +5,14 @@ pre-commit:
   parallel: true
   commands:
     sdk-eslint:
+      root: "typescript/"
       glob: "typescript/**/*.{ts,js,mjs}"
-      run: mise exec -- pnpm --filter @weftlabs/sdk run lint:check
+      run: mise exec -- pnpm exec eslint {staged_files}
       fail_text: "Run the TypeScript SDK ESLint fixer"
     cli-eslint:
+      root: "cli/"
       glob: "cli/**/*.{ts,js,mjs}"
-      run: mise exec -- pnpm --filter @weftlabs/cli run lint:check
+      run: mise exec -- pnpm exec eslint {staged_files}
       fail_text: "Run the TypeScript ESLint fixer"
     python-ruff:
       glob: "python/**/*.py"
@@ -40,8 +42,8 @@ pre-push:
       fail_text: "Python lint failed"
     python-test:
       run: >-
-        mise exec -- uv run --project python --python 3.11.15
-        --frozen --group dev pytest python/tests -q
+        mise exec -- uv run --project python --python "$(mise which python)"
+        --frozen --no-sync --group dev pytest python/tests -q
       fail_text: "Python unit tests failed"
     ruby:
       run: >-
