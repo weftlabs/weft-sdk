@@ -44,7 +44,7 @@ If pre-commit / pre-push hooks exist, they run automatically; agents should not 
 
 ## Where to Look Next
 
-- **Repo-internal context:** `docs/` (architecture, specs, decisions, runbooks, eval, research)
+- **Repo-internal context:** `docs/README.md` is the public language guide. Internal architecture does not live in this public repo.
 - **Cross-repo context (when checked out as part of `weft-dev`):** `../cto-os/` (workspace state, plans, cross-repo directives, contracts)
 - **Single-repo checkout:** this file plus `docs/` is the full picture; cross-repo context is unavailable, so scope work to what this repo owns.
 
