@@ -124,8 +124,10 @@ sources are updated by the spec-sync workflow and must not be edited manually.
 
 ## Local development tools
 
-Mise pins the repository runtimes and standalone source tools. Install them and
-enable the Git hooks with:
+Mise pins Node 24.21.0 for repository development and JavaScript build/test CI,
+along with the other runtimes and standalone source tools. Published SDK and
+CLI packages still support Node.js 18 or newer. Install the tools and enable
+the Git hooks with:
 
 ```sh
 mise install
