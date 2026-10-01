@@ -1,7 +1,7 @@
 [tools]
 go = "1.23.12"
 lefthook = "2.1.10"
-node = "22.23.2"
+node = "24.21.0"
 pnpm = "10.33.4"
 python = "3.11.15"
 ruff = "0.16.2"
