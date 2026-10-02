@@ -199,6 +199,7 @@ Class | Method | HTTP request | Description
  - [SearchCuratedService](docs/SearchCuratedService.md)
  - [SearchCuratedSource](docs/SearchCuratedSource.md)
  - [SearchEndpointCall](docs/SearchEndpointCall.md)
+ - [SearchEndpointCallInputSchema](docs/SearchEndpointCallInputSchema.md)
  - [SearchEndpointHit](docs/SearchEndpointHit.md)
  - [SearchEndpointPrice](docs/SearchEndpointPrice.md)
  - [SearchErrorResponse](docs/SearchErrorResponse.md)

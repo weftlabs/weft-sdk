@@ -210,7 +210,8 @@ export interface SearchEndpointHit {
     /**
      * Who you are actually paying. `first_party` = operated by the provider
      * that makes the capability; `reseller` = resold, so the price carries
-     * someone else's margin. Null until the platform resolves the operator.
+     * someone else's margin; `gateway` = an intermediary routing the provider's
+     * capability. Null until the platform resolves the operator.
      *
      * @type {string}
      * @memberof SearchEndpointHit
@@ -264,7 +265,8 @@ export interface SearchEndpointHit {
  */
 export const SearchEndpointHitOperatorTypeEnum = {
     FirstParty: 'first_party',
-    Reseller: 'reseller'
+    Reseller: 'reseller',
+    Gateway: 'gateway'
 } as const;
 export type SearchEndpointHitOperatorTypeEnum = typeof SearchEndpointHitOperatorTypeEnum[keyof typeof SearchEndpointHitOperatorTypeEnum];
 

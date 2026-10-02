@@ -71,6 +71,7 @@ from weft_sdk.generated.models.search_curated_operation import SearchCuratedOper
 from weft_sdk.generated.models.search_curated_service import SearchCuratedService
 from weft_sdk.generated.models.search_curated_source import SearchCuratedSource
 from weft_sdk.generated.models.search_endpoint_call import SearchEndpointCall
+from weft_sdk.generated.models.search_endpoint_call_input_schema import SearchEndpointCallInputSchema
 from weft_sdk.generated.models.search_endpoint_hit import SearchEndpointHit
 from weft_sdk.generated.models.search_endpoint_price import SearchEndpointPrice
 from weft_sdk.generated.models.search_error_response import SearchErrorResponse

@@ -96,6 +96,7 @@ __all__ = [
     "SearchCuratedService",
     "SearchCuratedSource",
     "SearchEndpointCall",
+    "SearchEndpointCallInputSchema",
     "SearchEndpointHit",
     "SearchEndpointPrice",
     "SearchErrorResponse",
@@ -206,6 +207,7 @@ from weft_sdk.generated.models.search_curated_operation import SearchCuratedOper
 from weft_sdk.generated.models.search_curated_service import SearchCuratedService as SearchCuratedService
 from weft_sdk.generated.models.search_curated_source import SearchCuratedSource as SearchCuratedSource
 from weft_sdk.generated.models.search_endpoint_call import SearchEndpointCall as SearchEndpointCall
+from weft_sdk.generated.models.search_endpoint_call_input_schema import SearchEndpointCallInputSchema as SearchEndpointCallInputSchema
 from weft_sdk.generated.models.search_endpoint_hit import SearchEndpointHit as SearchEndpointHit
 from weft_sdk.generated.models.search_endpoint_price import SearchEndpointPrice as SearchEndpointPrice
 from weft_sdk.generated.models.search_error_response import SearchErrorResponse as SearchErrorResponse

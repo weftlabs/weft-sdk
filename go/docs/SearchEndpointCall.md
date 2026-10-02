@@ -5,7 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Method** | Pointer to **string** | The HTTP verb to send. Empty string when neither the index nor the provider&#39;s own 402 challenge / OpenAPI spec declares one.  | [optional]
-**InputSchema** | Pointer to **map[string]interface{}** | The provider&#39;s OWN structured declaration of the arguments this endpoint takes — the machine-usable form of what &#x60;usage_instructions&#x60; states in prose. Null when the provider declares nothing.  | [optional]
+**InputSchema** | Pointer to [**NullableSearchEndpointCallInputSchema**](SearchEndpointCallInputSchema.md) |  | [optional]
 **ExampleRequest** | Pointer to **map[string]interface{}** | A worked set of arguments grouped by slot (&#x60;query&#x60; / &#x60;body&#x60; / &#x60;path&#x60;). Every value is one the PROVIDER published; never synthesized.  | [optional]
 **ExampleResponse** | Pointer to **interface{}** |  | [optional]
 
@@ -55,20 +55,20 @@ HasMethod returns a boolean if a field has been set.
 
 ### GetInputSchema
 
-`func (o *SearchEndpointCall) GetInputSchema() map[string]interface{}`
+`func (o *SearchEndpointCall) GetInputSchema() SearchEndpointCallInputSchema`
 
 GetInputSchema returns the InputSchema field if non-nil, zero value otherwise.
 
 ### GetInputSchemaOk
 
-`func (o *SearchEndpointCall) GetInputSchemaOk() (*map[string]interface{}, bool)`
+`func (o *SearchEndpointCall) GetInputSchemaOk() (*SearchEndpointCallInputSchema, bool)`
 
 GetInputSchemaOk returns a tuple with the InputSchema field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetInputSchema
 
-`func (o *SearchEndpointCall) SetInputSchema(v map[string]interface{})`
+`func (o *SearchEndpointCall) SetInputSchema(v SearchEndpointCallInputSchema)`
 
 SetInputSchema sets InputSchema field to given value.
 
@@ -78,6 +78,16 @@ SetInputSchema sets InputSchema field to given value.
 
 HasInputSchema returns a boolean if a field has been set.
 
+### SetInputSchemaNil
+
+`func (o *SearchEndpointCall) SetInputSchemaNil(b bool)`
+
+ SetInputSchemaNil sets the value for InputSchema to be an explicit nil
+
+### UnsetInputSchema
+`func (o *SearchEndpointCall) UnsetInputSchema()`
+
+UnsetInputSchema ensures that no value is present for InputSchema, not even an explicit nil
 ### GetExampleRequest
 
 `func (o *SearchEndpointCall) GetExampleRequest() map[string]interface{}`

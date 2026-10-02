@@ -22,7 +22,7 @@
 | **callability** | [**SearchCuratedCallability**](SearchCuratedCallability.md) |  | [optional] |
 | **compatibility** | **Object** |  | [optional] |
 | **source** | [**SearchCuratedSource**](SearchCuratedSource.md) |  | [optional] |
-| **operator_type** | **String** | Who you are actually paying. &#x60;first_party&#x60; &#x3D; operated by the provider that makes the capability; &#x60;reseller&#x60; &#x3D; resold, so the price carries someone else&#39;s margin. Null until the platform resolves the operator.  | [optional] |
+| **operator_type** | **String** | Who you are actually paying. &#x60;first_party&#x60; &#x3D; operated by the provider that makes the capability; &#x60;reseller&#x60; &#x3D; resold, so the price carries someone else&#39;s margin; &#x60;gateway&#x60; &#x3D; an intermediary routing the provider&#39;s capability. Null until the platform resolves the operator.  | [optional] |
 | **operated_by_id** | **String** |  | [optional] |
 | **settled_via_facilitator_id** | **String** |  | [optional] |
 | **settlements** | **Integer** | Count of payments observed settling against this endpoint by ANYONE (chain-indexed), not just by Weft — the reliability signal a caller can act on. Null when unknown.  | [optional] |

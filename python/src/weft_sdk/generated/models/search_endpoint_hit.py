@@ -55,7 +55,7 @@ class SearchEndpointHit(BaseModel):
     callability: Optional[SearchCuratedCallability] = None
     compatibility: Optional[Dict[str, Any]] = None
     source: Optional[SearchCuratedSource] = None
-    operator_type: Optional[StrictStr] = Field(default=None, description="Who you are actually paying. `first_party` = operated by the provider that makes the capability; `reseller` = resold, so the price carries someone else's margin. Null until the platform resolves the operator. ")
+    operator_type: Optional[StrictStr] = Field(default=None, description="Who you are actually paying. `first_party` = operated by the provider that makes the capability; `reseller` = resold, so the price carries someone else's margin; `gateway` = an intermediary routing the provider's capability. Null until the platform resolves the operator. ")
     operated_by_id: Optional[StrictStr] = None
     settled_via_facilitator_id: Optional[StrictStr] = None
     settlements: Optional[StrictInt] = Field(default=None, description="Count of payments observed settling against this endpoint by ANYONE (chain-indexed), not just by Weft — the reliability signal a caller can act on. Null when unknown. ")
@@ -69,8 +69,8 @@ class SearchEndpointHit(BaseModel):
         if value is None:
             return value
 
-        if value not in set(['first_party', 'reseller']):
-            raise ValueError("must be one of enum values ('first_party', 'reseller')")
+        if value not in set(['first_party', 'reseller', 'gateway']):
+            raise ValueError("must be one of enum values ('first_party', 'reseller', 'gateway')")
         return value
 
     model_config = ConfigDict(
