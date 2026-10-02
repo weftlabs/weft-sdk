@@ -8,7 +8,7 @@ The machine-readable call contract for this endpoint: the verb, the provider-dec
 Name | Type
 ------------ | -------------
 `method` | string
-`inputSchema` | object
+`inputSchema` | [SearchEndpointCallInputSchema](SearchEndpointCallInputSchema.md)
 `exampleRequest` | object
 `exampleResponse` | any
 

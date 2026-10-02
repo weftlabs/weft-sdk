@@ -20,9 +20,8 @@ var _ MappedNullable = &SearchEndpointCall{}
 // SearchEndpointCall The machine-readable call contract for this endpoint: the verb, the provider-declared argument schema, and the worked examples. Always present; an endpoint whose provider declares nothing carries an empty `method` and null members rather than an absent block, so a caller can always read `input_schema` without a presence check. Combine with the hit's `url` to construct the request.
 type SearchEndpointCall struct {
 	// The HTTP verb to send. Empty string when neither the index nor the provider's own 402 challenge / OpenAPI spec declares one.
-	Method *string `json:"method,omitempty"`
-	// The provider's OWN structured declaration of the arguments this endpoint takes — the machine-usable form of what `usage_instructions` states in prose. Null when the provider declares nothing.
-	InputSchema map[string]interface{} `json:"input_schema,omitempty"`
+	Method      *string                               `json:"method,omitempty"`
+	InputSchema NullableSearchEndpointCallInputSchema `json:"input_schema,omitempty"`
 	// A worked set of arguments grouped by slot (`query` / `body` / `path`). Every value is one the PROVIDER published; never synthesized.
 	ExampleRequest  map[string]interface{} `json:"example_request,omitempty"`
 	ExampleResponse interface{}            `json:"example_response,omitempty"`
@@ -77,36 +76,47 @@ func (o *SearchEndpointCall) SetMethod(v string) {
 	o.Method = &v
 }
 
-// GetInputSchema returns the InputSchema field value if set, zero value otherwise.
-func (o *SearchEndpointCall) GetInputSchema() map[string]interface{} {
-	if o == nil || IsNil(o.InputSchema) {
-		var ret map[string]interface{}
+// GetInputSchema returns the InputSchema field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *SearchEndpointCall) GetInputSchema() SearchEndpointCallInputSchema {
+	if o == nil || IsNil(o.InputSchema.Get()) {
+		var ret SearchEndpointCallInputSchema
 		return ret
 	}
-	return o.InputSchema
+	return *o.InputSchema.Get()
 }
 
 // GetInputSchemaOk returns a tuple with the InputSchema field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *SearchEndpointCall) GetInputSchemaOk() (map[string]interface{}, bool) {
-	if o == nil || IsNil(o.InputSchema) {
-		return map[string]interface{}{}, false
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *SearchEndpointCall) GetInputSchemaOk() (*SearchEndpointCallInputSchema, bool) {
+	if o == nil {
+		return nil, false
 	}
-	return o.InputSchema, true
+	return o.InputSchema.Get(), o.InputSchema.IsSet()
 }
 
 // HasInputSchema returns a boolean if a field has been set.
 func (o *SearchEndpointCall) HasInputSchema() bool {
-	if o != nil && !IsNil(o.InputSchema) {
+	if o != nil && o.InputSchema.IsSet() {
 		return true
 	}
 
 	return false
 }
 
-// SetInputSchema gets a reference to the given map[string]interface{} and assigns it to the InputSchema field.
-func (o *SearchEndpointCall) SetInputSchema(v map[string]interface{}) {
-	o.InputSchema = v
+// SetInputSchema gets a reference to the given NullableSearchEndpointCallInputSchema and assigns it to the InputSchema field.
+func (o *SearchEndpointCall) SetInputSchema(v SearchEndpointCallInputSchema) {
+	o.InputSchema.Set(&v)
+}
+
+// SetInputSchemaNil sets the value for InputSchema to be an explicit nil
+func (o *SearchEndpointCall) SetInputSchemaNil() {
+	o.InputSchema.Set(nil)
+}
+
+// UnsetInputSchema ensures that no value is present for InputSchema, not even an explicit nil
+func (o *SearchEndpointCall) UnsetInputSchema() {
+	o.InputSchema.Unset()
 }
 
 // GetExampleRequest returns the ExampleRequest field value if set, zero value otherwise.
@@ -187,8 +197,8 @@ func (o SearchEndpointCall) ToMap() (map[string]interface{}, error) {
 	if !IsNil(o.Method) {
 		toSerialize["method"] = o.Method
 	}
-	if !IsNil(o.InputSchema) {
-		toSerialize["input_schema"] = o.InputSchema
+	if o.InputSchema.IsSet() {
+		toSerialize["input_schema"] = o.InputSchema.Get()
 	}
 	if !IsNil(o.ExampleRequest) {
 		toSerialize["example_request"] = o.ExampleRequest

@@ -58,6 +58,7 @@ export * from './SearchCuratedOperation';
 export * from './SearchCuratedService';
 export * from './SearchCuratedSource';
 export * from './SearchEndpointCall';
+export * from './SearchEndpointCallInputSchema';
 export * from './SearchEndpointHit';
 export * from './SearchEndpointPrice';
 export * from './SearchErrorResponse';

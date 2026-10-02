@@ -22,7 +22,7 @@ Name | Type | Description | Notes
 **Callability** | Pointer to [**SearchCuratedCallability**](SearchCuratedCallability.md) |  | [optional]
 **Compatibility** | Pointer to **map[string]interface{}** |  | [optional]
 **Source** | Pointer to [**SearchCuratedSource**](SearchCuratedSource.md) |  | [optional]
-**OperatorType** | Pointer to **string** | Who you are actually paying. &#x60;first_party&#x60; &#x3D; operated by the provider that makes the capability; &#x60;reseller&#x60; &#x3D; resold, so the price carries someone else&#39;s margin. Null until the platform resolves the operator.  | [optional]
+**OperatorType** | Pointer to **string** | Who you are actually paying. &#x60;first_party&#x60; &#x3D; operated by the provider that makes the capability; &#x60;reseller&#x60; &#x3D; resold, so the price carries someone else&#39;s margin; &#x60;gateway&#x60; &#x3D; an intermediary routing the provider&#39;s capability. Null until the platform resolves the operator.  | [optional]
 **OperatedById** | Pointer to **string** |  | [optional]
 **SettledViaFacilitatorId** | Pointer to **string** |  | [optional]
 **Settlements** | Pointer to **int32** | Count of payments observed settling against this endpoint by ANYONE (chain-indexed), not just by Weft — the reliability signal a caller can act on. Null when unknown.  | [optional]

@@ -53,7 +53,7 @@ module Weft
 
     attr_accessor :source
 
-    # Who you are actually paying. `first_party` = operated by the provider that makes the capability; `reseller` = resold, so the price carries someone else's margin. Null until the platform resolves the operator.
+    # Who you are actually paying. `first_party` = operated by the provider that makes the capability; `reseller` = resold, so the price carries someone else's margin; `gateway` = an intermediary routing the provider's capability. Null until the platform resolves the operator.
     attr_accessor :operator_type
 
     attr_accessor :operated_by_id
@@ -296,7 +296,7 @@ module Weft
     # @return true if the model is valid
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
-      operator_type_validator = EnumAttributeValidator.new('String', ["first_party", "reseller"])
+      operator_type_validator = EnumAttributeValidator.new('String', ["first_party", "reseller", "gateway"])
       return false unless operator_type_validator.valid?(@operator_type)
       true
     end
@@ -304,7 +304,7 @@ module Weft
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] operator_type Object to be assigned
     def operator_type=(operator_type)
-      validator = EnumAttributeValidator.new('String', ["first_party", "reseller"])
+      validator = EnumAttributeValidator.new('String', ["first_party", "reseller", "gateway"])
       unless validator.valid?(operator_type)
         fail ArgumentError, "invalid value for \"operator_type\", must be one of #{validator.allowable_values}."
       end

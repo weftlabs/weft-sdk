@@ -2894,7 +2894,7 @@ components:
             call:
               example_request: "{}"
               method: method
-              input_schema: "{}"
+              input_schema: true
               example_response: ""
             output: "{}"
             docs:
@@ -2988,7 +2988,7 @@ components:
             call:
               example_request: "{}"
               method: method
-              input_schema: "{}"
+              input_schema: true
               example_response: ""
             output: "{}"
             docs:
@@ -3093,7 +3093,7 @@ components:
             call:
               example_request: "{}"
               method: method
-              input_schema: "{}"
+              input_schema: true
               example_response: ""
             output: "{}"
             docs:
@@ -3187,7 +3187,7 @@ components:
             call:
               example_request: "{}"
               method: method
-              input_schema: "{}"
+              input_schema: true
               example_response: ""
             output: "{}"
             docs:
@@ -3445,7 +3445,7 @@ components:
           call:
             example_request: "{}"
             method: method
-            input_schema: "{}"
+            input_schema: true
             example_response: ""
           output: "{}"
           docs:
@@ -3539,7 +3539,7 @@ components:
           call:
             example_request: "{}"
             method: method
-            input_schema: "{}"
+            input_schema: true
             example_response: ""
           output: "{}"
           docs:
@@ -3687,7 +3687,7 @@ components:
         call:
           example_request: "{}"
           method: method
-          input_schema: "{}"
+          input_schema: true
           example_response: ""
         output: "{}"
         docs:
@@ -3825,10 +3825,12 @@ components:
           description: |
             Who you are actually paying. `first_party` = operated by the provider
             that makes the capability; `reseller` = resold, so the price carries
-            someone else's margin. Null until the platform resolves the operator.
+            someone else's margin; `gateway` = an intermediary routing the provider's
+            capability. Null until the platform resolves the operator.
           enum:
           - first_party
           - reseller
+          - gateway
           type: string
           nullable: true
         operated_by_id:
@@ -3871,7 +3873,7 @@ components:
       example:
         example_request: "{}"
         method: method
-        input_schema: "{}"
+        input_schema: true
         example_response: ""
       properties:
         method:
@@ -3880,12 +3882,7 @@ components:
             provider's own 402 challenge / OpenAPI spec declares one.
           type: string
         input_schema:
-          description: |
-            The provider's OWN structured declaration of the arguments this
-            endpoint takes — the machine-usable form of what `usage_instructions`
-            states in prose. Null when the provider declares nothing.
-          type: object
-          nullable: true
+          $ref: "#/components/schemas/SearchEndpointCall_input_schema"
         example_request:
           description: |
             A worked set of arguments grouped by slot (`query` / `body` / `path`).
@@ -4570,6 +4567,17 @@ components:
       required:
       - code
       - message
+    SearchEndpointCall_input_schema:
+      anyOf:
+      - type: boolean
+      description: |
+        The request JSON Schema, including boolean true/false schemas.
+        Reviewed versioned contracts preserve the provider schema and apply
+        separately authored client scope constraints in this projection.
+        Null when no body schema is declared; query/path/header/cookie
+        bindings remain in the full contract. Retrieve contract_url before
+        constructing requests for versioned contracts.
+      nullable: true
     FetchRequest_body:
       description: Request body forwarded to the upstream. Pass `null` for GET.
       nullable: true

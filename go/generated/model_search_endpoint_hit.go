@@ -40,7 +40,7 @@ type SearchEndpointHit struct {
 	Callability   *SearchCuratedCallability `json:"callability,omitempty"`
 	Compatibility map[string]interface{}    `json:"compatibility,omitempty"`
 	Source        *SearchCuratedSource      `json:"source,omitempty"`
-	// Who you are actually paying. `first_party` = operated by the provider that makes the capability; `reseller` = resold, so the price carries someone else's margin. Null until the platform resolves the operator.
+	// Who you are actually paying. `first_party` = operated by the provider that makes the capability; `reseller` = resold, so the price carries someone else's margin; `gateway` = an intermediary routing the provider's capability. Null until the platform resolves the operator.
 	OperatorType            *string `json:"operator_type,omitempty"`
 	OperatedById            *string `json:"operated_by_id,omitempty"`
 	SettledViaFacilitatorId *string `json:"settled_via_facilitator_id,omitempty"`

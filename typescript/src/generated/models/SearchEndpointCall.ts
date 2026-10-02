@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { SearchEndpointCallInputSchema } from './SearchEndpointCallInputSchema';
+import {
+    SearchEndpointCallInputSchemaFromJSON,
+    SearchEndpointCallInputSchemaFromJSONTyped,
+    SearchEndpointCallInputSchemaToJSON,
+    SearchEndpointCallInputSchemaToJSONTyped,
+} from './SearchEndpointCallInputSchema';
+
 /**
  * The machine-readable call contract for this endpoint: the verb, the
  * provider-declared argument schema, and the worked examples. Always
@@ -34,14 +42,11 @@ export interface SearchEndpointCall {
      */
     method?: string;
     /**
-     * The provider's OWN structured declaration of the arguments this
-     * endpoint takes — the machine-usable form of what `usage_instructions`
-     * states in prose. Null when the provider declares nothing.
      *
-     * @type {object}
+     * @type {SearchEndpointCallInputSchema}
      * @memberof SearchEndpointCall
      */
-    inputSchema?: object;
+    inputSchema?: SearchEndpointCallInputSchema | null;
     /**
      * A worked set of arguments grouped by slot (`query` / `body` / `path`).
      * Every value is one the PROVIDER published; never synthesized.
@@ -76,7 +81,7 @@ export function SearchEndpointCallFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
 
         'method': json['method'] == null ? undefined : json['method'],
-        'inputSchema': json['input_schema'] == null ? undefined : json['input_schema'],
+        'inputSchema': json['input_schema'] == null ? undefined : SearchEndpointCallInputSchemaFromJSON(json['input_schema']),
         'exampleRequest': json['example_request'] == null ? undefined : json['example_request'],
         'exampleResponse': json['example_response'] == null ? undefined : json['example_response'],
     };
@@ -94,7 +99,7 @@ export function SearchEndpointCallToJSONTyped(value?: SearchEndpointCall | null,
     return {
 
         'method': value['method'],
-        'input_schema': value['inputSchema'],
+        'input_schema': SearchEndpointCallInputSchemaToJSON(value['inputSchema']),
         'example_request': value['exampleRequest'],
         'example_response': value['exampleResponse'],
     };

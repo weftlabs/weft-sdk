@@ -19,7 +19,6 @@ module Weft
     # The HTTP verb to send. Empty string when neither the index nor the provider's own 402 challenge / OpenAPI spec declares one.
     attr_accessor :method
 
-    # The provider's OWN structured declaration of the arguments this endpoint takes — the machine-usable form of what `usage_instructions` states in prose. Null when the provider declares nothing.
     attr_accessor :input_schema
 
     # A worked set of arguments grouped by slot (`query` / `body` / `path`). Every value is one the PROVIDER published; never synthesized.
@@ -51,7 +50,7 @@ module Weft
     def self.openapi_types
       {
         :'method' => :'String',
-        :'input_schema' => :'Object',
+        :'input_schema' => :'SearchEndpointCallInputSchema',
         :'example_request' => :'Object',
         :'example_response' => :'Object'
       }
@@ -60,6 +59,7 @@ module Weft
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'input_schema',
         :'example_response'
       ])
     end

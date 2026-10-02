@@ -19,6 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from weft_sdk.generated.models.search_endpoint_call_input_schema import SearchEndpointCallInputSchema
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -27,7 +28,7 @@ class SearchEndpointCall(BaseModel):
     The machine-readable call contract for this endpoint: the verb, the provider-declared argument schema, and the worked examples. Always present; an endpoint whose provider declares nothing carries an empty `method` and null members rather than an absent block, so a caller can always read `input_schema` without a presence check. Combine with the hit's `url` to construct the request.
     """ # noqa: E501
     method: Optional[StrictStr] = Field(default=None, description="The HTTP verb to send. Empty string when neither the index nor the provider's own 402 challenge / OpenAPI spec declares one. ")
-    input_schema: Optional[Dict[str, Any]] = Field(default=None, description="The provider's OWN structured declaration of the arguments this endpoint takes — the machine-usable form of what `usage_instructions` states in prose. Null when the provider declares nothing. ")
+    input_schema: Optional[SearchEndpointCallInputSchema] = None
     example_request: Optional[Dict[str, Any]] = Field(default=None, description="A worked set of arguments grouped by slot (`query` / `body` / `path`). Every value is one the PROVIDER published; never synthesized. ")
     example_response: Optional[Any] = None
     __properties: ClassVar[List[str]] = ["method", "input_schema", "example_request", "example_response"]
@@ -71,6 +72,14 @@ class SearchEndpointCall(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of input_schema
+        if self.input_schema:
+            _dict['input_schema'] = self.input_schema.to_dict()
+        # set to None if input_schema (nullable) is None
+        # and model_fields_set contains the field
+        if self.input_schema is None and "input_schema" in self.model_fields_set:
+            _dict['input_schema'] = None
+
         # set to None if example_response (nullable) is None
         # and model_fields_set contains the field
         if self.example_response is None and "example_response" in self.model_fields_set:
@@ -89,7 +98,7 @@ class SearchEndpointCall(BaseModel):
 
         _obj = cls.model_validate({
             "method": obj.get("method"),
-            "input_schema": obj.get("input_schema"),
+            "input_schema": SearchEndpointCallInputSchema.from_dict(obj["input_schema"]) if obj.get("input_schema") is not None else None,
             "example_request": obj.get("example_request"),
             "example_response": obj.get("example_response")
         })
