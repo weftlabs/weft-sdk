@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from types import TracebackType
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
+from uuid import UUID
 
 from urllib3.exceptions import HTTPError as TransportError
 
@@ -18,14 +20,34 @@ from .generated.configuration import Configuration
 from .generated.exceptions import ApiException
 from .generated.models.balance_response import BalanceResponse
 from .generated.models.fetch_request import FetchRequest
+from .generated.models.fetch_request_body import FetchRequestBody
 from .generated.models.fetch_response import FetchResponse
 from .generated.models.me_response import MeResponse
 from .generated.models.purchase_list_response import PurchaseListResponse
 from .generated.models.purchase_response import PurchaseResponse
+from .generated.models.search_filter_spec import SearchFilterSpec
 from .generated.models.search_request import SearchRequest
 from .generated.models.search_response import SearchResponse
 
 T = TypeVar("T")
+
+
+def _search_filters(value: Mapping[str, Any] | None) -> SearchFilterSpec | None:
+    if value is None:
+        return None
+    payload = dict(value)
+    # The generated model defaults this flag to false. None keeps an omitted
+    # flag off the wire, matching a caller who did not set it.
+    payload.setdefault("include_unknown_prices", None)
+    return SearchFilterSpec.model_validate(payload)
+
+
+def _fetch_body(value: str | Mapping[str, Any] | None) -> FetchRequestBody | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return FetchRequestBody(actual_instance=value)
+    return FetchRequestBody(actual_instance=dict(value))
 
 
 class Client:
@@ -38,17 +60,25 @@ class Client:
     def __init__(
         self,
         *,
-        api_key: str,
+        api_key: str | None = None,
+        access_token: str | None = None,
         base_url: str = "https://weft.network",
         api_client: ApiClient | None = None,
     ) -> None:
-        key = api_key.strip()
-        if not key:
-            raise ValueError("api_key is required")
+        if api_key is not None and access_token is not None:
+            raise ValueError("api_key and access_token are mutually exclusive")
+        raw = api_key if api_key is not None else access_token
+        credential = raw.strip() if isinstance(raw, str) else ""
+        if not credential:
+            if api_key is not None:
+                raise ValueError("api_key is required")
+            if access_token is not None:
+                raise ValueError("access_token is required")
+            raise ValueError("api_key or access_token is required")
 
         configuration = Configuration(
             host=base_url.rstrip("/"),
-            access_token=key,
+            access_token=credential,
         )
         self._api_client = api_client or ApiClient(configuration)
         self._account = AccountApi(self._api_client)
@@ -81,10 +111,20 @@ class Client:
     def balance(self) -> BalanceResponse:
         return self._call(self._balance.get_balance)
 
-    def search(self, *, query: str, max_results: int | None = None) -> SearchResponse:
-        # Pass None explicitly so the generated model default does not appear
+    def search(
+        self,
+        *,
+        query: str,
+        max_results: int | None = None,
+        filters: Mapping[str, Any] | None = None,
+    ) -> SearchResponse:
+        # Pass None explicitly so a generated model default does not appear
         # on the wire when the caller omitted the optional field.
-        request = SearchRequest(query=query, max_results=max_results)
+        request = SearchRequest(
+            query=query,
+            max_results=max_results,
+            filters=_search_filters(filters),
+        )
         return self._call(lambda: self._search.search(request))
 
     def fetch(
@@ -94,16 +134,34 @@ class Client:
         max_cost_usd: str,
         idempotency_key: str,
         method: str | None = None,
+        body: str | Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+        search_id: str | None = None,
+        operation_id: str | None = None,
+        access_method_id: str | None = None,
     ) -> FetchResponse:
         if not max_cost_usd.strip():
             raise ValueError("max_cost_usd is required")
         if not idempotency_key.strip():
             raise ValueError("idempotency_key is required")
-        request = FetchRequest(
-            url=url,
-            max_cost_usd=max_cost_usd,
-            method=None if method is None else method.upper(),
-        )
+        request_fields: dict[str, Any] = {
+            "url": url,
+            "max_cost_usd": max_cost_usd,
+            "method": None if method is None else method.upper(),
+        }
+        # An explicit None is a set field. The generated serializer then emits
+        # body: null. Omit the argument so an unset body stays off the wire.
+        if body is not None:
+            request_fields["body"] = _fetch_body(body)
+        if headers is not None:
+            request_fields["headers"] = dict(headers)
+        if search_id is not None:
+            request_fields["search_id"] = UUID(search_id)
+        if operation_id is not None:
+            request_fields["operation_id"] = operation_id
+        if access_method_id is not None:
+            request_fields["access_method_id"] = access_method_id
+        request = FetchRequest(**request_fields)
         return self._call(lambda: self._fetch.fetch(request, idempotency_key=idempotency_key))
 
     def purchases(
