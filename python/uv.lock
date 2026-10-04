@@ -733,7 +733,7 @@ wheels = [
 
 [[package]]
 name = "weft-sdk"
-version = "0.27.1"
+version = "0.29.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -759,7 +759,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "typing-extensions", specifier = ">=4.7.1" },
     { name = "urllib3", specifier = ">=1.25.3,<3" },
-    { name = "x402", specifier = ">=1.0.0" },
+    { name = "x402", specifier = ">=2.18.0" },
 ]
 
 [package.metadata.requires-dev]
