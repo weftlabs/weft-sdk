@@ -83,5 +83,5 @@ Product guides live on [weftlabs.com](https://weftlabs.com).
 
 ## Seller middleware
 
-Use `WeftASGIMiddleware`. `weft_require_payment`, `weft_flask_require_payment`, and `WeftPaymentMiddleware` do not work on x402 2.18.
-`create_auth_headers` must be synchronous. x402 2.18 reads those headers on a sync call.
+Use `WeftASGIMiddleware`. `weft_require_payment`, `weft_flask_require_payment`, and `WeftPaymentMiddleware` do not work on x402 2.x.
+`create_auth_headers` must be synchronous. x402 reads those headers on a sync call.

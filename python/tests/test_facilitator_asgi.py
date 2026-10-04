@@ -24,6 +24,10 @@ API_KEY = "wk_live_abc"
 
 class ExactScheme:
     scheme = "exact"
+    default_asset_transfer_method = "eip3009"
+    payment_flows = {
+        "eip3009": {"supported": ("authorization",), "default": "authorization"},
+    }
 
     def parse_price(self, price: object, network: str) -> AssetAmount:
         del price, network

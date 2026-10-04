@@ -87,6 +87,44 @@ _PAYMENT_FLOW_PHASES = {
 }
 
 
+def completed_before_settlement(value: object, requirements: object) -> Any:
+    """Build an x402 CompletedSettlement, or None when the receipt is incomplete."""
+
+    from x402.schemas import CompletedSettlement, PaymentRequirements, SettleResponse
+
+    if value is None:
+        return None
+    if isinstance(value, CompletedSettlement):
+        return value
+    if not isinstance(value, Mapping):
+        return None
+    raw_flow = value.get("flow")
+    if raw_flow == "authorization" or raw_flow == "upfront" or raw_flow == "escrow":
+        flow = raw_flow
+    else:
+        return None
+    raw_result = value.get("result")
+    if isinstance(raw_result, SettleResponse):
+        result = raw_result
+    elif isinstance(raw_result, Mapping):
+        result = SettleResponse.model_validate(raw_result)
+    else:
+        return None
+    raw_requirements = value.get("requirements", requirements)
+    if isinstance(raw_requirements, PaymentRequirements):
+        matched = raw_requirements
+    elif isinstance(raw_requirements, Mapping):
+        matched = PaymentRequirements.model_validate(raw_requirements)
+    else:
+        return None
+    return CompletedSettlement(
+        phase="before-handler",
+        flow=flow,
+        result=result,
+        requirements=matched,
+    )
+
+
 def before_handler_flow(before: object) -> str | None:
     """Return the flow name carried on a restored before-handler settlement."""
 

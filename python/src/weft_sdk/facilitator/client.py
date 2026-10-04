@@ -102,7 +102,7 @@ def _seller_create_headers(config: WeftFacilitatorConfig | None) -> CreateAuthHe
     if _is_async_callable(seller):
         raise TypeError(
             "create_auth_headers must be synchronous; "
-            "x402 2.18.0 resolves facilitator auth headers synchronously"
+            "the installed x402 package resolves facilitator auth headers synchronously"
         )
     return cast(CreateAuthHeaders, seller)
 
@@ -130,7 +130,7 @@ def _merged_create_headers(
             raw.close()
             raise TypeError(
                 "create_auth_headers must be synchronous; "
-                "x402 2.18 resolves facilitator auth headers synchronously"
+                "the installed x402 package resolves facilitator auth headers synchronously"
             )
         if raw is not None and not isinstance(raw, Mapping):
             raise TypeError("createAuthHeaders must return an object")
