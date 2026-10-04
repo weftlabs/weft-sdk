@@ -27,9 +27,12 @@ from .product import apply_product_identity
 from .replay import payment_resume_candidate, resume_payment_result
 from .settlement import (
     SETTLEMENT_HTTP_METHOD,
+    before_handler_flow,
     is_facilitator_unavailable,
     is_facilitator_unavailable_response,
     is_json_response,
+    payment_response_headers,
+    settles_after_handler,
     with_private_cache_control,
 )
 from .warn import console_warn
@@ -212,6 +215,22 @@ def _encode_body(response: Any) -> tuple[list[tuple[bytes, bytes]], bytes]:
     return raw, str(body).encode("utf-8")
 
 
+async def _send_with_settlement(
+    send: Send,
+    status: int,
+    response_headers: list[tuple[bytes, bytes]],
+    body: bytes,
+    settlement_headers: Mapping[str, str],
+) -> None:
+    headers = list(response_headers)
+    for name, value in settlement_headers.items():
+        headers = _upsert_header(headers, name, value)
+    existing = _header_value(headers, "cache-control")
+    headers = _upsert_header(headers, "cache-control", with_private_cache_control(existing))
+    headers = _without_header(headers, SETTLEMENT_OVERRIDES_HEADER)
+    await _send_response(send, status, headers, body)
+
+
 def _unavailable_response() -> tuple[int, list[tuple[bytes, bytes]], bytes]:
     headers = [
         (b"retry-after", b"1"),
@@ -288,6 +307,7 @@ class WeftASGIMiddleware:
         self._last_failed = 0.0
         self._boot_done = threading.Event()
         self._lock = threading.Lock()
+        self._warned_missing_before = False
         if self._sync_on_start:
             self._start_sync(boot=True)
         else:
@@ -345,13 +365,15 @@ class WeftASGIMiddleware:
                 resumed = await resumed
         if resumed:
             built = resume_payment_result(self._http._server, resumed, context)  # noqa: SLF001
-            return HTTPProcessResult(
+            verified = HTTPProcessResult(
                 type="payment-verified",
                 payment_payload=built["paymentPayload"],
                 payment_requirements=built["paymentRequirements"],
                 declared_extensions=built.get("declaredExtensions"),
                 cancellation_dispatcher=built.get("cancellationDispatcher"),
             )
+            verified.before_handler_settlement = built.get("beforeHandlerSettlement")  # type: ignore[attr-defined]
+            return verified
         return await self._http.process_http_request(context, self._paywall_config)
 
     async def _run_paid(
@@ -415,6 +437,28 @@ class WeftASGIMiddleware:
                 parsed = None
             if isinstance(parsed, dict):
                 overrides = parsed
+        before = getattr(result, "before_handler_settlement", None)
+        flow = before_handler_flow(before)
+        if flow is not None and not settles_after_handler(flow):
+            echoed: dict[str, str] = {}
+            if isinstance(before, Mapping):
+                echoed = payment_response_headers(before.get("result"))
+            elif before is not None:
+                echoed = payment_response_headers(getattr(before, "result", None))
+            if not echoed and not self._warned_missing_before:
+                self._warned_missing_before = True
+                console_warn(
+                    "[weft] payment flow settles before the handler, but no "
+                    "before-handler settlement was restored; skipping after-handler settle"
+                )
+            await _send_with_settlement(
+                send,
+                status,
+                response_headers,
+                b"".join(chunks),
+                echoed,
+            )
+            return
         settle_result = await self._http.process_settlement(
             payload,
             requirements,
@@ -450,13 +494,14 @@ class WeftASGIMiddleware:
                 b"{}",
             )
             return
-        headers = list(response_headers)
-        for name, value in (getattr(settle_result, "headers", None) or {}).items():
-            headers = _upsert_header(headers, str(name), str(value))
-        existing = _header_value(headers, "cache-control")
-        headers = _upsert_header(headers, "cache-control", with_private_cache_control(existing))
-        headers = _without_header(headers, SETTLEMENT_OVERRIDES_HEADER)
-        await _send_response(send, status, headers, b"".join(chunks))
+        settle_headers = getattr(settle_result, "headers", None) or {}
+        await _send_with_settlement(
+            send,
+            status,
+            response_headers,
+            b"".join(chunks),
+            {str(name): str(value) for name, value in settle_headers.items()},
+        )
 
     async def _wait_for_boot(self) -> None:
         if self._boot_done.is_set():

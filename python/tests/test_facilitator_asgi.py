@@ -105,6 +105,9 @@ def _facilitator(state: FacilitatorState) -> tuple[ThreadingHTTPServer, str]:
                 self._json(200, {"isValid": True, "payer": "0xpayer"})
                 return
             if path == "/settle":
+                if state.settle_mode == "drop":
+                    self.connection.close()
+                    return
                 if state.settle_mode == "down":
                     self._json(
                         503,
@@ -165,6 +168,8 @@ def _middleware(
     api_key: object = API_KEY,
     handler_status: int = 200,
     calls: list[str] | None = None,
+    resume: Any = None,
+    scheme: Any = None,
 ) -> WeftASGIMiddleware:
     return WeftASGIMiddleware(
         _app(handler_status, calls if calls is not None else []),
@@ -185,7 +190,8 @@ def _middleware(
             "type": "api",
             "productId": "prod_1",
             "facilitator": {"url": facilitator_url},
-            "schemes": [{"network": NETWORK, "server": ExactScheme()}],
+            "schemes": [{"network": NETWORK, "server": scheme or ExactScheme()}],
+            "resumeVerifiedPayment": resume,
         },
     )
 
@@ -432,3 +438,79 @@ async def test_malformed_key_is_not_sent_or_logged(capsys: pytest.CaptureFixture
     assert captured.err.count("ignoring apiKey") == 1
     assert secret not in captured.err
     assert secret not in captured.out
+
+
+@pytest.mark.asyncio
+async def test_resume_before_handler_settlement_does_not_settle_again() -> None:
+    state = FacilitatorState()
+    server, url = _facilitator(state)
+    calls: list[str] = []
+
+    def resume(_context: Any, candidate: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "paymentPayload": candidate["paymentPayload"],
+            "paymentRequirements": candidate["paymentRequirements"],
+            "beforeHandlerSettlement": {
+                "flow": "upfront",
+                "result": {
+                    "success": True,
+                    "transaction": "0xoriginal",
+                    "network": NETWORK,
+                    "payer": "0xpayer",
+                },
+            },
+        }
+
+    app = _middleware(url, calls=calls, resume=resume)
+    try:
+        unpaid, unpaid_headers, _ = await _http(app, "GET", "/v1/search", {"x-model": "gpt"})
+        assert unpaid == 402
+        challenge = decode_payment_required_header(unpaid_headers["payment-required"])
+        before = len(_calls(state, "/settle"))
+        status, headers, body = await _http(
+            app,
+            "POST",
+            "/v1/search",
+            {
+                "x-model": "gpt",
+                "payment-signature": _payment_header(challenge),
+            },
+        )
+        assert status == 200
+        assert body == b'{"ok":true}'
+        assert calls == ["POST"]
+        assert len(_calls(state, "/settle")) == before
+        receipt = decode_payment_response_header(headers["payment-response"])
+        assert receipt.transaction == "0xoriginal"
+        assert receipt.success is True
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+@pytest.mark.asyncio
+async def test_settle_connection_failure_is_facilitator_unavailable() -> None:
+    state = FacilitatorState()
+    state.settle_mode = "drop"
+    server, url = _facilitator(state)
+    app = _middleware(url)
+    try:
+        unpaid, unpaid_headers, _ = await _http(app, "GET", "/v1/search", {"x-model": "gpt"})
+        assert unpaid == 402
+        challenge = decode_payment_required_header(unpaid_headers["payment-required"])
+        status, headers, body = await _http(
+            app,
+            "POST",
+            "/v1/search",
+            {
+                "x-model": "gpt",
+                "payment-signature": _payment_header(challenge),
+            },
+        )
+        assert status == 503
+        assert json.loads(body) == {"error": "facilitator_unavailable"}
+        assert headers["retry-after"] == "1"
+        assert "payment-response" not in headers
+    finally:
+        server.shutdown()
+        server.server_close()

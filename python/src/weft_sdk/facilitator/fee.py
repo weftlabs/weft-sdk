@@ -18,7 +18,14 @@ class FeeInfo(TypedDict):
 
 
 class FeeCacheConfig(TypedDict, total=False):
+    """Cache settings for fee lookup.
+
+    ``ttl`` and ``ttl_seconds`` are seconds. TypeScript ``ttl`` is milliseconds.
+    The default is 300 seconds.
+    """
+
     ttl: float
+    ttl_seconds: float
 
 
 class _FeeCache(TypedDict):
@@ -101,7 +108,11 @@ async def get_fee_info(
         "network": fee["network"],
     }
 
-    ttl = cache_config.get("ttl", DEFAULT_CACHE_TTL) if cache_config else DEFAULT_CACHE_TTL
+    ttl = DEFAULT_CACHE_TTL
+    if cache_config:
+        configured = cache_config.get("ttl_seconds", cache_config.get("ttl"))
+        if configured is not None:
+            ttl = configured
     _fee_cache = {
         "fee_info": fee_info,
         "fetched_at": time.time(),

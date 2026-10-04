@@ -77,6 +77,15 @@ class TestCreateFacilitatorClient:
         with pytest.raises(ValueError, match="URL must start with http://"):
             create_facilitator_client({"url": "not-a-url"})
 
+    def test_async_create_auth_headers_rejected_at_construction(self):
+        async def headers() -> dict[str, dict[str, str]]:
+            return {}
+
+        with pytest.raises(TypeError, match="must be synchronous"):
+            create_facilitator_client(
+                {"url": "https://x402.weft.network", "create_auth_headers": headers}
+            )
+
 
 def _requirements() -> PaymentRequirements:
     return PaymentRequirements(
