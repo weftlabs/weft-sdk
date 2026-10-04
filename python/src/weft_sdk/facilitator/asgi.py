@@ -17,7 +17,7 @@ from urllib.parse import parse_qs
 from x402.http import x402HTTPResourceServer
 from x402.http.constants import SETTLEMENT_OVERRIDES_HEADER
 from x402.http.types import HTTPProcessResult, HTTPRequestContext, HTTPTransportContext
-from x402.schemas import VerifiedPaymentCancelOptions
+from x402.schemas.hooks import VerifiedPaymentCancellationReason, VerifiedPaymentCancelOptions
 from x402.server import x402ResourceServer
 
 from .client import WeftFacilitatorConfig, create_facilitator_client
@@ -28,6 +28,7 @@ from .replay import payment_resume_candidate, resume_payment_result
 from .settlement import (
     SETTLEMENT_HTTP_METHOD,
     before_handler_flow,
+    completed_before_settlement,
     is_facilitator_unavailable,
     is_facilitator_unavailable_response,
     is_json_response,
@@ -96,36 +97,6 @@ class _ASGIAdapter:
             except (UnicodeDecodeError, json.JSONDecodeError):
                 return self._body
         return self._body
-
-
-class WeftHTTPResourceServer(x402HTTPResourceServer):
-    """Observe the protected HTTP method on every settlement phase."""
-
-    async def process_settlement(  # type: ignore[override]
-        self,
-        payment_payload: Any,
-        requirements: Any,
-        context: HTTPRequestContext | None = None,
-        settlement_overrides: dict[str, Any] | None = None,
-        declared_extensions: dict[str, Any] | None = None,
-        transport_context: HTTPTransportContext | None = None,
-    ) -> Any:
-        method = None
-        if context is not None:
-            method = context.method or context.adapter.get_method()
-        token = SETTLEMENT_HTTP_METHOD.set(method.upper()) if method else None
-        try:
-            return await super().process_settlement(
-                payment_payload,
-                requirements,
-                context,
-                settlement_overrides,
-                declared_extensions,
-                transport_context,
-            )
-        finally:
-            if token is not None:
-                SETTLEMENT_HTTP_METHOD.reset(token)
 
 
 def _config_value(config: Mapping[str, Any] | None, *names: str, default: Any = None) -> Any:
@@ -284,7 +255,7 @@ class WeftASGIMiddleware:
                 raise TypeError("schemes entries need network and server")
             resource_server.register(network, scheme_server)
         applied = apply_product_identity(route_map, self._config)
-        self._http = WeftHTTPResourceServer(resource_server, cast(Any, applied))
+        self._http = x402HTTPResourceServer(resource_server, cast(Any, applied))
         paywall = _config_value(self._config, "paywall")
         if paywall is not None:
             self._http.register_paywall_provider(paywall)
@@ -326,6 +297,20 @@ class WeftASGIMiddleware:
             return
         await self._wait_for_boot()
         self._maybe_retry_sync()
+        method_token = SETTLEMENT_HTTP_METHOD.set(method.upper())
+        try:
+            await self._handle_protected(scope, receive, send, method, path)
+        finally:
+            SETTLEMENT_HTTP_METHOD.reset(method_token)
+
+    async def _handle_protected(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        method: str,
+        path: str,
+    ) -> None:
         body = await _read_body(receive)
         adapter = _ASGIAdapter(scope, body)
         payment_header = adapter.get_header("payment-signature") or adapter.get_header("x-payment")
@@ -365,14 +350,18 @@ class WeftASGIMiddleware:
                 resumed = await resumed
         if resumed:
             built = resume_payment_result(self._http._server, resumed, context)  # noqa: SLF001
+            requirements = built["paymentRequirements"]
             verified = HTTPProcessResult(
                 type="payment-verified",
                 payment_payload=built["paymentPayload"],
-                payment_requirements=built["paymentRequirements"],
+                payment_requirements=requirements,
                 declared_extensions=built.get("declaredExtensions"),
                 cancellation_dispatcher=built.get("cancellationDispatcher"),
+                before_handler_settlement=completed_before_settlement(
+                    built.get("beforeHandlerSettlement"),
+                    requirements,
+                ),
             )
-            verified.before_handler_settlement = built.get("beforeHandlerSettlement")  # type: ignore[attr-defined]
             return verified
         return await self._http.process_http_request(context, self._paywall_config)
 
@@ -576,14 +565,14 @@ def _result_field(result: Any, *names: str) -> Any:
 
 async def _cancel(
     dispatcher: Any,
-    reason: str,
+    reason: VerifiedPaymentCancellationReason,
     error: BaseException | None = None,
     response_status: int | None = None,
 ) -> None:
     if dispatcher is None:
         return
     options = VerifiedPaymentCancelOptions(
-        reason=reason,  # type: ignore[arg-type]
+        reason=reason,
         error=error,
         response_status=response_status,
     )
