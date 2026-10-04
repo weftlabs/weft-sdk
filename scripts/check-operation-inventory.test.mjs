@@ -88,7 +88,7 @@ test("the real spec and inventory agree", () => {
   );
   assert.deepEqual(extractOperationIds(readFileSync(specPath, "utf8")), specOperations);
   const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
-  assert.deepEqual(inventory.languages, ["typescript", "python", "ruby"]);
+  assert.deepEqual(inventory.languages, ["typescript", "python", "ruby", "go"]);
   assert.deepEqual(
     inventory.operations.map((operation) => operation.operationId),
     specOperations,

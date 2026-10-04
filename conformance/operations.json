@@ -1,5 +1,5 @@
 {
-  "languages": ["typescript", "python", "ruby"],
+  "languages": ["typescript", "python", "ruby", "go"],
   "operations": [
     {
       "operationId": "getOpenApiDocument",
@@ -73,7 +73,8 @@
       "methods": {
         "typescript": "me",
         "python": "me",
-        "ruby": "me"
+        "ruby": "me",
+        "go": "Me"
       },
       "cli": "weft me",
       "reason": "Buyer runtime"
@@ -102,7 +103,8 @@
       "methods": {
         "typescript": "balance",
         "python": "balance",
-        "ruby": "balance"
+        "ruby": "balance",
+        "go": "Balance"
       },
       "cli": "weft balance",
       "reason": "Buyer runtime"
@@ -113,7 +115,8 @@
       "methods": {
         "typescript": "search",
         "python": "search",
-        "ruby": "search"
+        "ruby": "search",
+        "go": "Search"
       },
       "cli": "weft search QUERY",
       "reason": "Buyer runtime"
@@ -124,7 +127,8 @@
       "methods": {
         "typescript": "fetch",
         "python": "fetch",
-        "ruby": "fetch"
+        "ruby": "fetch",
+        "go": "Fetch"
       },
       "cli": "weft fetch URL --max-cost-usd USD",
       "reason": "Paid buyer runtime"
@@ -147,7 +151,8 @@
       "methods": {
         "typescript": "purchases",
         "python": "purchases",
-        "ruby": "purchases"
+        "ruby": "purchases",
+        "go": "Purchases"
       },
       "cli": "weft purchases",
       "reason": "Buyer purchase ledger"
@@ -158,7 +163,8 @@
       "methods": {
         "typescript": "purchase",
         "python": "purchase",
-        "ruby": "purchase"
+        "ruby": "purchase",
+        "go": "Purchase"
       },
       "cli": "weft purchases ID",
       "reason": "Buyer purchase detail"
