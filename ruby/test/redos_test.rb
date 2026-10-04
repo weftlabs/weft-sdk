@@ -17,14 +17,35 @@ class RedosTest < Minitest::Test
   end
 
   def test_route_pattern_scan_stays_linear
-    pattern = '[' * LENGTH
-    matcher = nil
-    elapsed = timed { matcher = Weft::Facilitator::X402.parse_route_pattern(pattern) }
+    pattern = 'a' * LENGTH
+    parsed = nil
+    elapsed = timed { parsed = Weft::Facilitator::X402.parse_route_pattern(pattern) }
     assert_operator elapsed, :<, LIMIT_SECONDS
+    assert_nil Regexp.timeout
+    assert_in_delta 0.05, parsed['regex'].timeout, 0.0001
     matched = nil
-    elapsed = timed { matched = matcher['regex'].match?(pattern) }
+    elapsed = timed { matched = parsed['regex'].match?(pattern) }
     assert_operator elapsed, :<, LIMIT_SECONDS
     assert_equal true, matched
+
+    wild = Weft::Facilitator::X402.parse_route_pattern('*')
+    elapsed = timed { matched = wild['regex'].match?('a' * LENGTH) }
+    assert_operator elapsed, :<, LIMIT_SECONDS
+    assert_equal true, matched
+  end
+
+  def test_core_suffix_patterns_match
+    name = Weft::Facilitator::X402.parse_route_pattern('/files/:name.json')
+    assert_equal true, name['regex'].match?('/files/a.b.json')
+    assert_equal true, name['regex'].match?('/files/ab.json')
+    pair = Weft::Facilitator::X402.parse_route_pattern('/a/[x]-[y]')
+    assert_equal true, pair['regex'].match?('/a/p-q-r')
+  end
+
+  def test_route_match_timeout_is_not_global
+    parsed = Weft::Facilitator::X402.parse_route_pattern('/paid')
+    assert_nil Regexp.timeout
+    assert_in_delta 0.05, parsed['regex'].timeout, 0.0001
   end
 
   def test_amount_scan_stays_linear

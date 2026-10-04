@@ -444,10 +444,15 @@ module Weft
       def match_route(path, method)
         normalized = X402.normalize_path(path)
         upper = method.to_s.upcase
-        found = @compiled.find do |route|
-          route['regex'].match?(normalized) && (route['verb'] == '*' || route['verb'] == upper)
+        @compiled.each do |route|
+          begin
+            matched = route['regex'].match?(normalized)
+          rescue Regexp::TimeoutError
+            return route['config']
+          end
+          return route['config'] if matched && (route['verb'] == '*' || route['verb'] == upper)
         end
-        found && found['config']
+        nil
       end
 
       def normalize_routes(routes)

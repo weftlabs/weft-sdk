@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { x402HTTPResourceServer, x402ResourceServer } from "@x402/core/server";
 import { version as SDK_VERSION } from "../package.json";
 import { WeftClient } from "../src/client";
 import { WeftError } from "../src/error";
@@ -419,10 +420,30 @@ describe("conformance facilitator", () => {
         );
         return;
       }
+      if (loaded.file === "route-match.json") {
+        expect(coreRouteMatches(testCase)).toBe(testCase.match);
+        return;
+      }
       throw new Error(`no facilitator runner for ${loaded.file}`);
     });
   }
 });
+
+type CoreRouteServer = {
+  parseRoutePattern(pattern: string): { verb: string; regex: RegExp; path: string };
+  normalizePath(path: string): string;
+};
+
+const coreRoutes = new x402HTTPResourceServer(new x402ResourceServer(), {
+  "*": { accepts: [] },
+}) as unknown as CoreRouteServer;
+
+function coreRouteMatches(testCase: Record<string, unknown>): boolean {
+  const parsed = coreRoutes.parseRoutePattern(String(testCase.pattern));
+  const normalized = coreRoutes.normalizePath(String(testCase.path));
+  const method = String(testCase.method).toUpperCase();
+  return parsed.regex.test(normalized) && (parsed.verb === "*" || parsed.verb === method);
+}
 
 async function assertAuthHeaders(testCase: Record<string, unknown>): Promise<void> {
   const args = substitute(testCase.args) as {

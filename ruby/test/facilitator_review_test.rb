@@ -134,6 +134,21 @@ class FacilitatorReviewTest < Minitest::Test
     assert_match(/No scheme implementation registered/, error.message)
   end
 
+  def test_route_regex_timeout_requires_payment
+    called = false
+    app = lambda do |_env|
+      called = true
+      [200, {}, ['secret']]
+    end
+    middleware = build(app, scheme: priced_scheme)
+    regex = middleware.instance_variable_get(:@compiled).first['regex']
+    regex.define_singleton_method(:match?) { |_path| raise Regexp::TimeoutError }
+    response = middleware.call(rack_env('/v1/search'))
+
+    assert_equal 402, response[0]
+    refute called
+  end
+
   def test_route_patterns_are_protected
     called = []
     app = lambda do |env|

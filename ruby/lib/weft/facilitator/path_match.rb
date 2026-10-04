@@ -2,62 +2,50 @@
 
 module Weft
   module Facilitator
-    # Linear route matching. No Regexp runs on a path or a pattern.
-    class PathMatcher
-      def self.compile(pattern)
-        trailing = pattern.end_with?('/*')
-        body = trailing ? pattern[0..-3] : pattern
-        tokens = []
-        literal = +''
-        flush = lambda do
-          next if literal.empty?
+    # Linear scans for route compilation, path normalization, and amounts.
+    # Route matching itself is a Core-equivalent regex compiled once per route.
+    module PathMatch
+      ROUTE_ESCAPE = '$()+.?^{|}\\'
 
-          tokens << [:lit, literal]
-          literal = +''
-        end
-        i = 0
-        while i < body.length
-          char = body[i]
-          case char
-          when '\\'
-            flush.call
-            tokens << [:lit, '\\']
-            i += 1
-          when '*'
-            flush.call
-            tokens << [:star]
-            i += 1
-          when '['
-            close = body.index(']', i + 1)
-            if close && close > i + 1
-              flush.call
-              tokens << [:seg]
-              i = close + 1
-            else
-              literal << char
-              i += 1
+      module_function
+
+      def compile_route(path)
+        trailing = path.end_with?('/*')
+        body = trailing ? path[0..-3] : path
+        source = +''
+        index = 0
+        while index < body.length
+          char = body[index]
+          if char == '['
+            close = body.index(']', index + 1)
+            if close && close > index + 1
+              source << '[^/]+'
+              index = close + 1
+              next
             end
-          when ':'
-            length = ident_len(body, i + 1)
-            if length.positive?
-              flush.call
-              tokens << [:seg]
-              i += 1 + length
-            else
-              literal << char
-              i += 1
-            end
-          else
-            literal << char
-            i += 1
           end
+          if char == ':'
+            length = ident_len(body, index + 1)
+            if length.positive?
+              source << '[^/]+'
+              index += 1 + length
+              next
+            end
+          end
+          if char == '*'
+            source << '.*?'
+            index += 1
+            next
+          end
+          source << '\\' if ROUTE_ESCAPE.include?(char)
+          source << char
+          index += 1
         end
-        flush.call
-        tokens << [:trail] if trailing
-        new(tokens)
+        source << '(?:/.*?)?' if trailing
+        Regexp.new("\\A#{source}\\z", Regexp::IGNORECASE | Regexp::MULTILINE, timeout: 0.05)
       end
 
-      def self.ident_len(text, start)
+      def ident_len(text, start)
         return 0 if start >= text.length || !ident_start?(text[start])
 
         index = start + 1
@@ -65,100 +53,31 @@ module Weft
         index - start
       end
 
-      def self.ident_start?(char)
+      def ident_start?(char)
         char == '_' || (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z')
       end
 
-      def self.ident_cont?(char)
+      def ident_cont?(char)
         ident_start?(char) || (char >= '0' && char <= '9')
       end
 
-      def initialize(tokens)
-        @tokens = tokens
-      end
-
-      def match?(path)
-        match_from(path.to_s, 0, 0)
-      end
-
-      private
-
-      def match_from(text, token_index, path_index)
-        star_token = nil
-        star_path = -1
-        loop do
-          token = @tokens[token_index]
-          if token.nil?
-            return true if path_index >= text.length
-            return false unless star_token
-
-            star_path += 1
-            return false if star_path > text.length
-
-            path_index = star_path
-            token_index = star_token + 1
-            next
-          end
-
-          type = token[0]
-          if type == :star
-            star_token = token_index
-            star_path = path_index
-            token_index += 1
-            next
-          end
-          if type == :trail
-            return path_index >= text.length || text[path_index] == '/'
-          end
-
-          consumed = consume(token, text, path_index)
-          if consumed
-            path_index += consumed
-            token_index += 1
-            next
-          end
-          return false unless star_token
-
-          star_path += 1
-          return false if star_path > text.length
-
-          path_index = star_path
-          token_index = star_token + 1
-        end
-      end
-
-      def consume(token, text, path_index)
-        case token[0]
-        when :lit
-          literal = token[1]
-          return nil if path_index + literal.length > text.length
-          return nil unless text[path_index, literal.length].casecmp?(literal)
-
-          literal.length
-        when :seg
-          return nil if path_index >= text.length || text[path_index] == '/'
-
-          end_at = path_index + 1
-          end_at += 1 while end_at < text.length && text[end_at] != '/'
-          end_at - path_index
-        end
-      end
-    end
-
-    module PathMatch
-      module_function
-
       def split_verb(pattern)
-        index = 0
-        index += 1 while index < pattern.length && !whitespace?(pattern[index])
-        return ['*', pattern] if index == pattern.length
+        return ['*', pattern] unless pattern.include?(' ')
 
-        verb = pattern[0, index]
-        index += 1 while index < pattern.length && whitespace?(pattern[index])
-        rest = index < pattern.length ? pattern[index..] : ''
-        stop = 0
-        stop += 1 while stop < rest.length && !whitespace?(rest[stop])
-        [verb, rest[0, stop]]
+        parts = []
+        token = +''
+        pattern.each_char do |char|
+          if whitespace?(char)
+            next if token.empty?
+
+            parts << token
+            token = +''
+          else
+            token << char
+          end
+        end
+        parts << token unless token.empty?
+        [parts[0] || '', parts[1] || '']
       end
 
       def whitespace?(char)
@@ -192,16 +111,6 @@ module Weft
         end
         pattern_index += 1 while pattern_index < pattern.length && pattern[pattern_index] == '*'
         pattern_index == pattern.length
-      end
-
-      def normalize_request_path(path)
-        text = path.to_s
-        question = text.index('?')
-        hash = text.index('#')
-        cut = [question, hash].compact.min
-        text = text[0, cut] if cut
-        collapsed = collapse_slashes(text)
-        trim_trailing_slashes_keep_root(collapsed)
       end
 
       def collapse_slashes(value)

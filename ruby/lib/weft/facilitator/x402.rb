@@ -69,9 +69,20 @@ module Weft
         verb, path = PathMatch.split_verb(pattern)
         {
           'verb' => verb.upcase,
-          'regex' => PathMatcher.compile(path),
+          'regex' => PathMatch.compile_route(path),
           'path' => path
         }
+      end
+
+      def route_matches?(pattern, method, path)
+        parsed = parse_route_pattern(pattern)
+        normalized = normalize_path(path)
+        upper = method.to_s.upcase
+        return false unless parsed['verb'] == '*' || parsed['verb'] == upper
+
+        parsed['regex'].match?(normalized)
+      rescue Regexp::TimeoutError
+        true
       end
 
       def network_matches?(pattern, network)

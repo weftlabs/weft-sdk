@@ -1,0 +1,261 @@
+[
+  {
+    "name": "plain path matches",
+    "pattern": "/health",
+    "method": "GET",
+    "path": "/health",
+    "match": true
+  },
+  {
+    "name": "plain path does not match a longer path",
+    "pattern": "/health",
+    "method": "GET",
+    "path": "/healthz",
+    "match": false
+  },
+  {
+    "name": "colon parameter matches one segment",
+    "pattern": "/users/:id",
+    "method": "GET",
+    "path": "/users/42",
+    "match": true
+  },
+  {
+    "name": "colon parameter does not match an extra segment",
+    "pattern": "/users/:id",
+    "method": "GET",
+    "path": "/users/42/extra",
+    "match": false
+  },
+  {
+    "name": "colon parameter keeps a dotted suffix and matches a dotted name",
+    "pattern": "/files/:name.json",
+    "method": "GET",
+    "path": "/files/a.b.json",
+    "match": true
+  },
+  {
+    "name": "colon parameter keeps a dotted suffix and matches a short name",
+    "pattern": "/files/:name.json",
+    "method": "GET",
+    "path": "/files/ab.json",
+    "match": true
+  },
+  {
+    "name": "colon parameter with a dotted suffix rejects a name without the suffix",
+    "pattern": "/files/:name.json",
+    "method": "GET",
+    "path": "/files/ab",
+    "match": false
+  },
+  {
+    "name": "colon parameter with a dotted suffix needs a character before the suffix",
+    "pattern": "/files/:name.json",
+    "method": "GET",
+    "path": "/files/.json",
+    "match": false
+  },
+  {
+    "name": "bracket parameters match around a literal hyphen",
+    "pattern": "/a/[x]-[y]",
+    "method": "GET",
+    "path": "/a/p-q-r",
+    "match": true
+  },
+  {
+    "name": "bracket parameters match a single hyphen",
+    "pattern": "/a/[x]-[y]",
+    "method": "GET",
+    "path": "/a/p-q",
+    "match": true
+  },
+  {
+    "name": "bracket parameters reject a segment with no hyphen",
+    "pattern": "/a/[x]-[y]",
+    "method": "GET",
+    "path": "/a/pq",
+    "match": false
+  },
+  {
+    "name": "star in the middle matches across segments",
+    "pattern": "/files/*/end",
+    "method": "GET",
+    "path": "/files/a/b/end",
+    "match": true
+  },
+  {
+    "name": "star in the middle matches one segment",
+    "pattern": "/files/*/end",
+    "method": "GET",
+    "path": "/files/x/end",
+    "match": true
+  },
+  {
+    "name": "star in the middle still requires the surrounding slashes",
+    "pattern": "/files/*/end",
+    "method": "GET",
+    "path": "/files/end",
+    "match": false
+  },
+  {
+    "name": "trailing wildcard matches the bare prefix",
+    "pattern": "/api/premium/*",
+    "method": "GET",
+    "path": "/api/premium",
+    "match": true
+  },
+  {
+    "name": "trailing wildcard matches the prefix with a trailing slash",
+    "pattern": "/api/premium/*",
+    "method": "GET",
+    "path": "/api/premium/",
+    "match": true
+  },
+  {
+    "name": "trailing wildcard matches a child path",
+    "pattern": "/api/premium/*",
+    "method": "GET",
+    "path": "/api/premium/x",
+    "match": true
+  },
+  {
+    "name": "trailing wildcard does not match a longer sibling",
+    "pattern": "/api/premium/*",
+    "method": "GET",
+    "path": "/api/premiumx",
+    "match": false
+  },
+  {
+    "name": "method prefix matches the same method",
+    "pattern": "GET /paid",
+    "method": "GET",
+    "path": "/paid",
+    "match": true
+  },
+  {
+    "name": "method prefix rejects a different method",
+    "pattern": "GET /paid",
+    "method": "POST",
+    "path": "/paid",
+    "match": false
+  },
+  {
+    "name": "method prefix is case-insensitive",
+    "pattern": "get /paid",
+    "method": "GET",
+    "path": "/paid",
+    "match": true
+  },
+  {
+    "name": "path match is case-insensitive",
+    "pattern": "/API/Users",
+    "method": "GET",
+    "path": "/api/users",
+    "match": true
+  },
+  {
+    "name": "query string is stripped before matching",
+    "pattern": "/users/:id",
+    "method": "GET",
+    "path": "/users/42?x=1",
+    "match": true
+  },
+  {
+    "name": "fragment is stripped before matching",
+    "pattern": "/users/:id",
+    "method": "GET",
+    "path": "/users/42#frag",
+    "match": true
+  },
+  {
+    "name": "duplicate slashes collapse before matching",
+    "pattern": "/users/:id",
+    "method": "GET",
+    "path": "/users//42",
+    "match": true
+  },
+  {
+    "name": "trailing slash is stripped before matching",
+    "pattern": "/users/:id",
+    "method": "GET",
+    "path": "/users/42/",
+    "match": true
+  },
+  {
+    "name": "encoded slash stays inside one segment",
+    "pattern": "/files/:id",
+    "method": "GET",
+    "path": "/files/a%2Fb",
+    "match": true
+  },
+  {
+    "name": "encoded slash does not create a second segment",
+    "pattern": "/files/:a/:b",
+    "method": "GET",
+    "path": "/files/a%2Fb",
+    "match": false
+  },
+  {
+    "name": "backslash in a path is one segment",
+    "pattern": "/files/:id",
+    "method": "GET",
+    "path": "/files/a\\b",
+    "match": true
+  },
+  {
+    "name": "literal backslash in the pattern does not match the normalized path",
+    "pattern": "/files/a\\b",
+    "method": "GET",
+    "path": "/files/a\\b",
+    "match": false
+  },
+  {
+    "name": "normalized backslash matches the percent-encoded form",
+    "pattern": "/files/%5Cb",
+    "method": "GET",
+    "path": "/files/\\b",
+    "match": true
+  },
+  {
+    "name": "newline in a segment matches a parameter",
+    "pattern": "/files/:id",
+    "method": "GET",
+    "path": "/files/a\nb",
+    "match": true
+  },
+  {
+    "name": "newline in a segment matches a wildcard",
+    "pattern": "/files/*",
+    "method": "GET",
+    "path": "/files/a\nb",
+    "match": true
+  },
+  {
+    "name": "newline in a segment does not match a different literal",
+    "pattern": "/files/ab",
+    "method": "GET",
+    "path": "/files/a\nb",
+    "match": false
+  },
+  {
+    "name": "bare star matches any method and path",
+    "pattern": "*",
+    "method": "DELETE",
+    "path": "/any",
+    "match": true
+  },
+  {
+    "name": "method prefix on a star matches that method",
+    "pattern": "POST *",
+    "method": "POST",
+    "path": "/any",
+    "match": true
+  },
+  {
+    "name": "method prefix on a star rejects another method",
+    "pattern": "POST *",
+    "method": "GET",
+    "path": "/any",
+    "match": false
+  }
+]

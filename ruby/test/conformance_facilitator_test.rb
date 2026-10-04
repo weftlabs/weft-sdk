@@ -54,6 +54,12 @@ class ConformanceFacilitatorTest < Minitest::Test
     when 'settlement.json'
       reason = test_case['reason']
       assert_equal test_case['expect'], Weft::Facilitator::Settlement.facilitator_unavailable?(reason)
+    when 'route-match.json'
+      assert_equal(
+        test_case['match'],
+        Weft::Facilitator::X402.route_matches?(test_case['pattern'], test_case['method'], test_case['path']),
+        test_case['name']
+      )
     else
       raise "no facilitator runner for #{filename}"
     end
