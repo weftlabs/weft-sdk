@@ -1,0 +1,44 @@
+name: Curation
+
+# No path filter. This check is cheap, and branch protection will require the
+# `curation` job. A paths filter would leave that required check pending on
+# PRs that do not touch the listed paths.
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+# github.workflow MUST stay in the group key. Every language workflow and the
+# e2e/sync workflows fire on the same ref; a group keyed on the ref alone puts
+# them all in one slot, so with cancel-in-progress the last run created cancels
+# the others before a single step executes. That shows up on the PR as a red
+# check that failed in 0s with no logs.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  curation:
+    name: curation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+      - name: Check operation inventory
+        run: node scripts/check-operation-inventory.mjs
+      - name: Test operation inventory checker
+        run: node --test scripts/check-operation-inventory.test.mjs

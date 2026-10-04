@@ -32,6 +32,9 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
+    operation-inventory:
+      run: mise exec -- node scripts/check-operation-inventory.mjs
+      fail_text: "Operation inventory check failed"
     typescript:
       run: mise exec -- pnpm run hooks:pre-push
       fail_text: "TypeScript lint, format, or unit tests failed"
