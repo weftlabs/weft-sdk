@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from contextvars import ContextVar
 from typing import Any
 
@@ -76,6 +77,49 @@ def is_json_response(response: Any) -> bool:
         re.search(r"^(application/json|[^;]+\+json)(?:;|$)", content_type, re.IGNORECASE)
         is not None
     )
+
+
+# Same phases as @x402/core PAYMENT_FLOWS. (settle before handler, settle after handler)
+_PAYMENT_FLOW_PHASES = {
+    "authorization": (False, True),
+    "upfront": (True, False),
+    "escrow": (True, True),
+}
+
+
+def before_handler_flow(before: object) -> str | None:
+    """Return the flow name carried on a restored before-handler settlement."""
+
+    if isinstance(before, Mapping):
+        flow = before.get("flow")
+    else:
+        flow = getattr(before, "flow", None)
+    return flow if isinstance(flow, str) else None
+
+
+def settles_after_handler(flow: str) -> bool:
+    """Return whether Core settles again after the handler for this flow."""
+
+    phases = _PAYMENT_FLOW_PHASES.get(flow)
+    if phases is None:
+        known = ", ".join(_PAYMENT_FLOW_PHASES)
+        raise ValueError(f'[x402] Unknown payment flow "{flow}". Expected one of: {known}.')
+    return phases[1]
+
+
+def payment_response_headers(result: object) -> dict[str, str]:
+    """Encode a completed settle result as the PAYMENT-RESPONSE header."""
+
+    from x402.http.utils import encode_payment_response_header
+    from x402.schemas import SettleResponse
+
+    if isinstance(result, SettleResponse):
+        model = result
+    elif isinstance(result, Mapping):
+        model = SettleResponse.model_validate(result)
+    else:
+        return {}
+    return {"PAYMENT-RESPONSE": encode_payment_response_header(model)}
 
 
 def with_private_cache_control(value: str | None) -> str:

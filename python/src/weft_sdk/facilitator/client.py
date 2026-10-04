@@ -13,6 +13,7 @@ import os
 from collections.abc import Callable, Mapping
 from typing import Any, cast
 
+import httpx
 from x402.http import HTTPFacilitatorClient
 from x402.schemas import PaymentPayload, PaymentRequirements, SettleResponse
 from x402.schemas.errors import SettleError
@@ -98,7 +99,19 @@ def _seller_create_headers(config: WeftFacilitatorConfig | None) -> CreateAuthHe
         return None
     if not callable(seller):
         raise TypeError("create_auth_headers must be a callable")
+    if _is_async_callable(seller):
+        raise TypeError(
+            "create_auth_headers must be synchronous; "
+            "x402 2.18.0 resolves facilitator auth headers synchronously"
+        )
     return cast(CreateAuthHeaders, seller)
+
+
+def _is_async_callable(seller: Callable[..., Any]) -> bool:
+    if inspect.iscoroutinefunction(seller):
+        return True
+    call = getattr(type(seller), "__call__", None)
+    return inspect.iscoroutinefunction(call)
 
 
 def _merged_create_headers(
@@ -197,6 +210,8 @@ class FacilitatorClient(HTTPFacilitatorClient):
             if classified is not None:
                 raise classified from error
             raise
+        except httpx.TransportError as error:
+            raise FacilitatorUnavailableError() from error
 
 
 def create_facilitator_client(
