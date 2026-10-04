@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - "typescript/**"
-      - "cli/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"

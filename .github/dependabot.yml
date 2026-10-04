@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # TypeScript SDK and CLI workspace
+  # TypeScript SDK workspace
   - package-ecosystem: npm
     directory: "/"
     schedule:

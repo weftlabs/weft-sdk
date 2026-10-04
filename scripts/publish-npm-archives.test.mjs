@@ -2,18 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { publishArchives } from "./publish-npm-archives.mjs";
 
-const packages = () =>
-  ["sdk", "cli"].map((name) => ({
-    archive: `${name}.tgz`,
-    integrity: `sha512-${name}`,
+const packages = () => [
+  {
+    archive: "sdk.tgz",
+    integrity: "sha512-sdk",
     manifest: {
-      name: `@weftlabs/${name}`,
+      name: "@weftlabs/sdk",
       version: "0.25.0",
-      ...(name === "cli"
-        ? { dependencies: { "@weftlabs/sdk": "0.25.0" } }
-        : {}),
     },
-  }));
+  },
+];
 
 function registry({
   existing = false,
@@ -28,21 +26,20 @@ function registry({
     get: async (path) => {
       if (error) throw new Error("registry unavailable");
       if (!path.includes("/")) return absent ? null : {};
-      const name = decodeURIComponent(path).includes("/sdk/") ? "sdk" : "cli";
-      return existing || published.includes(`${name}.tgz`)
-        ? { dist: { integrity: mismatch ? "different" : `sha512-${name}` } }
+      return existing || published.includes("sdk.tgz")
+        ? { dist: { integrity: mismatch ? "different" : "sha512-sdk" } }
         : null;
     },
   };
 }
 
-test("publishes the tested archives in SDK then CLI order and checks registry integrity", async () => {
+test("publishes the tested SDK archive and checks registry integrity", async () => {
   const api = registry();
-  await publishArchives(packages().reverse(), "v0.25.0", api);
-  assert.deepEqual(api.published, ["sdk.tgz", "cli.tgz"]);
+  await publishArchives(packages(), "v0.25.0", api);
+  assert.deepEqual(api.published, ["sdk.tgz"]);
 });
 
-test("recovery skips only existing versions with identical bytes", async () => {
+test("recovery skips only an existing version with identical bytes", async () => {
   const api = registry({ existing: true });
   await publishArchives(packages(), "v0.25.0", api);
   assert.deepEqual(api.published, []);
@@ -62,8 +59,9 @@ test("waits for registry propagation without submitting another publish", async 
     return get(path);
   };
   await publishArchives(packages(), "v0.25.0", api);
-  assert.deepEqual(api.published, ["sdk.tgz", "cli.tgz"]);
-  assert.equal(waits.length, 4);
+  assert.deepEqual(api.published, ["sdk.tgz"]);
+  assert.equal(reads.get("%40weftlabs%2Fsdk/0.25.0"), 4);
+  assert.equal(waits.length, 2);
 });
 
 test("stops after bounded readback when a published SDK stays absent", async () => {
@@ -88,17 +86,25 @@ for (const [label, options] of [
   });
 }
 
-test("stops before CLI publication if SDK upload has different registry bytes", async () => {
+test("rejects different registry bytes after the SDK upload", async () => {
   const api = registry({ mismatch: true });
   await assert.rejects(publishArchives(packages(), "v0.25.0", api));
   assert.deepEqual(api.published, ["sdk.tgz"]);
 });
 
-test("rejects a tag mismatch or a CLI dependency outside the new scope", async () => {
+test("rejects a tag mismatch, a second archive, or a non-SDK package", async () => {
   const api = registry();
   await assert.rejects(publishArchives(packages(), "v0.24.0", api));
-  const archives = packages();
-  archives[1].manifest.dependencies = { "@weft-labs/sdk": "0.25.0" };
-  await assert.rejects(publishArchives(archives, "v0.25.0", api));
+  const extra = packages();
+  extra.push({
+    archive: "other.tgz",
+    integrity: "sha512-other",
+    manifest: { name: "@weftlabs/other", version: "0.25.0" },
+  });
+  await assert.rejects(publishArchives(extra, "v0.25.0", api));
+  const wrong = packages();
+  wrong[0].manifest.name = "@weftlabs/other";
+  await assert.rejects(publishArchives(wrong, "v0.25.0", api));
+  await assert.rejects(publishArchives([], "v0.25.0", api));
   assert.deepEqual(api.published, []);
 });

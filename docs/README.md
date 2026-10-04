@@ -1,12 +1,13 @@
 # Weft SDK Documentation
 
 The Weft SDK is published for four languages, each generated from the Weft API's
-OpenAPI specification. Start with the per-language guide for the client you use:
+OpenAPI specification. Start with the per-language guide for the client you use.
+The command-line client is a separate repository:
+[weftlabs/weft-cli](https://github.com/weftlabs/weft-cli).
 
 | Language   | Package                  | Guide                                  |
 |------------|--------------------------|----------------------------------------|
 | TypeScript | `@weftlabs/sdk` (npm)   | [`../typescript/README.md`](../typescript/README.md) |
-| CLI        | `@weftlabs/cli` (npm)   | [`../cli/README.md`](../cli/README.md) |
 | Python     | `weft-sdk` (PyPI)        | [`../python/README.md`](../python/README.md) |
 | Ruby       | `weft-sdk` (RubyGems)    | [`../ruby/README.md`](../ruby/README.md) |
 | Go         | `github.com/weftlabs/weft-sdk/go` | [`../go/README.md`](../go/README.md) |

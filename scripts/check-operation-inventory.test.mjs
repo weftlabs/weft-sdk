@@ -97,6 +97,20 @@ test("the real spec and inventory agree", () => {
     JSON.stringify(inventory).includes("getCuratedMarketplaceContract"),
     false,
   );
+  assert.equal(
+    inventory.operations.some(
+      (operation) =>
+        operation.classification === "cli-only" ||
+        Object.hasOwn(operation, "cli"),
+    ),
+    false,
+  );
+  assert.deepEqual(
+    inventory.operations
+      .filter((operation) => operation.reason === "CLI-only (weftlabs/weft-cli)")
+      .map((operation) => operation.operationId),
+    ["createAccountBootstrap", "getAccountBootstrap"],
+  );
 });
 
 test("an added spec operation fails", () => {
@@ -367,7 +381,6 @@ test("description text that contains operationId is not an operation", () => {
         {
           operationId: "realOperation",
           classification: "excluded",
-          cli: null,
           reason: "fixture",
         },
       ],
@@ -404,7 +417,6 @@ test("a call site does not count as a façade method", () => {
           operationId: "fetch",
           classification: "facade",
           methods: { typescript: "fetch", python: "fetch" },
-          cli: null,
           reason: "fixture",
         },
       ],
@@ -479,7 +491,6 @@ test("--write replaces only the marked table", () => {
         {
           operationId: "getWidget",
           classification: "excluded",
-          cli: null,
           reason: "fixture",
         },
       ],
@@ -527,7 +538,6 @@ test("--write does not change markdown when the inventory does not match the spe
         {
           operationId: "getWidget",
           classification: "excluded",
-          cli: null,
           reason: "fixture",
         },
       ],
@@ -547,4 +557,44 @@ test("--write does not change markdown when the inventory does not match the spe
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("a cli field or cli-only classification fails", () => {
+  const withCli = withCopy(inventoryPath, (raw) => {
+    const inventory = JSON.parse(raw);
+    const operation = inventory.operations.find(
+      (item) => item.operationId === "signIn",
+    );
+    operation.cli = "weft sign-in";
+    return JSON.stringify(inventory);
+  });
+  const cliField = finish(
+    withCli.dir,
+    run(["--inventory", withCli.path]),
+  );
+  assert.notEqual(cliField.status, 0);
+  assert.ok(
+    problems(cliField).includes(
+      "operation signIn must not include a cli field",
+    ),
+  );
+
+  const withClassification = withCopy(inventoryPath, (raw) => {
+    const inventory = JSON.parse(raw);
+    const operation = inventory.operations.find(
+      (item) => item.operationId === "signIn",
+    );
+    operation.classification = "cli-only";
+    return JSON.stringify(inventory);
+  });
+  const classification = finish(
+    withClassification.dir,
+    run(["--inventory", withClassification.path]),
+  );
+  assert.notEqual(classification.status, 0);
+  assert.ok(
+    problems(classification).includes(
+      'operation signIn has invalid classification "cli-only"',
+    ),
+  );
 });

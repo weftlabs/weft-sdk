@@ -40,7 +40,6 @@ const LANGUAGE_FACADES = [
 
 const CLASSIFICATIONS = {
   facade: "Facade",
-  "cli-only": "CLI-only",
   excluded: "Excluded",
 };
 
@@ -100,7 +99,7 @@ function renderOperationTable(inventory) {
       `${language} façade`
     );
   });
-  const header = ["operation", ...headings, "CLI", "classification/reason"];
+  const header = ["operation", ...headings, "classification/reason"];
   const lines = [
     `| ${header.join(" | ")} |`,
     `| ${header.map(() => "---").join(" | ")} |`,
@@ -114,7 +113,6 @@ function renderOperationTable(inventory) {
       `| ${[
         `\`${operation.operationId}\``,
         ...inventory.languages.map((language) => cell(methods[language])),
-        cell(operation.cli),
         `${label}: ${reason}`,
       ].join(" | ")} |`,
     );
@@ -261,8 +259,8 @@ export function checkOperationInventory({
     if (typeof operation.reason !== "string" || operation.reason.trim() === "") {
       problems.push(`operation ${id} has an empty reason`);
     }
-    if (operation.cli !== null && (typeof operation.cli !== "string" || operation.cli.trim() === "")) {
-      problems.push(`operation ${id} cli must be a string or null`);
+    if (Object.hasOwn(operation, "cli")) {
+      problems.push(`operation ${id} must not include a cli field`);
     }
     for (const language of inventory.languages) {
       const name = operation.methods?.[language];

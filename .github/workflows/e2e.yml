@@ -85,7 +85,7 @@ jobs:
       - name: Install TypeScript dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build TypeScript SDK and CLI
+      - name: Build TypeScript SDK
         run: pnpm run build
 
       - name: Run TypeScript staging e2e
