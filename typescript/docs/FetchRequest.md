@@ -8,6 +8,8 @@ Name | Type
 ------------ | -------------
 `url` | string
 `maxCostUsd` | string
+`allowTempoRefill` | boolean
+`maxTotalCostUsd` | string
 `method` | string
 `body` | [FetchRequestBody](FetchRequestBody.md)
 `headers` | { [key: string]: string; }
@@ -24,6 +26,8 @@ import type { FetchRequest } from '@weftlabs/sdk'
 const example = {
   "url": https://x402.api.agentmail.to/v0/inboxes,
   "maxCostUsd": 0.05,
+  "allowTempoRefill": false,
+  "maxTotalCostUsd": 0.05,
   "method": null,
   "body": null,
   "headers": {Accept=application/json, User-Agent=my-agent/1.0},

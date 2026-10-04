@@ -34,11 +34,38 @@ export interface FetchRequest {
      */
     url: string;
     /**
-     * Hard ceiling on what the buyer is willing to pay. Defaults to `0.10` USD.
+     * Merchant-principal ceiling, excluding gas, provider fees and prerequisites. Defaults to `0.10` USD; use `max_total_cost_usd` for an all-in bound.
      * @type {string}
      * @memberof FetchRequest
      */
     maxCostUsd?: string;
+    /**
+     * Whether this request may create, adopt, or enqueue a Base-to-Tempo
+     * refill. Only JSON booleans are accepted. Omission allows legacy
+     * refill behavior unless `max_total_cost_usd` is supplied, in which
+     * case refill is disabled. False leaves unrelated bridges and jobs
+     * unchanged and reports an unfunded Tempo pocket as
+     * `INSUFFICIENT_BALANCE`. This does not select a rail or bound fees.
+     *
+     * @type {boolean}
+     * @memberof FetchRequest
+     */
+    allowTempoRefill?: boolean;
+    /**
+     * Optional all-in buyer-debit ceiling in USD, including principal,
+     * gas, provider fees and prerequisite operations. Requires a binding
+     * upstream upper bound before any payment effect. Current integrations
+     * have no such guarantee, so requests requiring wallet signing or
+     * payment fail closed with `TOTAL_COST_UNVERIFIABLE`, including
+     * recovery and replay of previous payments. No positive paid route
+     * is currently admitted in this mode. Estimates, expected sponsorship
+     * and receipts are not authority. Implies no refill; explicit
+     * `allow_tempo_refill: true` is invalid. Omission preserves legacy behavior.
+     *
+     * @type {string}
+     * @memberof FetchRequest
+     */
+    maxTotalCostUsd?: string;
     /**
      * HTTP method to use against the upstream.
      * @type {string}
@@ -84,7 +111,7 @@ export interface FetchRequest {
      */
     operationId?: string;
     /**
-     * Advisory access-method id returned by search.
+     * Advisory access-method id returned by search; does not enforce a payment rail.
      * @type {string}
      * @memberof FetchRequest
      */
@@ -127,6 +154,8 @@ export function FetchRequestFromJSONTyped(json: any, ignoreDiscriminator: boolea
 
         'url': json['url'],
         'maxCostUsd': json['max_cost_usd'] == null ? undefined : json['max_cost_usd'],
+        'allowTempoRefill': json['allow_tempo_refill'] == null ? undefined : json['allow_tempo_refill'],
+        'maxTotalCostUsd': json['max_total_cost_usd'] == null ? undefined : json['max_total_cost_usd'],
         'method': json['method'] == null ? undefined : json['method'],
         'body': json['body'] == null ? undefined : FetchRequestBodyFromJSON(json['body']),
         'headers': json['headers'] == null ? undefined : json['headers'],
@@ -149,6 +178,8 @@ export function FetchRequestToJSONTyped(value?: FetchRequest | null, ignoreDiscr
 
         'url': value['url'],
         'max_cost_usd': value['maxCostUsd'],
+        'allow_tempo_refill': value['allowTempoRefill'],
+        'max_total_cost_usd': value['maxTotalCostUsd'],
         'method': value['method'],
         'body': FetchRequestBodyToJSON(value['body']),
         'headers': value['headers'],

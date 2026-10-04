@@ -30,7 +30,7 @@ import (
 
 func main() {
 	fetchRequest := *openapiclient.NewFetchRequest("https://x402.api.agentmail.to/v0/inboxes") // FetchRequest |
-	idempotencyKey := "idempotencyKey_example" // string | Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request.  (optional)
+	idempotencyKey := "idempotencyKey_example" // string | Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request. Effective safety controls participate in retry identity. Changing them under a reserved key returns `IDEMPOTENCY_CONFLICT`; an older unconstrained payment cannot become a bounded success on retry.  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -56,7 +56,7 @@ Other parameters are passed through a pointer to a apiFetchRequest struct via th
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **fetchRequest** | [**FetchRequest**](FetchRequest.md) |  |
- **idempotencyKey** | **string** | Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request.  |
+ **idempotencyKey** | **string** | Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request. Effective safety controls participate in retry identity. Changing them under a reserved key returns &#x60;IDEMPOTENCY_CONFLICT&#x60;; an older unconstrained payment cannot become a bounded success on retry.  |
 
 ### Return type
 

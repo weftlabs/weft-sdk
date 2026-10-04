@@ -17,29 +17,24 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, StrictBool, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
-from weft_sdk.generated.models.fetch_balance_snapshot import FetchBalanceSnapshot
-from weft_sdk.generated.models.spending_policy import SpendingPolicy
 from typing import Optional, Set
 from typing_extensions import Self
 
-class FetchErrorResponse(BaseModel):
+class FetchRequestNot(BaseModel):
     """
-    Bespoke error envelope for `/api/v1/fetch`. Every error carries the buyer's current `policy`, `balance`, and a `dashboard_url` so a CLI can render an actionable message without a second round-trip.  `error` values include the fixed codes listed below plus the `POLICY_VIOLATION_<REASON>` family, where `<REASON>` is the violated policy field (`MAX_TX`, `DAILY`, or `WEEKLY` — see `PolicyViolation::REASONS`).
+    FetchRequestNot
     """ # noqa: E501
-    error: StrictStr = Field(description="Stable error code.")
-    details: Dict[str, Any] = Field(description="Optional context. Shape varies by error code.")
-    policy: SpendingPolicy
-    balance: FetchBalanceSnapshot
-    dashboard_url: StrictStr = Field(description="Deep-link to the dashboard's policy page.")
-    __properties: ClassVar[List[str]] = ["error", "details", "policy", "balance", "dashboard_url"]
+    max_total_cost_usd: StrictStr
+    allow_tempo_refill: StrictBool
+    __properties: ClassVar[List[str]] = ["max_total_cost_usd", "allow_tempo_refill"]
 
-    @field_validator('error')
-    def error_validate_enum(cls, value):
+    @field_validator('allow_tempo_refill')
+    def allow_tempo_refill_validate_enum(cls, value):
         """Validates the enum"""
-        if value not in set(['INVALID_REQUEST', 'UNKNOWN_PARAMETER', 'INVALID_URL', 'INVALID_MAX_COST_USD', 'INVALID_ALLOW_TEMPO_REFILL', 'INVALID_MAX_TOTAL_COST_USD', 'INCOMPATIBLE_FETCH_CONTROLS', 'UNSUPPORTED_METHOD', 'INVALID_BODY', 'INVALID_HEADERS', 'INVALID_IDEMPOTENCY_KEY', 'IDEMPOTENCY_CONFLICT', 'ACCOUNT_CLOSING', 'EXCEEDED_MAX_COST', 'TOTAL_COST_UNVERIFIABLE', 'FUNDING_PENDING', 'INSUFFICIENT_BALANCE', 'PAYMENT_AUTHORIZATION_REQUIRED', 'WALLET_SETUP_INCOMPLETE', 'MERCHANT_RETURNED_NON_402', 'MERCHANT_TIMEOUT', 'MERCHANT_CONNECTION_FAILED', 'PAID_DELIVERY_FAILED', 'DELIVERY_REPLAY_UNAVAILABLE', 'ARTIFACT_TOO_LARGE', 'DENYLISTED_RECIPIENT', 'WALLET_ENVIRONMENT_MISMATCH', 'UNSUPPORTED_ASSET', 'UNSUPPORTED_PAYMENT_METHOD', 'SETTLEMENT_FAILED', 'SETTLEMENT_PENDING', 'POLICY_VIOLATION_MAX_TX', 'POLICY_VIOLATION_DAILY', 'POLICY_VIOLATION_WEEKLY']):
-            raise ValueError("must be one of enum values ('INVALID_REQUEST', 'UNKNOWN_PARAMETER', 'INVALID_URL', 'INVALID_MAX_COST_USD', 'INVALID_ALLOW_TEMPO_REFILL', 'INVALID_MAX_TOTAL_COST_USD', 'INCOMPATIBLE_FETCH_CONTROLS', 'UNSUPPORTED_METHOD', 'INVALID_BODY', 'INVALID_HEADERS', 'INVALID_IDEMPOTENCY_KEY', 'IDEMPOTENCY_CONFLICT', 'ACCOUNT_CLOSING', 'EXCEEDED_MAX_COST', 'TOTAL_COST_UNVERIFIABLE', 'FUNDING_PENDING', 'INSUFFICIENT_BALANCE', 'PAYMENT_AUTHORIZATION_REQUIRED', 'WALLET_SETUP_INCOMPLETE', 'MERCHANT_RETURNED_NON_402', 'MERCHANT_TIMEOUT', 'MERCHANT_CONNECTION_FAILED', 'PAID_DELIVERY_FAILED', 'DELIVERY_REPLAY_UNAVAILABLE', 'ARTIFACT_TOO_LARGE', 'DENYLISTED_RECIPIENT', 'WALLET_ENVIRONMENT_MISMATCH', 'UNSUPPORTED_ASSET', 'UNSUPPORTED_PAYMENT_METHOD', 'SETTLEMENT_FAILED', 'SETTLEMENT_PENDING', 'POLICY_VIOLATION_MAX_TX', 'POLICY_VIOLATION_DAILY', 'POLICY_VIOLATION_WEEKLY')")
+        if value not in set(['true']):
+            raise ValueError("must be one of enum values ('true')")
         return value
 
     model_config = ConfigDict(
@@ -60,7 +55,7 @@ class FetchErrorResponse(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of FetchErrorResponse from a JSON string"""
+        """Create an instance of FetchRequestNot from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -81,17 +76,11 @@ class FetchErrorResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of policy
-        if self.policy:
-            _dict['policy'] = self.policy.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of balance
-        if self.balance:
-            _dict['balance'] = self.balance.to_dict()
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of FetchErrorResponse from a dict"""
+        """Create an instance of FetchRequestNot from a dict"""
         if obj is None:
             return None
 
@@ -99,10 +88,7 @@ class FetchErrorResponse(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "error": obj.get("error"),
-            "details": obj.get("details"),
-            "policy": SpendingPolicy.from_dict(obj["policy"]) if obj.get("policy") is not None else None,
-            "balance": FetchBalanceSnapshot.from_dict(obj["balance"]) if obj.get("balance") is not None else None,
-            "dashboard_url": obj.get("dashboard_url")
+            "max_total_cost_usd": obj.get("max_total_cost_usd"),
+            "allow_tempo_refill": obj.get("allow_tempo_refill")
         })
         return _obj
