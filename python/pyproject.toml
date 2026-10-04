@@ -25,7 +25,7 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "typing-extensions>=4.7.1",
     "urllib3>=1.25.3,<3",
-    "x402>=1.0.0",
+    "x402>=2.25.0,<3",
 ]
 
 [project.urls]
@@ -73,7 +73,7 @@ module = "weft_sdk.generated.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["x402.*", "flask.*"]
+module = ["x402.*"]
 ignore_missing_imports = true
 ignore_errors = true
 
