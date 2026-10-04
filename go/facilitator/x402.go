@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -216,15 +217,30 @@ func matchRoute(routes []compiledRoute, method, path string) *compiledRoute {
 }
 
 func normalizePath(path string) string {
-	path = strings.SplitN(path, "?", 2)[0]
-	path = strings.SplitN(path, "#", 2)[0]
+	for i := 0; i < len(path); i++ {
+		if path[i] == '?' || path[i] == '#' {
+			path = path[:i]
+			break
+		}
+	}
+	parts := strings.Split(path, "/")
+	for i, segment := range parts {
+		decoded, err := url.PathUnescape(segment)
+		if err != nil {
+			continue
+		}
+		decoded = strings.ReplaceAll(decoded, "/", "%2F")
+		decoded = strings.ReplaceAll(decoded, "\\", "%5C")
+		parts[i] = decoded
+	}
+	path = strings.Join(parts, "/")
 	for strings.Contains(path, "//") {
 		path = strings.ReplaceAll(path, "//", "/")
 	}
-	if len(path) > 1 {
-		path = strings.TrimRight(path, "/")
+	if path == "/" {
+		return path
 	}
-	return path
+	return strings.TrimRight(path, "/")
 }
 
 func paymentHeader(r *http.Request) string {

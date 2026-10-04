@@ -120,7 +120,7 @@ type paymentGate struct {
 }
 
 func (g *paymentGate) serve(w http.ResponseWriter, r *http.Request, next http.Handler) {
-	matched := matchRoute(g.routes, r.Method, r.URL.Path)
+	matched := matchRoute(g.routes, r.Method, r.URL.EscapedPath())
 	if matched == nil {
 		next.ServeHTTP(w, r)
 		return

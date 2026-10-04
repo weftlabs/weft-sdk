@@ -67,6 +67,8 @@ func TestFacilitatorConformance(t *testing.T) {
 					if IsFacilitatorUnavailable(reason) != item["expect"].(bool) {
 						t.Fatalf("unavailable(%q) = %v, want %v", reason, IsFacilitatorUnavailable(reason), item["expect"])
 					}
+				case "route-match.json":
+					assertRouteMatch(t, item)
 				default:
 					t.Fatalf("no facilitator runner for %s", entry.Name())
 				}
@@ -75,6 +77,20 @@ func TestFacilitatorConformance(t *testing.T) {
 	}
 	if count == 0 {
 		t.Fatal("no facilitator conformance cases")
+	}
+}
+
+func assertRouteMatch(t *testing.T, testCase map[string]any) {
+	t.Helper()
+	verb, re, err := compilePattern(stringOr(testCase["pattern"]))
+	if err != nil {
+		t.Fatalf("compile %q: %v", testCase["pattern"], err)
+	}
+	normalized := normalizePath(stringOr(testCase["path"]))
+	method := strings.ToUpper(stringOr(testCase["method"]))
+	got := re.MatchString(normalized) && (verb == "*" || verb == method)
+	if got != testCase["match"].(bool) {
+		t.Fatalf("pattern %q method %s path %q normalized %q match %v, want %v", testCase["pattern"], method, testCase["path"], normalized, got, testCase["match"])
 	}
 }
 
