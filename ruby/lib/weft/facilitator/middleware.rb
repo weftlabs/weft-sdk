@@ -3,6 +3,7 @@
 require 'json'
 
 require_relative 'client'
+require_relative 'echo'
 require_relative 'extensions'
 require_relative 'handshake'
 require_relative 'product'
@@ -35,6 +36,7 @@ module Weft
         @routes = Product.apply_product_identity(normalize_routes(routes), declaration)
         Extensions.register_dynamic_extensions(@server, @routes)
         @compiled = compile_routes(@routes)
+        validate_registered_schemes!
         @facilitator_synced = false
         @last_failed_sync_at = 0
         @boot_sync = nil
@@ -94,6 +96,13 @@ module Weft
         end
 
         matching = match_requirements(required['accepts'], payment)
+        extension_result = Echo.validate(required, payment, dynamic_fields: dynamic_fields_for(required))
+        unless extension_result['valid']
+          error_required = @server.create_payment_required(
+            requirements, resource, extension_result['invalidReason'], extensions, transport
+          )
+          return { 'type' => 'payment-error', 'response' => http_required_response(error_required, false) }
+        end
         if matching.nil?
           error_required = @server.create_payment_required(
             requirements, resource, 'No matching payment requirements', extensions, transport
@@ -153,7 +162,11 @@ module Weft
         method = context['method']
         payload = result['paymentPayload'].dup
         payload['httpMethod'] = method.to_s.upcase
-        requirements = apply_overrides(result['paymentRequirements'], headers)
+        begin
+          requirements = apply_overrides(result['paymentRequirements'], headers)
+        rescue ArgumentError => e
+          return settlement_failure_tuple(e.message, result['paymentRequirements'])
+        end
         settled = settle_phase(payload, requirements, context, headers, 'after-handler', result['beforeHandlerSettlement'])
         unless settled['success']
           if Settlement.facilitator_unavailable?(settled['errorReason'])
@@ -330,7 +343,7 @@ module Weft
           decimals = scheme_decimals(scheme, requirements)
         end
         requirements.merge('amount' => X402.resolve_settlement_override_amount(amount, requirements, decimals))
-      rescue JSON::ParserError, ArgumentError
+      rescue JSON::ParserError
         requirements
       end
 
@@ -342,6 +355,48 @@ module Weft
         return scheme.get_asset_decimals(requirements['asset'], requirements['network']) if scheme.respond_to?(:get_asset_decimals)
 
         nil
+      end
+
+      def validate_registered_schemes!
+        routes = Product.single_route?(@routes) ? { '*' => @routes } : @routes
+        errors = []
+        routes.each do |pattern, config|
+          next unless config.is_a?(Hash)
+
+          normalize_options(config).each do |option|
+            next unless option.is_a?(Hash)
+
+            scheme_name = Product.read(option, 'scheme')
+            network = Product.read(option, 'network')
+            next if @server.scheme_for(network, scheme_name)
+
+            errors << "Route \"#{pattern}\": No scheme implementation registered for \"#{scheme_name}\" on network \"#{network}\""
+          end
+        end
+        return if errors.empty?
+
+        raise ArgumentError, errors.join("\n")
+      end
+
+      def dynamic_fields_for(required)
+        extensions = required.is_a?(Hash) ? required['extensions'] : nil
+        return {} unless extensions.is_a?(Hash)
+
+        extensions.each_key.each_with_object({}) do |key, out|
+          fields = @server.dynamic_info_fields(key)
+          out[key] = fields if fields
+        end
+      end
+
+      def settlement_failure_tuple(message, requirements)
+        failure = {
+          'success' => false,
+          'errorReason' => message,
+          'errorMessage' => message,
+          'network' => requirements.is_a?(Hash) ? requirements['network'] : nil,
+          'transaction' => ''
+        }
+        send_core_response(settlement_failure_response(failure))
       end
 
       def extract_payment(adapter)

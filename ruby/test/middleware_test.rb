@@ -6,7 +6,8 @@ class MiddlewareTest < Minitest::Test
     inner_app = ->(_env) { [200, { 'Content-Type' => 'text/plain' }, ['OK']] }
     middleware = Weft::Facilitator::RackMiddleware.new(
       inner_app,
-      sync_facilitator_on_start: false
+      sync_facilitator_on_start: false,
+      schemes: [scheme]
     )
 
     status, _, body = middleware.call(rack_env('/hello'))
@@ -24,7 +25,8 @@ class MiddlewareTest < Minitest::Test
           'accepts' => { 'scheme' => 'exact', 'network' => 'eip155:84532', 'payTo' => '0xabc', 'price' => '$0.01' }
         }
       },
-      sync_facilitator_on_start: false
+      sync_facilitator_on_start: false,
+      schemes: [scheme]
     )
 
     status, _, body = middleware.call(rack_env('/free'))
@@ -42,7 +44,8 @@ class MiddlewareTest < Minitest::Test
           'accepts' => { 'scheme' => 'exact', 'network' => 'eip155:84532', 'payTo' => '0xabc', 'price' => '$0.01' }
         }
       },
-      sync_facilitator_on_start: false
+      sync_facilitator_on_start: false,
+      schemes: [scheme]
     )
 
     status, = middleware.call(rack_env('/paid', method: 'GET'))
@@ -50,6 +53,19 @@ class MiddlewareTest < Minitest::Test
   end
 
   private
+
+  def scheme
+    {
+      'network' => 'eip155:84532',
+      'server' => {
+        'scheme' => 'exact',
+        'defaultAssetTransferMethod' => 'authorization',
+        'paymentFlows' => {
+          'authorization' => { 'supported' => ['authorization'], 'default' => 'authorization' }
+        }
+      }
+    }
+  end
 
   def rack_env(path, method: 'GET')
     {
