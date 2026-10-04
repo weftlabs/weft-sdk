@@ -10,7 +10,7 @@ const EMPTY = "—";
 const MARKDOWN = "docs/operation-inventory.md";
 
 // One entry per language. `method` captures the façade method name.
-// Later layers add Ruby and Go here.
+// Go is the remaining layer.
 const LANGUAGE_FACADES = [
   {
     language: "typescript",
@@ -23,6 +23,12 @@ const LANGUAGE_FACADES = [
     heading: "Python façade",
     source: "python/src/weft_sdk/client.py",
     method: /^    (?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/,
+  },
+  {
+    language: "ruby",
+    heading: "Ruby façade",
+    source: "ruby/lib/weft/client.rb",
+    method: /^    def ([A-Za-z_][A-Za-z0-9_]*)\b/,
   },
 ];
 
