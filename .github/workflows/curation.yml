@@ -15,11 +15,7 @@ defaults:
   run:
     shell: bash --noprofile --norc -euo pipefail {0}
 
-# github.workflow MUST stay in the group key. Every language workflow and the
-# e2e/sync workflows fire on the same ref; a group keyed on the ref alone puts
-# them all in one slot, so with cancel-in-progress the last run created cancels
-# the others before a single step executes. That shows up on the PR as a red
-# check that failed in 0s with no logs.
+# Include the workflow name so this run does not cancel another workflow on the same ref.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -28,16 +24,22 @@ jobs:
   curation:
     name: curation
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: 24.21.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Check operation inventory
         run: node scripts/check-operation-inventory.mjs
       - name: Test operation inventory checker
