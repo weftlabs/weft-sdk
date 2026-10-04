@@ -1,5 +1,5 @@
 {
-  "languages": ["typescript", "python"],
+  "languages": ["typescript", "python", "ruby"],
   "operations": [
     {
       "operationId": "getOpenApiDocument",
@@ -72,7 +72,8 @@
       "classification": "facade",
       "methods": {
         "typescript": "me",
-        "python": "me"
+        "python": "me",
+        "ruby": "me"
       },
       "cli": "weft me",
       "reason": "Buyer runtime"
@@ -100,7 +101,8 @@
       "classification": "facade",
       "methods": {
         "typescript": "balance",
-        "python": "balance"
+        "python": "balance",
+        "ruby": "balance"
       },
       "cli": "weft balance",
       "reason": "Buyer runtime"
@@ -110,7 +112,8 @@
       "classification": "facade",
       "methods": {
         "typescript": "search",
-        "python": "search"
+        "python": "search",
+        "ruby": "search"
       },
       "cli": "weft search QUERY",
       "reason": "Buyer runtime"
@@ -120,7 +123,8 @@
       "classification": "facade",
       "methods": {
         "typescript": "fetch",
-        "python": "fetch"
+        "python": "fetch",
+        "ruby": "fetch"
       },
       "cli": "weft fetch URL --max-cost-usd USD",
       "reason": "Paid buyer runtime"
@@ -142,7 +146,8 @@
       "classification": "facade",
       "methods": {
         "typescript": "purchases",
-        "python": "purchases"
+        "python": "purchases",
+        "ruby": "purchases"
       },
       "cli": "weft purchases",
       "reason": "Buyer purchase ledger"
@@ -152,7 +157,8 @@
       "classification": "facade",
       "methods": {
         "typescript": "purchase",
-        "python": "purchase"
+        "python": "purchase",
+        "ruby": "purchase"
       },
       "cli": "weft purchases ID",
       "reason": "Buyer purchase detail"
