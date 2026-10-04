@@ -125,9 +125,16 @@ export class WeftClient {
       throw new Error("idempotencyKey is required");
     }
 
+    // Generated FetchRequestBodyToJSON replaces an object body with {}.
+    // The server treats JSON.stringify(body) as the same forwarded string.
+    const fetchRequest =
+      request.body != null && typeof request.body === "object"
+        ? { ...request, body: JSON.stringify(request.body) }
+        : request;
+
     return this.call(() =>
       this.fetches.fetch({
-        fetchRequest: request,
+        fetchRequest,
         idempotencyKey: options.idempotencyKey,
       }),
     );

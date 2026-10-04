@@ -216,7 +216,10 @@ function projectedBytes(
  * @param warn - Sink for anything that will not ship
  * @returns An extension to register on the resource server
  */
-function dynamicExtension(key: string, warn: Warn): ResourceServerExtension {
+export function dynamicExtension(
+  key: string,
+  warn: Warn,
+): ResourceServerExtension {
   return {
     key,
     async enrichPaymentRequiredResponse(declaration, context) {

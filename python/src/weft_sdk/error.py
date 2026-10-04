@@ -35,7 +35,7 @@ def normalize_api_exception(error: ApiException) -> WeftError:
         try:
             details = json.loads(error.body)
         except (TypeError, json.JSONDecodeError):
-            details = error.body
+            details = None
 
     body = details if isinstance(details, Mapping) else {}
     raw_nested = body.get("error")
@@ -43,7 +43,7 @@ def normalize_api_exception(error: ApiException) -> WeftError:
     code = nested.get("code") or body.get("code")
     if not code and isinstance(raw_nested, str):
         code = raw_nested
-    message = nested.get("message") or body.get("message") or error.reason
+    message = nested.get("message") or body.get("message") or f"Weft API returned HTTP {status}"
     request_id = nested.get("request_id") or body.get("request_id")
     if not request_id and error.headers:
         request_id = error.headers.get("x-request-id")
@@ -51,7 +51,7 @@ def normalize_api_exception(error: ApiException) -> WeftError:
     return WeftError(
         status=status,
         code=str(code or f"HTTP_{status}"),
-        message=str(message or f"Weft API returned HTTP {status}"),
+        message=str(message),
         request_id=str(request_id) if request_id else None,
         retryable=status == 429 or status >= 500,
         details=details,

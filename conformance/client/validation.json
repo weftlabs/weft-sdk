@@ -1,0 +1,132 @@
+[
+  {
+    "name": "empty credential is a validation error",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": ""
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "whitespace credential is a validation error",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "   "
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "apiKey and accessToken together are a validation error",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "accessToken": "oauth_test"
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "missing credential is a validation error",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {},
+    "expectValidationError": true
+  },
+  {
+    "name": "empty max cost is a validation error",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": ""
+        },
+        "options": {
+          "idempotencyKey": "k-1"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test"
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "whitespace max cost is a validation error",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "  "
+        },
+        "options": {
+          "idempotencyKey": "k-1"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test"
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "empty idempotency key is a validation error",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05"
+        },
+        "options": {
+          "idempotencyKey": ""
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test"
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "whitespace idempotency key is a validation error",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05"
+        },
+        "options": {
+          "idempotencyKey": "  "
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test"
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "whitespace access token is a validation error",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "accessToken": "   "
+    },
+    "expectValidationError": true
+  }
+]
