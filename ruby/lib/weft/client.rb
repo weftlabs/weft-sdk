@@ -92,12 +92,41 @@ module Weft
     end
 
     def apply_base_url(configuration, base_url)
-      stripped = base_url.to_s.sub(%r{/+\z}, '')
+      stripped = trim_trailing_slashes(base_url.to_s)
       uri = URI.parse(stripped)
       configuration.scheme = uri.scheme || 'https'
-      configuration.host = uri.host || stripped
-      path = uri.path.to_s
-      configuration.base_path = path == '/' ? '' : path
+      configuration.host = uri.host || trim_trailing_slashes(stripped)
+      path = collapse_slashes(uri.path.to_s)
+      path = trim_trailing_slashes(path)
+      path = strip_leading_slashes(path)
+      configuration.base_path = path
+    end
+
+    def trim_trailing_slashes(value)
+      text = value.dup
+      text.chomp!('/') while text.end_with?('/')
+      text
+    end
+
+    def strip_leading_slashes(value)
+      index = 0
+      index += 1 while index < value.length && value[index] == '/'
+      index.zero? ? value : value[index..]
+    end
+
+    def collapse_slashes(value)
+      out = +''
+      previous_slash = false
+      value.each_char do |char|
+        if char == '/'
+          out << '/' unless previous_slash
+          previous_slash = true
+        else
+          out << char
+          previous_slash = false
+        end
+      end
+      out
     end
 
     def search_filters(value)

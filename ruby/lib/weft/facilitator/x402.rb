@@ -4,6 +4,7 @@ require 'json'
 require 'uri'
 
 require_relative 'extensions'
+require_relative 'path_match'
 require_relative 'json_wire'
 require_relative 'settlement'
 
@@ -65,40 +66,29 @@ module Weft
       end
 
       def parse_route_pattern(pattern)
-        if pattern.include?(' ')
-          verb, path = pattern.split(/\s+/, 2)
-        else
-          verb = '*'
-          path = pattern
-        end
-        trailing = path.end_with?('/*')
-        path_for_regex = trailing ? path[0..-3] : path
-        regex_body = path_for_regex.gsub('\\', '\\\\')
-        regex_body = regex_body.gsub(/[$()+.?^{|}]/) { |char| "\\#{char}" }
-        regex_body = regex_body.gsub('*', '.*?')
-        regex_body = regex_body.gsub(/\[[^\]]+\]/, '[^/]+')
-        regex_body = regex_body.gsub(/:([A-Za-z_][A-Za-z0-9_]*)/, '[^/]+')
-        regex_body = regex_body.gsub('/', '\\/')
-        regex_body += '(?:/.*?)?' if trailing
+        verb, path = PathMatch.split_verb(pattern)
         {
           'verb' => verb.upcase,
-          'regex' => Regexp.new("\\A#{regex_body}\\z", Regexp::IGNORECASE | Regexp::MULTILINE),
+          'regex' => PathMatcher.compile(path),
           'path' => path
         }
       end
 
       def network_matches?(pattern, network)
-        source = Regexp.escape(pattern).gsub('\\*', '.*')
-        Regexp.new("\\A#{source}\\z").match?(network)
+        PathMatch.glob_match?(pattern, network)
       end
 
       def normalize_path(path)
-        without_query = path.to_s.split(/[?#]/, 2).first.to_s
-        normalized = without_query.split('/', -1).map do |segment|
+        text = path.to_s
+        question = text.index('?')
+        hash = text.index('#')
+        cut = [question, hash].compact.min
+        text = text[0, cut] if cut
+        normalized = text.split('/', -1).map do |segment|
           decoded = decode_component(segment)
           decoded.gsub('/', '%2F').gsub('\\', '%5C')
         end.join('/')
-        normalized.gsub(%r{/+}, '/').sub(%r{(.+?)/+\z}, '\1')
+        PathMatch.trim_trailing_slashes_keep_root(PathMatch.collapse_slashes(normalized))
       end
 
       def decode_component(segment)
@@ -147,12 +137,16 @@ module Weft
       end
 
       def convert_to_token_amount(decimal_amount, decimals)
-        raise ArgumentError, "Invalid amount: #{decimal_amount}" if /[eE]/.match?(decimal_amount)
-        raise ArgumentError, "Invalid amount: #{decimal_amount}" unless /\A-?\d+\.?\d*\z/.match?(decimal_amount)
+        if decimal_amount.include?('e') || decimal_amount.include?('E')
+          raise ArgumentError, "Invalid amount: #{decimal_amount}"
+        end
+        unless PathMatch.decimal_amount?(decimal_amount)
+          raise ArgumentError, "Invalid amount: #{decimal_amount}"
+        end
 
         int_part, dec_part = decimal_amount.split('.', 2)
         padded = (dec_part || '').ljust(decimals, '0')[0, decimals]
-        (int_part + padded).sub(/\A0+/, '').then { |text| text.empty? ? '0' : text }
+        PathMatch.strip_leading_zeros(int_part + padded)
       end
 
       def resolve_settlement_override_amount(raw_amount, requirements, decimals)

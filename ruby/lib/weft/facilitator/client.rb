@@ -75,9 +75,15 @@ module Weft
       def initialize(url: nil, create_headers: nil, timeout_ms: DEFAULT_TIMEOUT_MS)
         resolved = Facilitator.resolve_url(url.nil? ? nil : { 'url' => url })
         Facilitator.validate_url(resolved)
-        @url = resolved.sub(%r{/+\z}, '')
+        @url = trim_trailing_slashes(resolved)
         @create_headers = create_headers
         @timeout_ms = timeout_ms
+      end
+
+      def trim_trailing_slashes(value)
+        text = value.dup
+        text.chomp!('/') while text.end_with?('/')
+        text
       end
 
       def verify(payment_payload:, payment_requirements:)
