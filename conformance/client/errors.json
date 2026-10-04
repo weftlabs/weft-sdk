@@ -1,0 +1,191 @@
+[
+  {
+    "name": "nested error envelope wins over the request id header",
+    "call": {"method": "me", "args": {}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test"}
+    },
+    "response": {
+      "status": 429,
+      "reason": "Too Many Requests",
+      "headers": {
+        "content-type": "application/json",
+        "X-Request-Id": "req-header"
+      },
+      "body": {
+        "error": {
+          "code": "RATE_LIMITED",
+          "message": "slow down",
+          "request_id": "req-body"
+        }
+      }
+    },
+    "expectError": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "slow down",
+      "requestId": "req-body",
+      "retryable": true,
+      "details": {
+        "error": {
+          "code": "RATE_LIMITED",
+          "message": "slow down",
+          "request_id": "req-body"
+        }
+      }
+    }
+  },
+  {
+    "name": "flat error envelope is not retryable on 4xx",
+    "call": {"method": "purchase", "args": {"id": 7}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/purchases/7",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test"}
+    },
+    "response": {
+      "status": 404,
+      "reason": "Not Found",
+      "headers": {"content-type": "application/json"},
+      "body": {
+        "code": "NOT_FOUND",
+        "message": "missing",
+        "request_id": "req-flat"
+      }
+    },
+    "expectError": {
+      "status": 404,
+      "code": "NOT_FOUND",
+      "message": "missing",
+      "requestId": "req-flat",
+      "retryable": false,
+      "details": {
+        "code": "NOT_FOUND",
+        "message": "missing",
+        "request_id": "req-flat"
+      }
+    }
+  },
+  {
+    "name": "string error becomes the code and the status message",
+    "call": {"method": "me", "args": {}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test"}
+    },
+    "response": {
+      "status": 400,
+      "reason": "Bad Request",
+      "headers": {"content-type": "application/json"},
+      "body": {"error": "invalid_request"}
+    },
+    "expectError": {
+      "status": 400,
+      "code": "invalid_request",
+      "message": "Weft API returned HTTP 400",
+      "requestId": null,
+      "retryable": false,
+      "details": {"error": "invalid_request"}
+    }
+  },
+  {
+    "name": "x-request-id header is the request id fallback",
+    "call": {"method": "me", "args": {}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test"}
+    },
+    "response": {
+      "status": 403,
+      "reason": "Forbidden",
+      "headers": {
+        "content-type": "application/json",
+        "X-Request-Id": "req-header"
+      },
+      "body": {"code": "FORBIDDEN", "message": "no"}
+    },
+    "expectError": {
+      "status": 403,
+      "code": "FORBIDDEN",
+      "message": "no",
+      "requestId": "req-header",
+      "retryable": false,
+      "details": {"code": "FORBIDDEN", "message": "no"}
+    }
+  },
+  {
+    "name": "non-JSON error body has no details and the status message",
+    "call": {"method": "me", "args": {}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test"}
+    },
+    "response": {
+      "status": 502,
+      "reason": "Bad Gateway",
+      "headers": {"content-type": "text/plain"},
+      "body": "upstream exploded"
+    },
+    "expectError": {
+      "status": 502,
+      "code": "HTTP_502",
+      "message": "Weft API returned HTTP 502",
+      "requestId": null,
+      "retryable": true,
+      "details": null
+    }
+  },
+  {
+    "name": "5xx error is retryable",
+    "call": {"method": "balance", "args": {}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/balance",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test"}
+    },
+    "response": {
+      "status": 500,
+      "reason": "Internal Server Error",
+      "headers": {"content-type": "application/json"},
+      "body": {"error": {"code": "UPSTREAM", "message": "down"}}
+    },
+    "expectError": {
+      "status": 500,
+      "code": "UPSTREAM",
+      "message": "down",
+      "requestId": null,
+      "retryable": true,
+      "details": {"error": {"code": "UPSTREAM", "message": "down"}}
+    }
+  },
+  {
+    "name": "network failure is an uncertain retryable outcome",
+    "call": {"method": "me", "args": {}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "response": {"networkFailure": true},
+    "expectError": {
+      "status": 0,
+      "code": "NETWORK_ERROR",
+      "message": "Network failure before a Weft API response: connection reset",
+      "requestId": null,
+      "retryable": true
+    }
+  }
+]

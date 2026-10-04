@@ -1,0 +1,132 @@
+[
+  {
+    "name": "no key sends only the user agent",
+    "args": {"adapter": "$ADAPTER", "apiKey": null, "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 0
+    }
+  },
+  {
+    "name": "omitted key sends only the user agent",
+    "args": {"adapter": "$ADAPTER", "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 0
+    }
+  },
+  {
+    "name": "valid key is trimmed onto bearer and api key headers",
+    "args": {
+      "adapter": "$ADAPTER",
+      "apiKey": "  wk_live_abc  ",
+      "declaration": {}
+    },
+    "expect": {
+      "supported": {
+        "User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION",
+        "Authorization": "Bearer wk_live_abc"
+      },
+      "settle": {"X-API-Key": "wk_live_abc"},
+      "verify": {"X-API-Key": "wk_live_abc"},
+      "declared": false,
+      "warnings": 0
+    }
+  },
+  {
+    "name": "declaration adds the declared header beside a valid key",
+    "args": {
+      "adapter": "$ADAPTER",
+      "apiKey": "wk_live_abc",
+      "declaration": {"name": "Acme"}
+    },
+    "expect": {
+      "supported": {
+        "User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION",
+        "Authorization": "Bearer wk_live_abc"
+      },
+      "settle": {"X-API-Key": "wk_live_abc"},
+      "verify": {"X-API-Key": "wk_live_abc"},
+      "declared": true,
+      "warnings": 0
+    }
+  },
+  {
+    "name": "empty key is dropped",
+    "args": {"adapter": "$ADAPTER", "apiKey": "", "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 1
+    }
+  },
+  {
+    "name": "whitespace key is dropped",
+    "args": {"adapter": "$ADAPTER", "apiKey": "   ", "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 1
+    }
+  },
+  {
+    "name": "non-string key is dropped",
+    "args": {"adapter": "$ADAPTER", "apiKey": 12, "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 1
+    }
+  },
+  {
+    "name": "key with an internal space is dropped and not logged",
+    "args": {"adapter": "$ADAPTER", "apiKey": "wk live secret", "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 1,
+      "absentFromLogs": ["wk live secret"]
+    }
+  },
+  {
+    "name": "non-ASCII key is dropped and not logged",
+    "args": {"adapter": "$ADAPTER", "apiKey": "wk_kéy", "declaration": {}},
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 1,
+      "absentFromLogs": ["wk_kéy"]
+    }
+  },
+  {
+    "name": "declaration with nothing that survives omits the declared header",
+    "args": {
+      "adapter": "$ADAPTER",
+      "apiKey": null,
+      "declaration": {"name": "Acme Café"}
+    },
+    "expect": {
+      "supported": {"User-Agent": "weft-sdk-$ADAPTER/$SDK_VERSION"},
+      "settle": null,
+      "verify": null,
+      "declared": false,
+      "warnings": 0
+    }
+  }
+]
