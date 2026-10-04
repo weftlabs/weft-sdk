@@ -13,14 +13,14 @@ Method | HTTP request | Description
 Pay-and-fetch any URL (x402/MPP proxy)
 
 Universal x402/MPP fetch proxy. The caller provides a target `url`,
-a hard `max_cost_usd` ceiling, and optional `method` / `body` /
+a merchant-principal `max_cost_usd` ceiling, and optional `method` / `body` /
 `headers`. Weft:
 
   1. Issues the request.
   2. On `402 Payment Required`, selects a supported x402 or MPP challenge.
   3. Compares the asking price to `max_cost_usd` and the
      buyer's policy (`max_tx_usd`, daily/weekly limits).
-  4. If an eligible mainnet MPP challenge finds its Tempo token short,
+  4. If refill is allowed and an eligible mainnet MPP challenge finds its Tempo token short,
      creates or adopts a buyer-owned Base-to-Tempo refill and returns
      `409 FUNDING_PENDING` with `details.reason=funding_active`. If an
      overlapping payment invalidates the balance observation before a
@@ -38,6 +38,26 @@ a hard `max_cost_usd` ceiling, and optional `method` / `body` /
      unsettled hold (the common case for x402, which settles
      asynchronously) reports its amount in `held_usd` instead, never
      in `paid_usd`.
+
+**Opt-in safety controls:** `allow_tempo_refill: false` prevents this
+request from creating, adopting, or enqueueing a Base-to-Tempo bridge.
+A Tempo shortfall returns `402 INSUFFICIENT_BALANCE`; unrelated bridges
+and their jobs remain unchanged. `access_method_id` is advisory and
+does not enforce a payment rail.
+
+`max_total_cost_usd` is an all-in ceiling covering merchant principal,
+network gas, provider fees, and prerequisite buyer-paid operations.
+It disables refill; explicitly combining it with `allow_tempo_refill: true`
+returns `422 INCOMPATIBLE_FETCH_CONTROLS`. Current wallet integrations
+provide no supported binding all-in fee guarantee. Therefore all-in
+requests return `402 TOTAL_COST_UNVERIFIABLE` before payment preparation,
+approval, reservation, or refill. This also refuses recovery of older
+payments and SIWX wallet signing; it admits no positive paid route.
+Increasing the ceiling does not resolve missing fee authority.
+
+Omitted controls preserve existing behavior. Ordinary non-402 merchant
+responses retain `MERCHANT_RETURNED_NON_402`. Stored-result replay is
+historical payment information, not a new bounded authorization.
 
 Errors are structured with a stable `error` code, and each error
 response carries the buyer's `policy`, `balance`, and a
@@ -87,7 +107,7 @@ with weft_sdk.generated.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = weft_sdk.generated.FetchApi(api_client)
     fetch_request = weft_sdk.generated.FetchRequest() # FetchRequest |
-    idempotency_key = 'idempotency_key_example' # str | Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request.  (optional)
+    idempotency_key = 'idempotency_key_example' # str | Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request. Effective safety controls participate in retry identity. Changing them under a reserved key returns `IDEMPOTENCY_CONFLICT`; an older unconstrained payment cannot become a bounded success on retry.  (optional)
 
     try:
         # Pay-and-fetch any URL (x402/MPP proxy)
@@ -106,7 +126,7 @@ with weft_sdk.generated.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **fetch_request** | [**FetchRequest**](FetchRequest.md)|  |
- **idempotency_key** | **str**| Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request.  | [optional]
+ **idempotency_key** | **str**| Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request. Effective safety controls participate in retry identity. Changing them under a reserved key returns &#x60;IDEMPOTENCY_CONFLICT&#x60;; an older unconstrained payment cannot become a bounded success on retry.  | [optional]
 
 ### Return type
 
@@ -127,11 +147,11 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** | Paid fetch succeeded; artifact streamed back base64-encoded. |  -  |
 **401** | Unauthorized — missing or non-buyer-scoped API key |  -  |
-**402** | Payment refused. &#x60;EXCEEDED_MAX_COST&#x60; (over the caller cap) or &#x60;INSUFFICIENT_BALANCE&#x60; (the buyer is genuinely short — &#x60;details.asset&#x60;, when present, names the exact token the failed check read). Both use &#x60;FetchErrorResponse&#x60;.  |  -  |
+**402** | Payment refused. &#x60;EXCEEDED_MAX_COST&#x60; (over the caller cap) or &#x60;INSUFFICIENT_BALANCE&#x60; (the buyer is genuinely short — &#x60;details.asset&#x60;, when present, names the exact token the failed check read). &#x60;TOTAL_COST_UNVERIFIABLE&#x60; means no binding upper bound on all buyer costs is available; &#x60;details.reason&#x60; is &#x60;binding_cost_unavailable&#x60;. No payment operation or refill is authorized by this refusal. An earlier uncertain payment remains uncertain; the refusal does not cancel or release it. These errors use &#x60;FetchErrorResponse&#x60;.  |  -  |
 **403** | Policy violation, missing Crossmint payment permission (&#x60;PAYMENT_AUTHORIZATION_REQUIRED&#x60; — &#x60;details&#x60; carries the wallet-page URL where the authenticated user can enable payments), denylisted recipient, or a merchant challenge on a chain outside the wallet&#39;s own environment — a testnet wallet may not pay a mainnet challenge, nor the reverse (&#x60;WALLET_ENVIRONMENT_MISMATCH&#x60;; terminal, not retryable). All four use &#x60;FetchErrorResponse&#x60;. Alternatively an OAuth access token lacking the &#x60;fetch&#x60; scope (&#x60;InsufficientScopeResponse&#x60;, RFC 6750 &#x60;insufficient_scope&#x60;, with a &#x60;WWW-Authenticate&#x60; challenge). The two envelopes are disjoint; branch on the &#x60;error&#x60; value.  |  -  |
 **409** | &#x60;IDEMPOTENCY_CONFLICT&#x60; — this buyer already used the supplied &#x60;Idempotency-Key&#x60; for a different fetch request. Generate a new key for the new operation; retry the original operation unchanged.  Or &#x60;WALLET_SETUP_INCOMPLETE&#x60; — the buyer&#39;s wallet has not been created yet, so there is nothing to pay from. &#x60;details.wallet_url&#x60; carries the page where the authenticated user finishes setup. No retry succeeds until they do.  Or &#x60;ACCOUNT_CLOSING&#x60; — account closure has started, so the wallet cannot reserve a new payment.  Or &#x60;FUNDING_PENDING&#x60; — retry after &#x60;details.retry_after_seconds&#x60;. &#x60;details.reason&#x60; is &#x60;funding_active&#x60; when a buyer-owned Base-to-Tempo refill exists, or &#x60;balance_changed&#x60; when an overlapping payment invalidated the balance observation before funding could start.  Or &#x60;DELIVERY_REPLAY_UNAVAILABLE&#x60; — the merchant already returned a successful response for this settled MPP payment, but Weft could not persist its bytes for replay. The merchant is not called again; &#x60;details.tx_hash&#x60; identifies the settled payment. All five use &#x60;FetchErrorResponse&#x60;.  |  -  |
 **413** | Upstream artifact exceeded the proxy&#39;s size cap. |  -  |
-**422** | Invalid request fields, method, cost, body, headers, idempotency key, or URL. &#x60;UNSUPPORTED_ASSET&#x60; means the merchant requested an asset this wallet cannot settle. &#x60;UNSUPPORTED_PAYMENT_METHOD&#x60; means the MPP challenge requested a method Weft cannot execute.  |  -  |
+**422** | Invalid request fields, method, cost, body, headers, idempotency key, or URL. Safety controls use &#x60;INVALID_ALLOW_TEMPO_REFILL&#x60;, &#x60;INVALID_MAX_TOTAL_COST_USD&#x60;, or &#x60;INCOMPATIBLE_FETCH_CONTROLS&#x60;. &#x60;UNSUPPORTED_ASSET&#x60; means the merchant requested an asset this wallet cannot settle. &#x60;UNSUPPORTED_PAYMENT_METHOD&#x60; means the MPP challenge requested a method Weft cannot execute.  |  -  |
 **424** | &#x60;MERCHANT_RETURNED_NON_402&#x60; — the upstream merchant is at fault: it did not return a 402, or its 402 challenge was invalid. A 4xx (not 5xx) because Weft behaved correctly and the caller should act on &#x60;details.reason&#x60; (e.g. pick another merchant); it also keeps the error envelope intact through CDNs that replace 5xx bodies.  &#x60;PAID_DELIVERY_FAILED&#x60; — the MPP payment settled, but the merchant did not deliver a successful response. &#x60;details.tx_hash&#x60; identifies the settled payment; &#x60;details.merchant_status&#x60; is present when the merchant returned an HTTP response.  |  -  |
 **502** | Merchant connection failure (&#x60;MERCHANT_CONNECTION_FAILED&#x60;) or settlement signing failed on Weft&#39;s side (&#x60;SETTLEMENT_FAILED&#x60;). For merchant failures, &#x60;details.phase&#x60; identifies challenge or paid; paid requests may have moved funds. Reuse the same idempotency key. &#x60;details.reason&#x60; carries a stable payment sentence. &#x60;details.protocol&#x60; names a direct payment rail when that is safe and useful. It is absent for automatic-funding failures so provider, bridge, and retry details stay internal.  |  -  |
 **504** | &#x60;MERCHANT_TIMEOUT&#x60; — the upstream merchant did not complete the challenge or paid request inside Weft&#39;s transport budget. &#x60;details.phase&#x60; names the request. When it is &#x60;paid&#x60;, &#x60;details.payment_may_have_moved&#x60; is true because the credential was already sent. Retry the identical operation with the same &#x60;Idempotency-Key&#x60;.  &#x60;SETTLEMENT_PENDING&#x60; — the payment was submitted and the wallet provider had not reached a terminal state before Weft&#39;s polling budget ran out. NOTHING is known to have failed: the charge may already have settled, so this is not &#x60;SETTLEMENT_FAILED&#x60; and the amount is not lost. &#x60;details.retry_with_same_idempotency_key&#x60; is &#x60;true&#x60;.  Retry the identical request shortly. Sending the same &#x60;Idempotency-Key&#x60; resumes the same provider operation; a caller that sends no key is also safe, because Weft resumes its own in-flight operation for the same merchant, amount and network rather than opening a second one. Either way the retry resolves the original payment instead of charging twice.  |  -  |

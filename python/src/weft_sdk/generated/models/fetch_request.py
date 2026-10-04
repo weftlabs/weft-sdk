@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
@@ -30,17 +30,29 @@ class FetchRequest(BaseModel):
     FetchRequest
     """ # noqa: E501
     url: StrictStr = Field(description="Target URL. Must pass Weft's URL safety check (no SSRF / private IP ranges).")
-    max_cost_usd: Optional[Annotated[str, Field(strict=True)]] = Field(default='0.10', description="Hard ceiling on what the buyer is willing to pay. Defaults to `0.10` USD.")
+    max_cost_usd: Optional[Annotated[str, Field(strict=True)]] = Field(default='0.10', description="Merchant-principal ceiling, excluding gas, provider fees and prerequisites. Defaults to `0.10` USD; use `max_total_cost_usd` for an all-in bound.")
+    allow_tempo_refill: Optional[StrictBool] = Field(default=None, description="Whether this request may create, adopt, or enqueue a Base-to-Tempo refill. Only JSON booleans are accepted. Omission allows legacy refill behavior unless `max_total_cost_usd` is supplied, in which case refill is disabled. False leaves unrelated bridges and jobs unchanged and reports an unfunded Tempo pocket as `INSUFFICIENT_BALANCE`. This does not select a rail or bound fees. ")
+    max_total_cost_usd: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="Optional all-in buyer-debit ceiling in USD, including principal, gas, provider fees and prerequisite operations. Requires a binding upstream upper bound before any payment effect. Current integrations have no such guarantee, so requests requiring wallet signing or payment fail closed with `TOTAL_COST_UNVERIFIABLE`, including recovery and replay of previous payments. No positive paid route is currently admitted in this mode. Estimates, expected sponsorship and receipts are not authority. Implies no refill; explicit `allow_tempo_refill: true` is invalid. Omission preserves legacy behavior. ")
     method: Optional[StrictStr] = Field(default='GET', description="HTTP method to use against the upstream.")
     body: Optional[FetchRequestBody] = None
     headers: Optional[Dict[str, StrictStr]] = Field(default=None, description="Headers forwarded to the upstream. Up to 32 headers, 4 KB total. The following are silently stripped: `host`, `authorization`, `cookie`, `proxy-authorization`, `x-forwarded-*`, `x-real-ip`, `x-payment`, `connection`, `upgrade`. ")
     search_id: Optional[UUID] = Field(default=None, description="The `query_trace_id` from the `POST /api/v1/search` response that surfaced this URL. Optional and advisory: it attributes the purchase to the search that found it, and is used only for measurement.  It never affects payment, authorization, idempotency, or the response body — the buyer is always resolved from the credential, never from this field. A value that is not a well-formed handle is ignored rather than rejected, so an analytics mistake can never cost a fetch. ")
     operation_id: Optional[StrictStr] = Field(default=None, description="Advisory operation id returned by search.")
-    access_method_id: Optional[StrictStr] = Field(default=None, description="Advisory access-method id returned by search.")
-    __properties: ClassVar[List[str]] = ["url", "max_cost_usd", "method", "body", "headers", "search_id", "operation_id", "access_method_id"]
+    access_method_id: Optional[StrictStr] = Field(default=None, description="Advisory access-method id returned by search; does not enforce a payment rail.")
+    __properties: ClassVar[List[str]] = ["url", "max_cost_usd", "allow_tempo_refill", "max_total_cost_usd", "method", "body", "headers", "search_id", "operation_id", "access_method_id"]
 
     @field_validator('max_cost_usd')
     def max_cost_usd_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if value is None:
+            return value
+
+        if not re.match(r"^\d+(\.\d{1,6})?$", value):
+            raise ValueError(r"must validate the regular expression /^\d+(\.\d{1,6})?$/")
+        return value
+
+    @field_validator('max_total_cost_usd')
+    def max_total_cost_usd_validate_regular_expression(cls, value):
         """Validates the regular expression"""
         if value is None:
             return value
@@ -120,6 +132,8 @@ class FetchRequest(BaseModel):
         _obj = cls.model_validate({
             "url": obj.get("url"),
             "max_cost_usd": obj.get("max_cost_usd") if obj.get("max_cost_usd") is not None else '0.10',
+            "allow_tempo_refill": obj.get("allow_tempo_refill"),
+            "max_total_cost_usd": obj.get("max_total_cost_usd"),
             "method": obj.get("method") if obj.get("method") is not None else 'GET',
             "body": FetchRequestBody.from_dict(obj["body"]) if obj.get("body") is not None else None,
             "headers": obj.get("headers"),

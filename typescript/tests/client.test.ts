@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { WeftClient } from "../src/client";
+import { WeftClient, type PaidFetchRequest } from "../src/client";
+import { WeftError } from "../src/error";
+import { FetchErrorResponseErrorEnum } from "../src/generated/models/FetchErrorResponse";
+import {
+  FetchRequestFromJSON,
+  FetchRequestToJSON,
+} from "../src/generated/models/FetchRequest";
 import {
   FetchResponsePaymentStatusEnum,
   FetchResponseToJSON,
@@ -13,6 +19,221 @@ function jsonResponse(value: unknown): Response {
 }
 
 describe("WeftClient", () => {
+  describe("bounded fetch", () => {
+    const legacyRequest = {
+      url: "https://merchant.example/data",
+      maxCostUsd: "0.050000",
+      searchId: "query-trace-1",
+      operationId: "operation-1",
+      accessMethodId: "access-method-1",
+    } satisfies PaidFetchRequest;
+    const legacyWire = {
+      url: "https://merchant.example/data",
+      max_cost_usd: "0.050000",
+      search_id: "query-trace-1",
+      operation_id: "operation-1",
+      access_method_id: "access-method-1",
+    };
+    const options = Object.freeze({ idempotencyKey: "bounded-purchase-1" });
+
+    it.each(["0", "0.000001", "0.050000"])(
+      "round-trips false and exact decimal %s through the generated serializer",
+      (maxTotalCostUsd) => {
+        const request = {
+          ...legacyRequest,
+          allowTempoRefill: false,
+          maxTotalCostUsd,
+        } satisfies PaidFetchRequest;
+        const wire = {
+          ...legacyWire,
+          allow_tempo_refill: false,
+          max_total_cost_usd: maxTotalCostUsd,
+        };
+
+        expect(JSON.parse(JSON.stringify(FetchRequestToJSON(request)))).toEqual(
+          wire,
+        );
+        expect(FetchRequestFromJSON(wire)).toMatchObject(request);
+      },
+    );
+
+    it.each([
+      { name: "both omitted", controls: {}, wire: {} },
+      {
+        name: "explicit refill without a total bound",
+        controls: { allowTempoRefill: true },
+        wire: { allow_tempo_refill: true },
+      },
+      {
+        name: "no refill only",
+        controls: { allowTempoRefill: false },
+        wire: { allow_tempo_refill: false },
+      },
+      {
+        name: "total bound only, without injecting refill true",
+        controls: { maxTotalCostUsd: "0.050000" },
+        wire: { max_total_cost_usd: "0.050000" },
+      },
+    ])("preserves optional controls: $name", async ({ controls, wire }) => {
+      // A free response only exercises transport; it is not paid enforcement proof.
+      const fetchApi = vi.fn(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+          jsonResponse({
+            status: 200,
+            headers: {},
+            body_base64: "",
+            paid_usd: "0.00",
+            held_usd: null,
+            payment_status: "free",
+          }),
+      );
+      const client = new WeftClient({ apiKey: "wk_test", fetchApi });
+
+      await client.fetch({ ...legacyRequest, ...controls }, options);
+
+      expect(fetchApi).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(String(fetchApi.mock.calls[0][1]?.body))).toEqual({
+        ...legacyWire,
+        ...wire,
+      });
+      expect(
+        JSON.parse(
+          JSON.stringify(
+            FetchRequestToJSON(
+              FetchRequestFromJSON({
+                ...legacyWire,
+                ...wire,
+              }),
+            ),
+          ),
+        ),
+      ).toEqual({ ...legacyWire, ...wire });
+    });
+
+    it("preserves the server's rejection of contradictory controls", async () => {
+      const fetchApi = vi.fn(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+          new Response(
+            JSON.stringify({
+              error: FetchErrorResponseErrorEnum.IncompatibleFetchControls,
+            }),
+            {
+              status: 422,
+              headers: { "content-type": "application/json" },
+            },
+          ),
+      );
+      const client = new WeftClient({ apiKey: "wk_test", fetchApi });
+      const failure = client.fetch(
+        {
+          ...legacyRequest,
+          allowTempoRefill: true,
+          maxTotalCostUsd: "0.050000",
+        },
+        options,
+      );
+
+      await expect(failure).rejects.toBeInstanceOf(WeftError);
+      await expect(failure).rejects.toMatchObject({
+        status: 422,
+        code: "INCOMPATIBLE_FETCH_CONTROLS",
+        retryable: false,
+      });
+      expect(fetchApi).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(String(fetchApi.mock.calls[0][1]?.body))).toEqual({
+        ...legacyWire,
+        allow_tempo_refill: true,
+        max_total_cost_usd: "0.050000",
+      });
+    });
+
+    it.each([
+      { status: 409, code: "FUNDING_PENDING", reason: "funding_active" },
+      { status: 409, code: "FUNDING_PENDING", reason: "balance_changed" },
+      { status: 409, code: "IDEMPOTENCY_CONFLICT", reason: "request_changed" },
+      {
+        status: 402,
+        code: "TOTAL_COST_UNVERIFIABLE",
+        reason: "binding_cost_unavailable",
+      },
+      { status: 0, code: "NETWORK_ERROR", reason: "connection reset" },
+    ])(
+      "preserves $code ($reason) without automatic retry or changed controls",
+      async ({ status, code, reason }) => {
+        const cause = new TypeError(reason);
+        const envelope = {
+          error: code,
+          details: { reason, retry_after_seconds: 1 },
+          policy: {
+            max_tx_usd: "1.00",
+            daily_limit_usd: "2.00",
+            weekly_limit_usd: "5.00",
+          },
+          balance: {
+            promo_usd: "0.00",
+            wallet_usdc: null,
+            total_usd: null,
+            spent_today_usd: "0.00",
+            policy_used_today_usd: "0.05",
+          },
+          dashboard_url: "https://weft.example/dashboard/policy",
+        };
+        const fetchApi = vi.fn(
+          async (_input: RequestInfo | URL, _init?: RequestInit) => {
+            if (status === 0) throw cause;
+            return new Response(JSON.stringify(envelope), {
+              status,
+              headers: {
+                "content-type": "application/json",
+                "x-request-id": "req-bounded-1",
+                "retry-after": "1",
+              },
+            });
+          },
+        );
+        const client = new WeftClient({ apiKey: "wk_test", fetchApi });
+        const request = Object.freeze({
+          ...legacyRequest,
+          allowTempoRefill: false,
+          maxTotalCostUsd: "0.050000",
+        } satisfies PaidFetchRequest);
+
+        // Only the caller initiates the second attempt, with the same identity.
+        for (let attempt = 1; attempt <= 2; attempt += 1) {
+          const failure = client.fetch(request, options);
+          await expect(failure).rejects.toBeInstanceOf(WeftError);
+          await expect(failure).rejects.toMatchObject({
+            status,
+            code,
+            retryable: status === 0,
+            requestId: status === 0 ? undefined : "req-bounded-1",
+            details: status === 0 ? cause : envelope,
+          });
+          expect(fetchApi).toHaveBeenCalledTimes(attempt);
+        }
+
+        for (const [url, init] of fetchApi.mock.calls) {
+          expect(String(url)).toBe("https://weft.network/api/v1/fetch");
+          expect(init?.method).toBe("POST");
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe(
+            options.idempotencyKey,
+          );
+          expect(new Headers(init?.headers).get("authorization")).toBe(
+            "Bearer wk_test",
+          );
+          expect(JSON.parse(String(init?.body))).toEqual({
+            ...legacyWire,
+            allow_tempo_refill: false,
+            max_total_cost_usd: "0.050000",
+          });
+        }
+        expect(fetchApi.mock.calls[1][1]?.body).toBe(
+          fetchApi.mock.calls[0][1]?.body,
+        );
+      },
+    );
+  });
+
   it("routes buyer operations through the generated APIs", async () => {
     const fetchApi = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {

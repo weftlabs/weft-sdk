@@ -5,13 +5,15 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Url** | **string** | Target URL. Must pass Weft&#39;s URL safety check (no SSRF / private IP ranges). |
-**MaxCostUsd** | Pointer to **string** | Hard ceiling on what the buyer is willing to pay. Defaults to &#x60;0.10&#x60; USD. | [optional] [default to "0.10"]
+**MaxCostUsd** | Pointer to **string** | Merchant-principal ceiling, excluding gas, provider fees and prerequisites. Defaults to &#x60;0.10&#x60; USD; use &#x60;max_total_cost_usd&#x60; for an all-in bound. | [optional] [default to "0.10"]
+**AllowTempoRefill** | Pointer to **bool** | Whether this request may create, adopt, or enqueue a Base-to-Tempo refill. Only JSON booleans are accepted. Omission allows legacy refill behavior unless &#x60;max_total_cost_usd&#x60; is supplied, in which case refill is disabled. False leaves unrelated bridges and jobs unchanged and reports an unfunded Tempo pocket as &#x60;INSUFFICIENT_BALANCE&#x60;. This does not select a rail or bound fees.  | [optional]
+**MaxTotalCostUsd** | Pointer to **string** | Optional all-in buyer-debit ceiling in USD, including principal, gas, provider fees and prerequisite operations. Requires a binding upstream upper bound before any payment effect. Current integrations have no such guarantee, so requests requiring wallet signing or payment fail closed with &#x60;TOTAL_COST_UNVERIFIABLE&#x60;, including recovery and replay of previous payments. No positive paid route is currently admitted in this mode. Estimates, expected sponsorship and receipts are not authority. Implies no refill; explicit &#x60;allow_tempo_refill: true&#x60; is invalid. Omission preserves legacy behavior.  | [optional]
 **Method** | Pointer to **string** | HTTP method to use against the upstream. | [optional] [default to "GET"]
 **Body** | Pointer to [**NullableFetchRequestBody**](FetchRequestBody.md) |  | [optional]
 **Headers** | Pointer to **map[string]string** | Headers forwarded to the upstream. Up to 32 headers, 4 KB total. The following are silently stripped: &#x60;host&#x60;, &#x60;authorization&#x60;, &#x60;cookie&#x60;, &#x60;proxy-authorization&#x60;, &#x60;x-forwarded-*&#x60;, &#x60;x-real-ip&#x60;, &#x60;x-payment&#x60;, &#x60;connection&#x60;, &#x60;upgrade&#x60;.  | [optional]
 **SearchId** | Pointer to **string** | The &#x60;query_trace_id&#x60; from the &#x60;POST /api/v1/search&#x60; response that surfaced this URL. Optional and advisory: it attributes the purchase to the search that found it, and is used only for measurement.  It never affects payment, authorization, idempotency, or the response body — the buyer is always resolved from the credential, never from this field. A value that is not a well-formed handle is ignored rather than rejected, so an analytics mistake can never cost a fetch.  | [optional]
 **OperationId** | Pointer to **string** | Advisory operation id returned by search. | [optional]
-**AccessMethodId** | Pointer to **string** | Advisory access-method id returned by search. | [optional]
+**AccessMethodId** | Pointer to **string** | Advisory access-method id returned by search; does not enforce a payment rail. | [optional]
 
 ## Methods
 
@@ -76,6 +78,56 @@ SetMaxCostUsd sets MaxCostUsd field to given value.
 `func (o *FetchRequest) HasMaxCostUsd() bool`
 
 HasMaxCostUsd returns a boolean if a field has been set.
+
+### GetAllowTempoRefill
+
+`func (o *FetchRequest) GetAllowTempoRefill() bool`
+
+GetAllowTempoRefill returns the AllowTempoRefill field if non-nil, zero value otherwise.
+
+### GetAllowTempoRefillOk
+
+`func (o *FetchRequest) GetAllowTempoRefillOk() (*bool, bool)`
+
+GetAllowTempoRefillOk returns a tuple with the AllowTempoRefill field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAllowTempoRefill
+
+`func (o *FetchRequest) SetAllowTempoRefill(v bool)`
+
+SetAllowTempoRefill sets AllowTempoRefill field to given value.
+
+### HasAllowTempoRefill
+
+`func (o *FetchRequest) HasAllowTempoRefill() bool`
+
+HasAllowTempoRefill returns a boolean if a field has been set.
+
+### GetMaxTotalCostUsd
+
+`func (o *FetchRequest) GetMaxTotalCostUsd() string`
+
+GetMaxTotalCostUsd returns the MaxTotalCostUsd field if non-nil, zero value otherwise.
+
+### GetMaxTotalCostUsdOk
+
+`func (o *FetchRequest) GetMaxTotalCostUsdOk() (*string, bool)`
+
+GetMaxTotalCostUsdOk returns a tuple with the MaxTotalCostUsd field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetMaxTotalCostUsd
+
+`func (o *FetchRequest) SetMaxTotalCostUsd(v string)`
+
+SetMaxTotalCostUsd sets MaxTotalCostUsd field to given value.
+
+### HasMaxTotalCostUsd
+
+`func (o *FetchRequest) HasMaxTotalCostUsd() bool`
+
+HasMaxTotalCostUsd returns a boolean if a field has been set.
 
 ### GetMethod
 

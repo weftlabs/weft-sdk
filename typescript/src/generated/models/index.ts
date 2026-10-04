@@ -24,6 +24,7 @@ export * from './FetchBalanceSnapshot';
 export * from './FetchErrorResponse';
 export * from './FetchRequest';
 export * from './FetchRequestBody';
+export * from './FetchRequestNot';
 export * from './FetchResponse';
 export * from './InsufficientScopeResponse';
 export * from './MeApiKey';
