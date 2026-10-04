@@ -8,19 +8,20 @@ const END = "<!-- operation-inventory:end -->";
 const EMPTY = "—";
 const MARKDOWN = "docs/operation-inventory.md";
 
-// One entry per language. Later layers add Ruby and Go here.
+// One entry per language. `method` captures the façade method name.
+// Later layers add Ruby and Go here.
 const LANGUAGE_FACADES = [
   {
     language: "typescript",
     heading: "TypeScript façade",
     source: "typescript/src/client.ts",
-    method: "^\\s+${name}\\s*\\(",
+    method: /^  (?:async\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(/,
   },
   {
     language: "python",
     heading: "Python façade",
     source: "python/src/weft_sdk/client.py",
-    method: "^\\s+def\\s+${name}\\s*\\(",
+    method: /^    (?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/,
   },
 ];
 
@@ -40,7 +41,8 @@ const HTTP_METHODS = new Set([
   "patch",
   "trace",
 ]);
-const BLOCK_SCALAR = /^[|>][+-]?\d*(?:\s+#.*)?$/;
+// YAML allows the indent digit and chomp mark in either order: `|2+`, `|+2`.
+const BLOCK_SCALAR = /^[|>](?:[+-]\d*|\d+[+-]?)?(?:\s+#.*)?$/;
 const KEY_LINE = /^(\s*)([A-Za-z_][A-Za-z0-9_-]*):(.*)$/;
 
 export function extractOperationIds(yaml) {
@@ -298,14 +300,15 @@ export function checkOperationInventory({
 
   if (!markdownFile.error) {
     const rendered = renderOperationTable(inventory);
-    if (write) {
+    const stale = tableBody(markdownFile.text) !== rendered;
+    if (write && problems.length === 0) {
       const next = spliceTable(markdownFile.text, rendered);
       if (next === null) {
         problems.push(`${MARKDOWN} operation table is out of date`);
       } else if (next !== markdownFile.text) {
         writeFileSync(markdownPath, next);
       }
-    } else if (tableBody(markdownFile.text) !== rendered) {
+    } else if (stale) {
       problems.push(`${MARKDOWN} operation table is out of date`);
     }
   }
@@ -314,7 +317,7 @@ export function checkOperationInventory({
 
 function methodExists(source, entry, name) {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return false;
-  return new RegExp(entry.method.replaceAll("${name}", name), "m").test(source);
+  return source.split(/\r?\n/).some((line) => line.match(entry.method)?.[1] === name);
 }
 
 function parseArgs(argv) {
