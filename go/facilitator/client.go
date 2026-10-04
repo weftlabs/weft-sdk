@@ -175,6 +175,9 @@ func (c *HTTPFacilitatorClient) Verify(ctx context.Context, payload, requirement
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusServiceUnavailable {
+			return nil, errors.New(FacilitatorUnavailableError)
+		}
 		return nil, fmt.Errorf("facilitator verify failed (%d): %s", resp.StatusCode, string(body))
 	}
 

@@ -60,7 +60,8 @@ type MiddlewareConfig struct {
 }
 
 // PaymentMiddleware returns net/http seller middleware. The adapter name is nethttp.
-func PaymentMiddleware(routes map[string]RouteConfig, cfg MiddlewareConfig) func(http.Handler) http.Handler {
+// A configuration error is returned. It is never replaced with the production facilitator.
+func PaymentMiddleware(routes map[string]RouteConfig, cfg MiddlewareConfig) (func(http.Handler) http.Handler, error) {
 	declaration := declarationMap(cfg)
 	identityRoutes := routesToAny(routes)
 	applied := ApplyProductIdentity(identityRoutes, declaration)
@@ -68,10 +69,16 @@ func PaymentMiddleware(routes map[string]RouteConfig, cfg MiddlewareConfig) func
 	if appliedMap == nil {
 		appliedMap = map[string]any{}
 	}
-	compiled := compileRoutes(appliedMap)
+	compiled, err := compileRoutes(appliedMap)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseBeforeHandlerFlows(cfg.Schemes); err != nil {
+		return nil, err
+	}
 	client, err := NewFacilitatorClient(facilitatorConfig(cfg, declaration))
 	if err != nil {
-		client = &HTTPFacilitatorClient{url: DefaultURL, httpClient: http.DefaultClient}
+		return nil, err
 	}
 	syncOnStart := true
 	if cfg.SyncOnStart != nil {
@@ -83,13 +90,12 @@ func PaymentMiddleware(routes map[string]RouteConfig, cfg MiddlewareConfig) func
 		schemes:     cfg.Schemes,
 		syncOnStart: syncOnStart,
 		resume:      cfg.Resume,
-		initErr:     err,
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gate.serve(w, r, next)
 		})
-	}
+	}, nil
 }
 
 type paymentGate struct {
@@ -98,7 +104,6 @@ type paymentGate struct {
 	schemes     []Scheme
 	syncOnStart bool
 	resume      ResumeVerifiedPayment
-	initErr     error
 
 	mu       sync.Mutex
 	synced   bool
@@ -127,14 +132,23 @@ func (g *paymentGate) serve(w http.ResponseWriter, r *http.Request, next http.Ha
 		return
 	}
 	payload, err := decodePaymentHeader(header)
-	if err != nil || !matchingPayload(payload, requirements) {
+	requirement, ok := findMatchingRequirement(requirements, payload)
+	if err != nil || !ok {
 		writePaymentRequired(w, resource, requirements, extensions, "No matching payment requirements")
 		return
 	}
-	if resumed, ok := g.resumePayment(r, payload); ok {
+	if extensionEchoMismatch(extensions, payload) {
+		writePaymentRequired(w, resource, requirements, extensions, "extension_echo_mismatch")
+		return
+	}
+	if resumed, resumedOK := g.resumePayment(r, payload); resumedOK {
 		payload = resumed
-	} else if !g.verify(r.Context(), payload, requirements[0]) {
-		writePaymentRequired(w, resource, requirements, extensions, "Payment verification failed")
+	} else if err := g.verify(r.Context(), payload, requirement); err != nil {
+		if IsFacilitatorUnavailable(err.Error()) {
+			writeFacilitatorUnavailable(w)
+			return
+		}
+		writePaymentRequired(w, resource, requirements, extensions, err.Error())
 		return
 	}
 	buffered := &bufferedResponse{header: make(http.Header), code: http.StatusOK}
@@ -143,7 +157,12 @@ func (g *paymentGate) serve(w http.ResponseWriter, r *http.Request, next http.Ha
 		buffered.flush(w, nil)
 		return
 	}
-	settled, err := g.settle(r.Context(), payload, requirements[0], r.Method)
+	requirement, err = applySettlementOverride(buffered.header.Get(settlementOverrides), requirement, findScheme(g.schemes, stringOr(requirement["scheme"]), stringOr(requirement["network"])))
+	if err != nil {
+		writePaymentRequired(w, resource, requirements, extensions, err.Error())
+		return
+	}
+	settled, err := g.settle(r.Context(), payload, requirement, r.Method)
 	if err != nil {
 		if IsFacilitatorUnavailable(err.Error()) {
 			writeFacilitatorUnavailable(w)
@@ -204,9 +223,18 @@ func (g *paymentGate) sync(ctx context.Context) {
 	g.mu.Unlock()
 }
 
-func (g *paymentGate) verify(ctx context.Context, payload map[string]any, requirements map[string]any) bool {
+func (g *paymentGate) verify(ctx context.Context, payload map[string]any, requirements map[string]any) error {
 	resp, err := g.client.Verify(ctx, payload, requirements)
-	return err == nil && resp != nil && resp.Valid
+	if err != nil {
+		return err
+	}
+	if resp == nil || !resp.Valid {
+		if resp != nil && resp.InvalidReason != "" {
+			return fmt.Errorf("%s", resp.InvalidReason)
+		}
+		return fmt.Errorf("Payment verification failed")
+	}
+	return nil
 }
 
 func (g *paymentGate) settle(ctx context.Context, payload, requirements map[string]any, method string) (map[string]any, error) {
@@ -218,6 +246,9 @@ func (g *paymentGate) settle(ctx context.Context, payload, requirements map[stri
 		paid["httpMethod"] = strings.ToUpper(method)
 	}
 	resp, err := g.client.Settle(ctx, paid, requirements)
+	if pendingSettlement(resp) {
+		resp, err = g.client.Settle(ctx, paid, requirements)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -376,26 +407,6 @@ func requestExtension(value any, r *http.Request) (DynamicExtension, bool) {
 	default:
 		return asDynamic(value)
 	}
-}
-
-func matchingPayload(payload map[string]any, requirements []map[string]any) bool {
-	if payload == nil {
-		return false
-	}
-	version, _ := payload["x402Version"].(float64)
-	if int(version) != 2 {
-		return false
-	}
-	accepted, _ := payload["accepted"].(map[string]any)
-	if accepted == nil {
-		return false
-	}
-	for _, requirement := range requirements {
-		if requirement["scheme"] == accepted["scheme"] && requirement["network"] == accepted["network"] {
-			return true
-		}
-	}
-	return false
 }
 
 func normalizeOptions(value any) []paymentOption {

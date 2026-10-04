@@ -56,7 +56,7 @@ func TestNetHTTPFacilitatorIntegration(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("paid"))
 	})
-	middleware := PaymentMiddleware(map[string]RouteConfig{
+	middleware, err := PaymentMiddleware(map[string]RouteConfig{
 		"GET /v1/search": {
 			Accepts: paymentOption{
 				Scheme:  "exact",
@@ -86,6 +86,9 @@ func TestNetHTTPFacilitatorIntegration(t *testing.T) {
 			},
 		}},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(middleware(handler))
 	defer server.Close()
 
@@ -280,7 +283,7 @@ func TestResumeSkipsVerifyAndStillSettles(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[]}`))
 	}))
 	defer facilitator.Close()
-	middleware := PaymentMiddleware(map[string]RouteConfig{
+	middleware, err := PaymentMiddleware(map[string]RouteConfig{
 		"POST /v1/search": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "$0.01"}},
 	}, MiddlewareConfig{
 		APIKey:      "wk_live_seller",
@@ -292,13 +295,26 @@ func TestResumeSkipsVerifyAndStillSettles(t *testing.T) {
 			return map[string]any{"x402Version": float64(2), "accepted": map[string]any{"scheme": "exact", "network": "eip155:84532"}}, true
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})))
 	defer server.Close()
+	unpaid, err := http.NewRequest(http.MethodPost, server.URL+"/v1/search", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unpaidResp, err := http.DefaultClient.Do(unpaid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unpaidResp.Body.Close()
+	challenge := decodeRequired(t, unpaidResp.Header.Get(paymentRequiredHeader))
 	payload := map[string]any{
 		"x402Version": float64(2),
-		"accepted":    map[string]any{"scheme": "exact", "network": "eip155:84532"},
+		"accepted":    challenge["accepts"].([]any)[0],
 	}
 	raw, _ := json.Marshal(payload)
 	req, _ := http.NewRequest(http.MethodPost, server.URL+"/v1/search", nil)
@@ -407,7 +423,7 @@ func decodeRequired(t *testing.T, header string) map[string]any {
 
 func paidMiddleware(t *testing.T, facilitatorURL, apiKey string, keySet bool, handler http.Handler) http.Handler {
 	t.Helper()
-	middleware := PaymentMiddleware(map[string]RouteConfig{
+	middleware, err := PaymentMiddleware(map[string]RouteConfig{
 		"GET /v1/search": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "$0.01"}},
 	}, MiddlewareConfig{
 		APIKey:      apiKey,
@@ -420,6 +436,9 @@ func paidMiddleware(t *testing.T, facilitatorURL, apiKey string, keySet bool, ha
 			},
 		}},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return middleware(handler)
 }
 

@@ -413,19 +413,6 @@ func mapField(value map[string]any, key string) map[string]any {
 	return out
 }
 
-func jsonEqual(got, want any) bool {
-	left, leftErr := json.Marshal(got)
-	right, rightErr := json.Marshal(want)
-	if leftErr != nil || rightErr != nil {
-		return false
-	}
-	var a, b any
-	if json.Unmarshal(left, &a) != nil || json.Unmarshal(right, &b) != nil {
-		return false
-	}
-	return reflect.DeepEqual(a, b)
-}
-
 func assertHeaderMap(t *testing.T, name string, got map[string]string, want any) {
 	t.Helper()
 	if want == nil {

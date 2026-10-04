@@ -3,6 +3,7 @@ package facilitator
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -25,12 +26,23 @@ type paymentOption struct {
 	Extra             map[string]any
 }
 
+// FlowSupport is the payment flows one asset-transfer method can run.
+// upfront and escrow settle before the handler. This middleware refuses them.
+type FlowSupport struct {
+	Supported []string
+	Default   string
+}
+
 // Scheme parses a route price into wire amount and asset.
 type Scheme struct {
 	Name                       string
 	Network                    string
 	DefaultAssetTransferMethod string
 	ParsePrice                 func(price string) (amount string, asset string, extra map[string]any, err error)
+	// AssetDecimals converts a dollar settlement override. Unknown decimals fail the settlement.
+	AssetDecimals func(asset, network string) (int, bool)
+	// PaymentFlows declares supported flows. A before-handler flow is a construction error.
+	PaymentFlows map[string]FlowSupport
 }
 
 func encodePaymentRequired(value any) (string, error) {
@@ -72,35 +84,110 @@ type compiledRoute struct {
 	config  map[string]any
 }
 
-func compileRoutes(routes map[string]any) []compiledRoute {
+func compileRoutes(routes map[string]any) ([]compiledRoute, error) {
 	var out []compiledRoute
 	for pattern, config := range routes {
 		item, _ := config.(map[string]any)
-		verb, path := "*", pattern
-		if strings.Contains(pattern, " ") {
-			parts := strings.SplitN(pattern, " ", 2)
-			verb = strings.ToUpper(parts[0])
-			path = parts[1]
-		}
-		trailing := strings.HasSuffix(path, "/*")
-		body := path
-		if trailing {
-			body = strings.TrimSuffix(path, "/*")
-		}
-		escaped := regexp.QuoteMeta(body)
-		escaped = strings.ReplaceAll(escaped, "\\*", ".*?")
-		escaped = strings.ReplaceAll(escaped, "\\/", "/")
-		if trailing {
-			escaped += "(?:/.*)?"
+		verb, re, err := compilePattern(pattern)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, compiledRoute{
 			verb:    verb,
-			regex:   regexp.MustCompile("(?is)^" + escaped + "$"),
+			regex:   re,
 			pattern: pattern,
 			config:  item,
 		})
 	}
-	return out
+	return out, nil
+}
+
+func compilePattern(pattern string) (string, *regexp.Regexp, error) {
+	if strings.ContainsAny(pattern, "{}") {
+		return "", nil, fmt.Errorf("unknown route pattern %q: {name} is not an x402 parameter; use :name or [name]", pattern)
+	}
+	verb, path := "*", pattern
+	if strings.Contains(pattern, " ") {
+		parts := strings.Fields(pattern)
+		verb = strings.ToUpper(parts[0])
+		if len(parts) > 1 {
+			path = parts[1]
+		} else {
+			path = ""
+		}
+	}
+	trailing := strings.HasSuffix(path, "/*")
+	body := path
+	if trailing {
+		body = strings.TrimSuffix(path, "/*")
+	}
+	regexBody := pathRegex(body)
+	if trailing {
+		regexBody += "(?:/.*?)?"
+	}
+	re, err := regexp.Compile("(?is)^" + regexBody + "$")
+	if err != nil {
+		return "", nil, fmt.Errorf("route pattern %q: %w", pattern, err)
+	}
+	return verb, re, nil
+}
+
+func pathRegex(path string) string {
+	var b strings.Builder
+	for i := 0; i < len(path); {
+		switch path[i] {
+		case '\\':
+			b.WriteString(`\`)
+			i++
+		case '*':
+			b.WriteString(`.*?`)
+			i++
+		case '[':
+			end := strings.IndexByte(path[i:], ']')
+			if end > 1 {
+				b.WriteString(`[^/]+`)
+				i += end + 1
+				continue
+			}
+			b.WriteByte('[')
+			i++
+		case ':':
+			if nameLen := identLen(path[i+1:]); nameLen > 0 {
+				b.WriteString(`[^/]+`)
+				i += 1 + nameLen
+				continue
+			}
+			b.WriteByte(':')
+			i++
+		default:
+			if strings.ContainsRune(`$()+.?^{|}`, rune(path[i])) {
+				b.WriteByte('\\')
+			}
+			b.WriteByte(path[i])
+			i++
+		}
+	}
+	return b.String()
+}
+
+func identLen(value string) int {
+	if value == "" || !isIdentStart(value[0]) {
+		return 0
+	}
+	for i := 1; i < len(value); i++ {
+		if !isIdentCont(value[i]) {
+			return i
+		}
+	}
+	return len(value)
+}
+
+func isIdentStart(b byte) bool {
+	return b == '_' || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
+}
+
+func isIdentCont(b byte) bool {
+	return isIdentStart(b) || (b >= '0' && b <= '9')
 }
 
 func matchRoute(routes []compiledRoute, method, path string) *compiledRoute {
