@@ -141,6 +141,34 @@ describe("WeftClient", () => {
     },
   );
 
+  it("sends an object fetch body as a JSON string", async () => {
+    const fetchApi = vi.fn(async () =>
+      jsonResponse({
+        status: 200,
+        headers: {},
+        body_base64: "",
+        paid_usd: "0.00",
+        held_usd: null,
+        payment_status: "not_required",
+        tx_hash: null,
+        protocol: "x402",
+        artifact_id: null,
+      }),
+    );
+    const client = new WeftClient({ apiKey: "wk_test", fetchApi });
+    const body = { city: "café", nested: { n: 1 } };
+
+    await client.fetch(
+      { url: "https://merchant.example", maxCostUsd: "0.05", body },
+      { idempotencyKey: "body-1" },
+    );
+
+    const sent = JSON.parse(String(fetchApi.mock.calls[0]?.[1]?.body));
+    expect(typeof sent.body).toBe("string");
+    expect(sent.body).toBe(JSON.stringify(body));
+    expect(sent.body).not.toBe("{}");
+  });
+
   it("requires an API key and a max cost", async () => {
     expect(() => new WeftClient({ apiKey: " " })).toThrow("apiKey is required");
     const client = new WeftClient({ apiKey: "wk_test", fetchApi: vi.fn() });

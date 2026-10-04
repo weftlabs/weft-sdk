@@ -951,5 +951,150 @@
       "protocol": "x402",
       "artifact_id": 9
     }
+  },
+  {
+    "name": "fetch sends an object body as a JSON string",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "method": "POST",
+          "body": {
+            "city": "café",
+            "nested": {
+              "n": 1
+            }
+          }
+        },
+        "options": {
+          "idempotencyKey": "k-obj"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-obj"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "method": "POST",
+        "body": "{\"city\":\"café\",\"nested\":{\"n\":1}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  },
+  {
+    "name": "fetch sends an array body as a JSON string",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "method": "POST",
+          "body": [
+            "a",
+            "café",
+            2
+          ]
+        },
+        "options": {
+          "idempotencyKey": "k-arr"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-arr"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "method": "POST",
+        "body": "[\"a\",\"café\",2]"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
   }
 ]
