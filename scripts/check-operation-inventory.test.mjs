@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { extractOperationIds } from "./check-operation-inventory.mjs";
+import {
+  checkOperationInventory,
+  extractOperationIds,
+} from "./check-operation-inventory.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const checker = fileURLToPath(
@@ -267,6 +276,11 @@ test("description text that contains operationId is not an operation", () => {
     "        operationId: phantomFromBlock",
     "        post:",
     "          operationId: phantomNestedInDescription",
+    "      x-explicit: |2+",
+    "        post:",
+    "          operationId: phantomNestedInIndentChomp",
+    "      x-fold: >2-",
+    "        operationId: phantomFromFoldChomp",
     "      operationId: realOperation",
     '      x-note: "operationId: phantomQuoted"',
     "components:",
@@ -285,6 +299,8 @@ test("description text that contains operationId is not an operation", () => {
   );
   assert.ok(naive.includes("phantomFromBlock"));
   assert.ok(naive.includes("phantomNestedInDescription"));
+  assert.ok(naive.includes("phantomNestedInIndentChomp"));
+  assert.ok(naive.includes("phantomFromFoldChomp"));
   assert.deepEqual(extractOperationIds(spec), ["realOperation"]);
 
   const dir = mkdtempSync(join(tmpdir(), "operation-inventory-"));
@@ -312,4 +328,171 @@ test("description text that contains operationId is not an operation", () => {
     false,
     lines.join("\n"),
   );
+});
+
+test("a call site does not count as a façade method", () => {
+  const dir = mkdtempSync(join(tmpdir(), "operation-inventory-"));
+  mkdirSync(join(dir, "typescript/src"), { recursive: true });
+  mkdirSync(join(dir, "python/src/weft_sdk"), { recursive: true });
+  const fixtureSpec = join(dir, "openapi.yaml");
+  const fixtureInventory = join(dir, "operations.json");
+  const markdownPath = join(dir, "inventory.md");
+  writeFileSync(
+    fixtureSpec,
+    ["paths:", "  /example:", "    post:", "      operationId: fetch", ""].join(
+      "\n",
+    ),
+  );
+  writeFileSync(
+    fixtureInventory,
+    JSON.stringify({
+      languages: ["typescript", "python"],
+      operations: [
+        {
+          operationId: "fetch",
+          classification: "facade",
+          methods: { typescript: "fetch", python: "fetch" },
+          cli: null,
+          reason: "fixture",
+        },
+      ],
+    }),
+  );
+  writeFileSync(markdownPath, "prose\n");
+  writeFileSync(
+    join(dir, "typescript/src/client.ts"),
+    [
+      "export class WeftClient {",
+      "  helper() {",
+      "    fetch(",
+      "      request,",
+      "    );",
+      "  }",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(
+    join(dir, "python/src/weft_sdk/client.py"),
+    [
+      "class Client:",
+      "    def helper(self):",
+      "        def fetch(self):",
+      "            return None",
+      "",
+    ].join("\n"),
+  );
+  try {
+    const found = checkOperationInventory({
+      specPath: fixtureSpec,
+      inventoryPath: fixtureInventory,
+      markdownPath,
+      root: dir,
+    });
+    assert.ok(
+      found.includes(
+        "typescript façade method fetch for fetch is absent from typescript/src/client.ts",
+      ),
+      found.join("\n"),
+    );
+    assert.ok(
+      found.includes(
+        "python façade method fetch for fetch is absent from python/src/weft_sdk/client.py",
+      ),
+      found.join("\n"),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("--write replaces only the marked table", () => {
+  const dir = mkdtempSync(join(tmpdir(), "operation-inventory-"));
+  const fixtureSpec = join(dir, "openapi.yaml");
+  const fixtureInventory = join(dir, "operations.json");
+  const markdownPath = join(dir, "inventory.md");
+  const before = "Prose before the table.\n\n";
+  const after = "\n\nProse after the table.\n";
+  writeFileSync(
+    fixtureSpec,
+    ["paths:", "  /example:", "    get:", "      operationId: getWidget", ""].join(
+      "\n",
+    ),
+  );
+  writeFileSync(
+    fixtureInventory,
+    JSON.stringify({
+      languages: ["typescript", "python"],
+      operations: [
+        {
+          operationId: "getWidget",
+          classification: "excluded",
+          cli: null,
+          reason: "fixture",
+        },
+      ],
+    }),
+  );
+  writeFileSync(
+    markdownPath,
+    `${before}<!-- operation-inventory:start -->\n| stale |\n<!-- operation-inventory:end -->${after}`,
+  );
+  try {
+    const found = checkOperationInventory({
+      specPath: fixtureSpec,
+      inventoryPath: fixtureInventory,
+      markdownPath,
+      root: dir,
+      write: true,
+    });
+    assert.deepEqual(found, []);
+    const next = readFileSync(markdownPath, "utf8");
+    assert.equal(next.startsWith(before), true);
+    assert.equal(next.endsWith(after), true);
+    assert.equal(next.includes("| stale |"), false);
+    assert.equal(next.includes("`getWidget`"), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("--write does not change markdown when the inventory does not match the spec", () => {
+  const dir = mkdtempSync(join(tmpdir(), "operation-inventory-"));
+  const fixtureSpec = join(dir, "openapi.yaml");
+  const fixtureInventory = join(dir, "operations.json");
+  const markdownPath = join(dir, "inventory.md");
+  const original =
+    "Prose before.\n\n<!-- operation-inventory:start -->\n| keep |\n<!-- operation-inventory:end -->\n\nProse after.\n";
+  writeFileSync(
+    fixtureSpec,
+    ["paths:", "  /example:", "    get:", "      operationId: other", ""].join("\n"),
+  );
+  writeFileSync(
+    fixtureInventory,
+    JSON.stringify({
+      languages: ["typescript", "python"],
+      operations: [
+        {
+          operationId: "getWidget",
+          classification: "excluded",
+          cli: null,
+          reason: "fixture",
+        },
+      ],
+    }),
+  );
+  writeFileSync(markdownPath, original);
+  try {
+    const found = checkOperationInventory({
+      specPath: fixtureSpec,
+      inventoryPath: fixtureInventory,
+      markdownPath,
+      root: dir,
+      write: true,
+    });
+    assert.notEqual(found.length, 0);
+    assert.equal(readFileSync(markdownPath, "utf8"), original);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
