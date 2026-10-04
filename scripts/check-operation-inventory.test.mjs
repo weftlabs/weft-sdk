@@ -126,6 +126,65 @@ test("an added spec operation fails", () => {
   );
 });
 
+test("flow mappings and quoted keys are operations", () => {
+  const spec = [
+    "openapi: 3.1.0",
+    "paths:",
+    "  /flow:",
+    "    post: {operationId: flowOperation}",
+    '  "/quoted":',
+    '    "get":',
+    "      operationId: 'quotedOperation'",
+    "",
+  ].join("\n");
+  assert.deepEqual(extractOperationIds(spec), [
+    "flowOperation",
+    "quotedOperation",
+  ]);
+});
+
+test("an unreadable inventory table reports the read error", () => {
+  const dir = mkdtempSync(join(tmpdir(), "operation-inventory-"));
+  const markdownPath = join(dir, "docs/operation-inventory.md");
+  try {
+    const found = checkOperationInventory({
+      specPath,
+      inventoryPath,
+      markdownPath,
+      root: repoRoot,
+    });
+    assert.ok(
+      found.some((line) =>
+        line.startsWith("cannot read docs/operation-inventory.md:"),
+      ),
+      found.join("\n"),
+    );
+    assert.equal(
+      found.some((line) => line.includes("out of date")),
+      false,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("an operation without operationId fails", () => {
+  const { dir, path } = withCopy(specPath, (spec) =>
+    spec.replace("      operationId: getPurchase\n", ""),
+  );
+  const result = finish(dir, run(["--spec", path]));
+  const lines = problems(result);
+  assert.notEqual(result.status, 0);
+  assert.ok(
+    lines.includes("operation GET /api/v1/purchases/{id} has no operationId"),
+    lines.join("\n"),
+  );
+  assert.equal(
+    lines.at(-1),
+    "Fix: classify every operation in conformance/operations.json, then run node scripts/check-operation-inventory.mjs --write",
+  );
+});
+
 test("a removed spec operation fails", () => {
   const { dir, path } = withCopy(specPath, (spec) =>
     spec.replace("      operationId: getPurchase\n", ""),
@@ -270,7 +329,7 @@ test("description text that contains operationId is not an operation", () => {
     "paths:",
     "  /example:",
     "    get:",
-    "      summary: text operationId: phantomFromSummary",
+    '      summary: "text operationId: phantomFromSummary"',
     "      description: |",
     "        The word operationId appears in this description.",
     "        operationId: phantomFromBlock",
@@ -291,16 +350,9 @@ test("description text that contains operationId is not an operation", () => {
     "      properties:",
     "        operationId:",
     "          type: string",
-    "          description: operationId: phantomFromPropertyText",
+    '          description: "operationId: phantomFromPropertyText"',
     "",
   ].join("\n");
-  const naive = [...spec.matchAll(/^\s+operationId:\s+(\S+)\s*$/gm)].map(
-    ([, operationId]) => operationId,
-  );
-  assert.ok(naive.includes("phantomFromBlock"));
-  assert.ok(naive.includes("phantomNestedInDescription"));
-  assert.ok(naive.includes("phantomNestedInIndentChomp"));
-  assert.ok(naive.includes("phantomFromFoldChomp"));
   assert.deepEqual(extractOperationIds(spec), ["realOperation"]);
 
   const dir = mkdtempSync(join(tmpdir(), "operation-inventory-"));

@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { parse } from "yaml";
 
 const START = "<!-- operation-inventory:start -->";
 const END = "<!-- operation-inventory:end -->";
@@ -41,66 +42,43 @@ const HTTP_METHODS = new Set([
   "patch",
   "trace",
 ]);
-// YAML allows the indent digit and chomp mark in either order: `|2+`, `|+2`.
-const BLOCK_SCALAR = /^[|>](?:[+-]\d*|\d+[+-]?)?(?:\s+#.*)?$/;
-const KEY_LINE = /^(\s*)([A-Za-z_][A-Za-z0-9_-]*):(.*)$/;
+const FIX =
+  "Fix: classify every operation in conformance/operations.json, then run node scripts/check-operation-inventory.mjs --write";
 
-export function extractOperationIds(yaml) {
+export function readSpecOperations(text) {
+  let document;
+  try {
+    document = parse(text);
+  } catch (error) {
+    return { ids: [], problems: [`cannot parse spec: ${error.message}`] };
+  }
+  const paths = document?.paths;
+  if (!paths || typeof paths !== "object" || Array.isArray(paths)) {
+    return { ids: [], problems: ["spec has no paths object"] };
+  }
   const ids = [];
-  const stack = [];
-  let blockIndent = null;
-
-  for (const line of yaml.split(/\r?\n/)) {
-    if (blockIndent !== null) {
-      if (line.trim() === "") continue;
-      if (leadingSpaces(line) > blockIndent) continue;
-      blockIndent = null;
-    }
-    if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
-
-    const match = line.match(KEY_LINE);
-    if (!match) continue;
-
-    const indent = match[1].length;
-    const key = match[2];
-    const rest = stripInlineComment(match[3].trim());
-    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
-      stack.pop();
-    }
-    const parent = stack.length > 0 ? stack[stack.length - 1].key : null;
-    stack.push({ indent, key });
-    if (BLOCK_SCALAR.test(rest)) {
-      blockIndent = indent;
+  const problems = [];
+  for (const [path, pathItem] of Object.entries(paths)) {
+    if (!pathItem || typeof pathItem !== "object" || Array.isArray(pathItem)) {
       continue;
     }
-    if (key !== "operationId" || !HTTP_METHODS.has(parent)) continue;
-    const value = scalarValue(rest);
-    if (value) ids.push(value);
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!HTTP_METHODS.has(method)) continue;
+      const operationId = operation?.operationId;
+      if (typeof operationId !== "string" || operationId.trim() === "") {
+        problems.push(
+          `operation ${method.toUpperCase()} ${path} has no operationId`,
+        );
+        continue;
+      }
+      ids.push(operationId.trim());
+    }
   }
-  return ids;
+  return { ids, problems };
 }
 
-function leadingSpaces(line) {
-  return line.match(/^ */)?.[0].length ?? 0;
-}
-
-function stripInlineComment(value) {
-  if (value.startsWith('"') || value.startsWith("'") || !value.includes("#")) {
-    return value;
-  }
-  if (value.startsWith("#")) return "";
-  return value.replace(/\s+#.*$/, "").trim();
-}
-
-function scalarValue(value) {
-  if (
-    value.length >= 2 &&
-    ((value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'")))
-  ) {
-    return value.slice(1, -1);
-  }
-  return value;
+export function extractOperationIds(text) {
+  return readSpecOperations(text).ids;
 }
 
 function renderOperationTable(inventory) {
@@ -185,11 +163,16 @@ export function checkOperationInventory({
     problems.push(`cannot read inventory: ${inventoryFile.error}`);
   }
   if (markdownFile.error) {
-    problems.push(`${MARKDOWN} operation table is out of date`);
+    problems.push(`cannot read ${markdownName(markdownPath)}: ${markdownFile.error}`);
   }
   if (spec.error || inventoryFile.error) return problems;
 
-  const specIds = extractOperationIds(spec.text);
+  const specOps = readSpecOperations(spec.text);
+  problems.push(...specOps.problems);
+  if (specOps.problems.some((problem) => problem.startsWith("cannot parse spec:"))) {
+    return problems;
+  }
+  const specIds = specOps.ids;
   let inventory;
   try {
     inventory = JSON.parse(inventoryFile.text);
@@ -358,8 +341,15 @@ function main() {
   });
   if (problems.length > 0) {
     for (const problem of problems) console.error(problem);
+    console.error(FIX);
     process.exit(1);
   }
+}
+
+function markdownName(markdownPath) {
+  const normalized = markdownPath.split("\\").join("/");
+  if (normalized === MARKDOWN || normalized.endsWith(`/${MARKDOWN}`)) return MARKDOWN;
+  return markdownPath;
 }
 
 if (
