@@ -1,27 +1,44 @@
 [
   {
     "name": "empty credential is a validation error",
-    "call": {"method": "me", "args": {}},
-    "client": {"credential": ""},
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": ""
+    },
     "expectValidationError": true
   },
   {
     "name": "whitespace credential is a validation error",
-    "call": {"method": "me", "args": {}},
-    "client": {"credential": "   "},
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "   "
+    },
     "expectValidationError": true
   },
   {
     "name": "apiKey and accessToken together are a validation error",
-    "languages": ["typescript"],
-    "call": {"method": "me", "args": {}},
-    "client": {"credential": "wk_test", "accessToken": "oauth_test"},
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "accessToken": "oauth_test"
+    },
     "expectValidationError": true
   },
   {
     "name": "missing credential is a validation error",
-    "languages": ["typescript"],
-    "call": {"method": "me", "args": {}},
+    "call": {
+      "method": "me",
+      "args": {}
+    },
     "client": {},
     "expectValidationError": true
   },
@@ -30,11 +47,18 @@
     "call": {
       "method": "fetch",
       "args": {
-        "request": {"url": "https://m.example/x", "maxCostUsd": ""},
-        "options": {"idempotencyKey": "k-1"}
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": ""
+        },
+        "options": {
+          "idempotencyKey": "k-1"
+        }
       }
     },
-    "client": {"credential": "wk_test"},
+    "client": {
+      "credential": "wk_test"
+    },
     "expectValidationError": true
   },
   {
@@ -42,11 +66,18 @@
     "call": {
       "method": "fetch",
       "args": {
-        "request": {"url": "https://m.example/x", "maxCostUsd": "  "},
-        "options": {"idempotencyKey": "k-1"}
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "  "
+        },
+        "options": {
+          "idempotencyKey": "k-1"
+        }
       }
     },
-    "client": {"credential": "wk_test"},
+    "client": {
+      "credential": "wk_test"
+    },
     "expectValidationError": true
   },
   {
@@ -54,11 +85,18 @@
     "call": {
       "method": "fetch",
       "args": {
-        "request": {"url": "https://m.example/x", "maxCostUsd": "0.05"},
-        "options": {"idempotencyKey": ""}
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05"
+        },
+        "options": {
+          "idempotencyKey": ""
+        }
       }
     },
-    "client": {"credential": "wk_test"},
+    "client": {
+      "credential": "wk_test"
+    },
     "expectValidationError": true
   },
   {
@@ -66,11 +104,29 @@
     "call": {
       "method": "fetch",
       "args": {
-        "request": {"url": "https://m.example/x", "maxCostUsd": "0.05"},
-        "options": {"idempotencyKey": "  "}
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05"
+        },
+        "options": {
+          "idempotencyKey": "  "
+        }
       }
     },
-    "client": {"credential": "wk_test"},
+    "client": {
+      "credential": "wk_test"
+    },
+    "expectValidationError": true
+  },
+  {
+    "name": "whitespace access token is a validation error",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "accessToken": "   "
+    },
     "expectValidationError": true
   }
 ]

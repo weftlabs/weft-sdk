@@ -16,8 +16,54 @@ from urllib3.exceptions import ProtocolError
 from weft_sdk import Client, WeftError
 
 ROOT = Path(__file__).resolve().parents[2] / "conformance" / "client"
-SEARCH_FIELDS = {"query": "query", "maxResults": "max_results"}
-FETCH_REQUEST_FIELDS = {"url": "url", "maxCostUsd": "max_cost_usd", "method": "method"}
+CLIENT_FIELDS = {
+    "credential": "api_key",
+    "accessToken": "access_token",
+    "baseUrl": "base_url",
+}
+SEARCH_FIELDS = {
+    "query": "query",
+    "maxResults": "max_results",
+    "filters": "filters",
+}
+FILTER_FIELDS = {
+    "price": "price",
+    "priceAtomic": "price_atomic",
+    "type": "type",
+    "protocol": "protocol",
+    "category": "category",
+    "method": "method",
+    "executionMode": "execution_mode",
+    "weftFetchCompatible": "weft_fetch_compatible",
+    "includeUnknownPrices": "include_unknown_prices",
+}
+OPERATOR_FIELDS = {
+    "lte": "lte",
+    "gte": "gte",
+    "eq": "eq",
+    "in": "in",
+    "rangeGte": "range_gte",
+    "rangeLte": "range_lte",
+}
+NESTED_FILTERS = {
+    "price",
+    "price_atomic",
+    "type",
+    "protocol",
+    "category",
+    "method",
+    "execution_mode",
+}
+FETCH_REQUEST_FIELDS = {
+    "url": "url",
+    "maxCostUsd": "max_cost_usd",
+    "method": "method",
+    "body": "body",
+    "headers": "headers",
+    "searchId": "search_id",
+    "operationId": "operation_id",
+    "accessMethodId": "access_method_id",
+}
 FETCH_OPTION_FIELDS = {"idempotencyKey": "idempotency_key"}
 PURCHASE_LIST_FIELDS = {"page": "page", "perPage": "per_page"}
 
@@ -50,6 +96,15 @@ def _map_fields(source: dict[str, Any], table: dict[str, str]) -> dict[str, Any]
     return {table[key]: source[key] for key in source}
 
 
+def _map_filters(value: dict[str, Any]) -> dict[str, Any]:
+    mapped = _map_fields(value, FILTER_FIELDS)
+    for name in NESTED_FILTERS:
+        nested = mapped.get(name)
+        if isinstance(nested, dict):
+            mapped[name] = _map_fields(nested, OPERATOR_FIELDS)
+    return mapped
+
+
 def _wire(model: Any) -> Any:
     return json.loads(json.dumps(model.to_dict(), default=_json_default))
 
@@ -77,7 +132,10 @@ def _invoke(client: Client, case: dict[str, Any]) -> Any:
     if method == "balance":
         return client.balance()
     if method == "search":
-        return client.search(**_map_fields(args["request"], SEARCH_FIELDS))
+        request = _map_fields(args["request"], SEARCH_FIELDS)
+        if "filters" in request:
+            request["filters"] = _map_filters(request["filters"])
+        return client.search(**request)
     if method == "fetch":
         request = _map_fields(args["request"], FETCH_REQUEST_FIELDS)
         options = _map_fields(args["options"], FETCH_OPTION_FIELDS)
@@ -119,12 +177,7 @@ def test_client_conformance(filename: str, case: dict[str, Any]) -> None:
             preload_content=False,
         )
 
-    spec = case["client"]
-    if "accessToken" in spec and "python" not in (languages or []):
-        raise AssertionError("accessToken is not a Python client concept")
-    kwargs: dict[str, Any] = {"api_key": spec.get("credential", "")}
-    if "baseUrl" in spec:
-        kwargs["base_url"] = spec["baseUrl"]
+    kwargs = _map_fields(case["client"], CLIENT_FIELDS)
 
     thrown: BaseException | None = None
     result: Any = None
@@ -160,7 +213,7 @@ def test_client_conformance(filename: str, case: dict[str, Any]) -> None:
     assert len(calls) == 1
     recorded = calls[0]
     parsed = urlsplit(recorded["url"])
-    base = (spec.get("baseUrl") or "https://weft.network").rstrip("/")
+    base = (case["client"].get("baseUrl") or "https://weft.network").rstrip("/")
     assert f"{parsed.scheme}://{parsed.netloc}{parsed.path}" == base + expected_request["path"]
     assert recorded["method"] == expected_request["method"]
     assert dict(parse_qsl(parsed.query)) == expected_request["query"]
