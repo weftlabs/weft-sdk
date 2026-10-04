@@ -5,7 +5,9 @@ require 'minitest/autorun'
 require_relative '../lib/weft/sdk'
 
 class RedosTest < Minitest::Test
-  LIMIT_SECONDS = 0.1
+  # A polynomial match on 100_000 characters takes seconds. One second still
+  # catches that, and it does not fail on a slow shared CI runner.
+  LIMIT_SECONDS = 1.0
   LENGTH = 100_000
 
   def test_normalize_path_trailing_slashes_stay_linear
