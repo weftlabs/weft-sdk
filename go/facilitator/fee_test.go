@@ -123,9 +123,12 @@ func TestGetFeeInfoEmptyAmount(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := GetFeeInfo(context.Background(), &Config{URL: server.URL}, nil)
-	if err == nil {
-		t.Fatal("expected error for empty amount")
+	fee, err := GetFeeInfo(context.Background(), &Config{URL: server.URL}, nil)
+	if err != nil {
+		t.Fatalf("empty amount is still a string, got %v", err)
+	}
+	if fee.Amount != "" || fee.Asset != "USDC" {
+		t.Fatalf("fee = %#v", fee)
 	}
 }
 

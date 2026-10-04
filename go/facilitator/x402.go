@@ -1,0 +1,160 @@
+package facilitator
+
+import (
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"regexp"
+	"strings"
+)
+
+const (
+	paymentRequiredHeader  = "PAYMENT-REQUIRED"
+	paymentResponseHeader  = "PAYMENT-RESPONSE"
+	paymentSignatureHeader = "PAYMENT-SIGNATURE"
+	paymentRequiredCache   = "no-store"
+	settlementOverrides    = "Settlement-Overrides"
+)
+
+type paymentOption struct {
+	Scheme            string
+	Network           string
+	PayTo             string
+	Price             string
+	MaxTimeoutSeconds int
+	Extra             map[string]any
+}
+
+// Scheme parses a route price into wire amount and asset.
+type Scheme struct {
+	Name                       string
+	Network                    string
+	DefaultAssetTransferMethod string
+	ParsePrice                 func(price string) (amount string, asset string, extra map[string]any, err error)
+}
+
+func encodePaymentRequired(value any) (string, error) {
+	encoded, err := marshalNoHTML(value)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(encoded), nil
+}
+
+func decodePaymentHeader(value string) (map[string]any, error) {
+	raw, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return nil, err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
+func requestResourceURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return scheme + "://" + host + r.URL.Path
+}
+
+type compiledRoute struct {
+	verb    string
+	regex   *regexp.Regexp
+	pattern string
+	config  map[string]any
+}
+
+func compileRoutes(routes map[string]any) []compiledRoute {
+	var out []compiledRoute
+	for pattern, config := range routes {
+		item, _ := config.(map[string]any)
+		verb, path := "*", pattern
+		if strings.Contains(pattern, " ") {
+			parts := strings.SplitN(pattern, " ", 2)
+			verb = strings.ToUpper(parts[0])
+			path = parts[1]
+		}
+		trailing := strings.HasSuffix(path, "/*")
+		body := path
+		if trailing {
+			body = strings.TrimSuffix(path, "/*")
+		}
+		escaped := regexp.QuoteMeta(body)
+		escaped = strings.ReplaceAll(escaped, "\\*", ".*?")
+		escaped = strings.ReplaceAll(escaped, "\\/", "/")
+		if trailing {
+			escaped += "(?:/.*)?"
+		}
+		out = append(out, compiledRoute{
+			verb:    verb,
+			regex:   regexp.MustCompile("(?is)^" + escaped + "$"),
+			pattern: pattern,
+			config:  item,
+		})
+	}
+	return out
+}
+
+func matchRoute(routes []compiledRoute, method, path string) *compiledRoute {
+	normalized := normalizePath(path)
+	upper := strings.ToUpper(method)
+	for i := range routes {
+		route := &routes[i]
+		if route.verb != "*" && route.verb != upper {
+			continue
+		}
+		if route.regex.MatchString(normalized) {
+			return route
+		}
+	}
+	return nil
+}
+
+func normalizePath(path string) string {
+	path = strings.SplitN(path, "?", 2)[0]
+	path = strings.SplitN(path, "#", 2)[0]
+	for strings.Contains(path, "//") {
+		path = strings.ReplaceAll(path, "//", "/")
+	}
+	if len(path) > 1 {
+		path = strings.TrimRight(path, "/")
+	}
+	return path
+}
+
+func paymentHeader(r *http.Request) string {
+	if value := r.Header.Get(paymentSignatureHeader); value != "" {
+		return value
+	}
+	return r.Header.Get("X-Payment")
+}
+
+func withPrivateCacheControl(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "private"
+	}
+	for _, directive := range strings.Split(value, ",") {
+		if strings.EqualFold(strings.TrimSpace(directive), "private") {
+			return value
+		}
+	}
+	return value + ", private"
+}
+
+func writeFacilitatorUnavailable(w http.ResponseWriter) {
+	w.Header().Del(paymentResponseHeader)
+	w.Header().Del(settlementOverrides)
+	w.Header().Set("Retry-After", "1")
+	w.Header().Set("Cache-Control", withPrivateCacheControl(""))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_, _ = w.Write([]byte(`{"error":"facilitator_unavailable"}`))
+}

@@ -73,18 +73,8 @@ func GetFeeInfo(ctx context.Context, config *Config, cacheConfig *FeeCacheConfig
 		return nil, ErrFeeNotFound
 	}
 
-	if data.Fee.Amount == "" {
-		return nil, fmt.Errorf("invalid fee structure: amount must be a non-empty string")
-	}
-	if data.Fee.Asset == "" {
-		return nil, fmt.Errorf("invalid fee structure: asset must be a non-empty string")
-	}
-	if data.Fee.Network == "" {
-		return nil, fmt.Errorf("invalid fee structure: network must be a non-empty string")
-	}
-
 	ttl := DefaultCacheTTL
-	if cacheConfig != nil && cacheConfig.TTL > 0 {
+	if cacheConfig != nil {
 		ttl = cacheConfig.TTL
 	}
 
