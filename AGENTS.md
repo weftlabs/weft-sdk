@@ -18,6 +18,7 @@ Polyglot client SDK monorepo for Weft Labs, consumed by external developers and 
 ```sh
 scripts/generate-all.sh                         # Regenerate all language SDKs from spec/openapi.yaml
 scripts/test-sdk.sh                             # Verify generated SDK outputs exist
+node scripts/check-operation-inventory.mjs      # Fail when an OpenAPI operation is unclassified
 mise exec -- pnpm install --frozen-lockfile     # Install TypeScript workspace
 mise exec -- pnpm run check                     # SDK + CLI tests, artifacts, lint, format, build
 cd python && pip install -e . pytest pytest-asyncio ruff mypy && pytest

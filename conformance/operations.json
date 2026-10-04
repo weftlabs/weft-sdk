@@ -1,0 +1,161 @@
+{
+  "languages": ["typescript", "python"],
+  "operations": [
+    {
+      "operationId": "getOpenApiDocument",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "contract discovery metadata"
+    },
+    {
+      "operationId": "createAccountBootstrap",
+      "classification": "cli-only",
+      "cli": "weft bootstrap",
+      "reason": "Credential bootstrap lifecycle"
+    },
+    {
+      "operationId": "getAccountBootstrap",
+      "classification": "cli-only",
+      "cli": "weft auth status",
+      "reason": "Credential bootstrap lifecycle"
+    },
+    {
+      "operationId": "cancelAccountBootstrap",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "credential cancellation and revocation"
+    },
+    {
+      "operationId": "enrollResource",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "seller resource enrollment"
+    },
+    {
+      "operationId": "signUp",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "interactive account lifecycle"
+    },
+    {
+      "operationId": "confirmAccount",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "interactive account lifecycle"
+    },
+    {
+      "operationId": "resendConfirmation",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "interactive account lifecycle"
+    },
+    {
+      "operationId": "signIn",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "CLI uses API keys or stored bootstrap credentials"
+    },
+    {
+      "operationId": "requestPasswordReset",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "interactive account lifecycle"
+    },
+    {
+      "operationId": "updatePassword",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "interactive account lifecycle"
+    },
+    {
+      "operationId": "getMe",
+      "classification": "facade",
+      "methods": {
+        "typescript": "me",
+        "python": "me"
+      },
+      "cli": "weft me",
+      "reason": "Buyer runtime"
+    },
+    {
+      "operationId": "listApiKeys",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "credential lifecycle"
+    },
+    {
+      "operationId": "createApiKey",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "prevents secrets in CLI output/history"
+    },
+    {
+      "operationId": "revokeApiKey",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "credential lifecycle"
+    },
+    {
+      "operationId": "getBalance",
+      "classification": "facade",
+      "methods": {
+        "typescript": "balance",
+        "python": "balance"
+      },
+      "cli": "weft balance",
+      "reason": "Buyer runtime"
+    },
+    {
+      "operationId": "search",
+      "classification": "facade",
+      "methods": {
+        "typescript": "search",
+        "python": "search"
+      },
+      "cli": "weft search QUERY",
+      "reason": "Buyer runtime"
+    },
+    {
+      "operationId": "fetch",
+      "classification": "facade",
+      "methods": {
+        "typescript": "fetch",
+        "python": "fetch"
+      },
+      "cli": "weft fetch URL --max-cost-usd USD",
+      "reason": "Paid buyer runtime"
+    },
+    {
+      "operationId": "listPayments",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "organization-scoped seller ledger"
+    },
+    {
+      "operationId": "getPayment",
+      "classification": "excluded",
+      "cli": null,
+      "reason": "organization-scoped seller ledger"
+    },
+    {
+      "operationId": "listPurchases",
+      "classification": "facade",
+      "methods": {
+        "typescript": "purchases",
+        "python": "purchases"
+      },
+      "cli": "weft purchases",
+      "reason": "Buyer purchase ledger"
+    },
+    {
+      "operationId": "getPurchase",
+      "classification": "facade",
+      "methods": {
+        "typescript": "purchase",
+        "python": "purchase"
+      },
+      "cli": "weft purchases ID",
+      "reason": "Buyer purchase detail"
+    }
+  ]
+}
