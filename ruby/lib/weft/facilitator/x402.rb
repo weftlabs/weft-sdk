@@ -73,16 +73,23 @@ module Weft
         end
         trailing = path.end_with?('/*')
         path_for_regex = trailing ? path[0..-3] : path
-        regex_body = Regexp.escape(path_for_regex)
-        regex_body = regex_body.gsub('\*', '.*?')
-        regex_body = regex_body.gsub(/\\\[([^\]]+)\\\]/, '[^/]+')
+        regex_body = path_for_regex.gsub('\\', '\\\\')
+        regex_body = regex_body.gsub(/[$()+.?^{|}]/) { |char| "\\#{char}" }
+        regex_body = regex_body.gsub('*', '.*?')
+        regex_body = regex_body.gsub(/\[[^\]]+\]/, '[^/]+')
         regex_body = regex_body.gsub(/:([A-Za-z_][A-Za-z0-9_]*)/, '[^/]+')
+        regex_body = regex_body.gsub('/', '\\/')
         regex_body += '(?:/.*?)?' if trailing
         {
           'verb' => verb.upcase,
           'regex' => Regexp.new("\\A#{regex_body}\\z", Regexp::IGNORECASE | Regexp::MULTILINE),
           'path' => path
         }
+      end
+
+      def network_matches?(pattern, network)
+        source = Regexp.escape(pattern).gsub('\\*', '.*')
+        Regexp.new("\\A#{source}\\z").match?(network)
       end
 
       def normalize_path(path)
@@ -179,7 +186,8 @@ module Weft
       attr_reader :client
 
       def register(network, scheme)
-        @schemes[network] = scheme
+        @schemes[network] ||= {}
+        @schemes[network][Product.read(scheme, 'scheme')] = scheme
       end
 
       def register_extension(extension)
@@ -196,12 +204,24 @@ module Weft
       end
 
       def scheme_for(network, scheme_name)
-        registered = @schemes[network]
-        return nil unless registered
-        return registered if Product.read(registered, 'scheme') == scheme_name
-        return registered[scheme_name] if registered.is_a?(Hash)
+        found = scheme_map(@schemes[network], scheme_name)
+        return found if found
 
+        @schemes.each do |pattern, schemes|
+          next if pattern == network
+          next unless X402.network_matches?(pattern, network)
+
+          found = scheme_map(schemes, scheme_name)
+          return found if found
+        end
         nil
+      end
+
+      def dynamic_info_fields(key)
+        extension = @extensions[key]
+        return nil unless extension
+
+        Product.read(extension, 'dynamicInfoFields') || Product.read(extension, 'dynamic_info_fields')
       end
 
       def supported_kind?(network, scheme_name)
@@ -215,8 +235,8 @@ module Weft
         network = Product.read(option, 'network')
         scheme = scheme_for(network, scheme_name)
         unless scheme
-          warn "No server implementation registered for scheme: #{scheme_name}, network: #{network}"
-          return []
+          raise ArgumentError,
+                "No scheme implementation registered for \"#{scheme_name}\" on network \"#{network}\""
         end
         unless supported_kind?(network, scheme_name)
           raise StandardError,
@@ -302,6 +322,12 @@ module Weft
           shipped = hook.enrich_payment_required_response(extensions[key], context)
           extensions[key] = shipped unless shipped.nil?
         end
+      end
+
+      def scheme_map(schemes, scheme_name)
+        return nil unless schemes.is_a?(Hash)
+
+        schemes[scheme_name]
       end
 
       def call_scheme(scheme, name, *args)

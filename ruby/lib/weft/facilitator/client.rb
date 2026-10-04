@@ -89,17 +89,7 @@ module Weft
       end
 
       def settle(payment_payload:, payment_requirements:)
-        begin
-          post_json('/settle', 'settle', {
-                      'x402Version' => payment_payload['x402Version'] || payment_payload[:x402Version] || 2,
-                      'paymentPayload' => payment_payload,
-                      'paymentRequirements' => payment_requirements
-                    })
-        rescue SettleError => e
-          raise FacilitatorUnavailableError if SettleErrors.unavailable?(e)
-
-          raise
-        end
+        settle_once(payment_payload, payment_requirements, allow_retry: true)
       end
 
       def supported
@@ -116,6 +106,35 @@ module Weft
       end
 
       private
+
+      def settle_once(payment_payload, payment_requirements, allow_retry:)
+        result = post_json('/settle', 'settle', {
+                              'x402Version' => payment_payload['x402Version'] || payment_payload[:x402Version] || 2,
+                              'paymentPayload' => payment_payload,
+                              'paymentRequirements' => payment_requirements
+                            })
+        if allow_retry && pending_result?(result)
+          return settle_once(payment_payload, payment_requirements, allow_retry: false)
+        end
+
+        result
+      rescue SettleError => e
+        if allow_retry && pending_error?(e)
+          return settle_once(payment_payload, payment_requirements, allow_retry: false)
+        end
+        raise FacilitatorUnavailableError if SettleErrors.unavailable?(e)
+
+        raise
+      end
+
+      def pending_result?(result)
+        result.is_a?(Hash) && result['success'] == false &&
+          result['errorReason'] == 'settlement_pending' && !result['transaction'].to_s.empty?
+      end
+
+      def pending_error?(error)
+        error.error_reason == 'settlement_pending' && !error.transaction.to_s.empty?
+      end
 
       def headers_for(scope)
         headers = { 'Content-Type' => 'application/json' }
