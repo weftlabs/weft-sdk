@@ -1,13 +1,17 @@
 """Tests for facilitator client."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+from x402.schemas import PaymentPayload, PaymentRequirements
 
 from weft_sdk.facilitator.client import (
     X402_FACILITATOR_URL,
     X402_FACILITATOR_URL_ENV,
     FacilitatorClient,
+    FacilitatorUnavailableError,
     create_facilitator_client,
     resolve_url,
     validate_url,
@@ -74,72 +78,138 @@ class TestCreateFacilitatorClient:
             create_facilitator_client({"url": "not-a-url"})
 
 
+def _requirements() -> PaymentRequirements:
+    return PaymentRequirements(
+        scheme="exact",
+        network="eip155:84532",
+        asset="0xasset",
+        amount="1",
+        pay_to="0xpay",
+        max_timeout_seconds=60,
+    )
+
+
+def _payload() -> PaymentPayload:
+    return PaymentPayload(x402_version=2, payload={"sig": "abc"}, accepted=_requirements())
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+
+def _server(recorder: _Recorder, settle_status: int = 200) -> tuple[ThreadingHTTPServer, str]:
+    class Handler(BaseHTTPRequestHandler):
+        def _body(self) -> bytes:
+            length = int(self.headers.get("Content-Length", "0"))
+            return self.rfile.read(length) if length else b""
+
+        def _store(self, body: bytes) -> None:
+            recorder.calls.append(
+                {
+                    "path": self.path,
+                    "headers": {key: value for key, value in self.headers.items()},
+                    "body": json.loads(body.decode()) if body else None,
+                }
+            )
+
+        def _send(self, status: int, payload: dict[str, object]) -> None:
+            raw = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def do_GET(self) -> None:  # noqa: N802
+            self._store(b"")
+            self._send(
+                200,
+                {"kinds": [{"x402Version": 2, "scheme": "exact", "network": "eip155:84532"}]},
+            )
+
+        def do_POST(self) -> None:  # noqa: N802
+            body = self._body()
+            self._store(body)
+            if self.path.endswith("/verify"):
+                self._send(200, {"isValid": True, "payer": "0xpayer"})
+                return
+            if settle_status == 503:
+                self._send(
+                    503,
+                    {
+                        "success": False,
+                        "errorReason": "temporarily_unavailable",
+                        "transaction": "",
+                        "network": "eip155:84532",
+                    },
+                )
+                return
+            self._send(
+                200,
+                {
+                    "success": True,
+                    "transaction": "0xabc",
+                    "network": "eip155:84532",
+                    "payer": "0xpayer",
+                },
+            )
+
+        def log_message(self, fmt: str, *args: object) -> None:
+            del fmt, args
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    host, port = server.server_address[:2]
+    return server, f"http://{host}:{port}"
+
+
 class TestFacilitatorClient:
-    @pytest.fixture
-    def client(self):
-        return FacilitatorClient("https://x402.weft.network")
+    @pytest.mark.asyncio
+    async def test_verify_and_settle_send_the_v2_body(self):
+        recorder = _Recorder()
+        server, url = _server(recorder)
+        try:
+            client = create_facilitator_client(
+                {
+                    "url": url,
+                    "create_headers": lambda: {
+                        "verify": {"X-API-Key": "seller-key"},
+                        "settle": {"x-api-key": "seller-key"},
+                    },
+                },
+                {"settle": {"X-API-Key": "derived"}, "verify": {"X-API-Key": "derived"}},
+            )
+            verified = await client.verify(_payload(), _requirements())
+            settled = await client.settle(_payload(), _requirements())
+            supported = client.get_supported()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+        assert verified.is_valid is True
+        assert settled.success is True
+        assert settled.transaction == "0xabc"
+        assert supported.kinds
+        verify = next(call for call in recorder.calls if str(call["path"]).endswith("/verify"))
+        settle = next(call for call in recorder.calls if str(call["path"]).endswith("/settle"))
+        assert verify["body"]["x402Version"] == 2
+        assert verify["body"]["paymentPayload"]["payload"] == {"sig": "abc"}
+        assert verify["body"]["paymentRequirements"]["amount"] == "1"
+        assert verify["headers"]["X-API-Key"] == "seller-key"
+        assert settle["headers"]["x-api-key"] == "seller-key"
+        assert "X-API-Key" not in settle["headers"]
 
     @pytest.mark.asyncio
-    async def test_verify_sends_correct_payload(self, client):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"valid": True}
-        mock_response.raise_for_status = MagicMock()
-
-        with patch("weft_sdk.facilitator.client.httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post.return_value = mock_response
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
-
-            result = await client.verify({"sig": "abc"}, {"amount": "1"})
-            assert result == {"valid": True}
-
-            call_args = mock_http.post.call_args
-            assert "/verify" in call_args[0][0]
-            assert call_args[1]["json"]["x402Version"] == 2
-            assert call_args[1]["json"]["paymentPayload"] == {"sig": "abc"}
-            assert call_args[1]["json"]["paymentRequirements"] == {"amount": "1"}
-
-    @pytest.mark.asyncio
-    async def test_settle_sends_correct_payload(self, client):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"success": True, "txHash": "0xabc"}
-        mock_response.raise_for_status = MagicMock()
-
-        with patch("weft_sdk.facilitator.client.httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post.return_value = mock_response
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
-
-            result = await client.settle({"sig": "abc"}, {"amount": "1"})
-            assert result == {"success": True, "txHash": "0xabc"}
-
-            call_args = mock_http.post.call_args
-            assert "/settle" in call_args[0][0]
-            assert call_args[1]["json"]["x402Version"] == 2
-
-    @pytest.mark.asyncio
-    async def test_get_supported(self, client):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "kinds": [{"x402Version": 2, "scheme": "eip-3009", "network": "base-sepolia"}],
-            "fee": {"amount": "0.001", "asset": "USDC", "network": "base-sepolia"},
-        }
-        mock_response.raise_for_status = MagicMock()
-
-        with patch("weft_sdk.facilitator.client.httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.get.return_value = mock_response
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
-
-            result = await client.get_supported()
-            assert "kinds" in result
-            assert "fee" in result
+    async def test_structured_503_is_facilitator_unavailable(self):
+        recorder = _Recorder()
+        server, url = _server(recorder, settle_status=503)
+        try:
+            client = FacilitatorClient(url)
+            with pytest.raises(
+                FacilitatorUnavailableError, match="weft:facilitator-settle-unavailable"
+            ):
+                await client.settle(_payload(), _requirements())
+        finally:
+            server.shutdown()
+            server.server_close()
