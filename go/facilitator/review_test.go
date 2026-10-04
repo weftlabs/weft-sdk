@@ -29,13 +29,13 @@ func TestVerifyUsesTheRequirementTheBuyerPaid(t *testing.T) {
 	}))
 	defer facilitator.Close()
 
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{
 			Accepts: []paymentOption{
 				{Scheme: "exact", Network: "eip155:8453", PayTo: "0xbase", Price: "1"},
 				{Scheme: "exact", Network: "eip155:84532", PayTo: "0xsepolia", Price: "1"},
 			},
-		},
+		}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		Schemes: []Scheme{
@@ -73,8 +73,8 @@ func TestVerifyUsesTheRequirementTheBuyerPaid(t *testing.T) {
 }
 
 func TestInvalidFacilitatorURLIsAConstructionError(t *testing.T) {
-	_, err := PaymentMiddleware(map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	_, err := PaymentMiddleware([]Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: "not-a-url"},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
@@ -102,8 +102,8 @@ func TestSettlementOverrideUsesHalfTheMatchedAmount(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[]}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("10000", "0xusdc")}},
@@ -141,8 +141,8 @@ func TestMalformedSettlementOverrideIsIgnored(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[]}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("10000", "0xusdc")}},
@@ -175,8 +175,8 @@ func TestDollarOverrideWithoutDecimalsFailsClosed(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[]}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("10000", "0xusdc")}},
@@ -204,8 +204,8 @@ func TestColonAndBracketRoutesAreProtected(t *testing.T) {
 	for _, pattern := range []string{"GET /v1/:id", "GET /v1/[id]", "GET /files/*"} {
 		t.Run(pattern, func(t *testing.T) {
 			var hit bool
-			middleware, err := mustMiddleware(t, map[string]RouteConfig{
-				pattern: {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+			middleware, err := mustMiddleware(t, []Route{
+				{Pattern: pattern, Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 			}, MiddlewareConfig{
 				Facilitator: &Config{URL: "https://facilitator.example"},
 				Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
@@ -235,8 +235,8 @@ func TestColonAndBracketRoutesAreProtected(t *testing.T) {
 }
 
 func TestUnknownRoutePatternIsAConstructionError(t *testing.T) {
-	_, err := PaymentMiddleware(map[string]RouteConfig{
-		"GET /v1/{id}": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	_, err := PaymentMiddleware([]Route{
+		{Pattern: "GET /v1/{id}", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: "https://facilitator.example"},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
@@ -247,8 +247,8 @@ func TestUnknownRoutePatternIsAConstructionError(t *testing.T) {
 }
 
 func TestBeforeHandlerFlowIsRefusedAtConstruction(t *testing.T) {
-	_, err := PaymentMiddleware(map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	_, err := PaymentMiddleware([]Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: "https://facilitator.example"},
 		Schemes: []Scheme{{
@@ -276,8 +276,8 @@ func TestExtensionEchoMismatchDoesNotVerify(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[],"isValid":true}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		ProductID:   "prod_1",
@@ -334,8 +334,8 @@ func TestSettlementPendingRetriesOnce(t *testing.T) {
 		_, _ = w.Write([]byte(`{"success":true,"transaction":"0xpending","network":"eip155:84532"}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
@@ -368,8 +368,8 @@ func TestVerifyUnavailableIs503(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[]}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := mustMiddleware(t, map[string]RouteConfig{
-		"GET /paid": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}},
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
 	}, MiddlewareConfig{
 		Facilitator: &Config{URL: facilitator.URL},
 		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
@@ -390,7 +390,99 @@ func TestVerifyUnavailableIs503(t *testing.T) {
 	}
 }
 
-func mustMiddleware(t *testing.T, routes map[string]RouteConfig, cfg MiddlewareConfig) (func(http.Handler) http.Handler, error) {
+func TestRoutePriceFollowsDeclarationOrder(t *testing.T) {
+	priceOf := func(price string) func(string) (string, string, map[string]any, error) {
+		return func(string) (string, string, map[string]any, error) {
+			return price, "0xasset", map[string]any{}, nil
+		}
+	}
+	orders := []struct {
+		name   string
+		routes []Route
+		want   string
+	}{
+		{
+			name: "wildcard first",
+			want: "0.01",
+			routes: []Route{
+				{Pattern: "/api/*", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "0.01"}}},
+				{Pattern: "/api/premium", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1.00"}}},
+			},
+		},
+		{
+			name: "premium first",
+			want: "1.00",
+			routes: []Route{
+				{Pattern: "/api/premium", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1.00"}}},
+				{Pattern: "/api/*", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "0.01"}}},
+			},
+		},
+	}
+	for _, order := range orders {
+		t.Run(order.name, func(t *testing.T) {
+			middleware, err := PaymentMiddleware(order.routes, MiddlewareConfig{
+				Facilitator: &Config{URL: "https://facilitator.example"},
+				SyncOnStart: boolPtr(false),
+				Schemes:     []Scheme{{Name: "exact", ParsePrice: priceOf("unused")}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Price comes from the matched route, not from a shared parser.
+			middleware, err = PaymentMiddleware(order.routes, MiddlewareConfig{
+				Facilitator: &Config{URL: "https://facilitator.example"},
+				SyncOnStart: boolPtr(false),
+				Schemes: []Scheme{{Name: "exact", ParsePrice: func(price string) (string, string, map[string]any, error) {
+					return price, "0xasset", map[string]any{}, nil
+				}}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			server := httptest.NewServer(middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Fatal("protected route was not matched")
+			})))
+			defer server.Close()
+			for i := 0; i < 1000; i++ {
+				challenge := getChallenge(t, server.URL+"/api/premium")
+				accepts := challenge["accepts"].([]any)
+				if accepts[0].(map[string]any)["amount"] != order.want {
+					t.Fatalf("request %d amount %v, want %s", i, accepts[0].(map[string]any)["amount"], order.want)
+				}
+			}
+		})
+	}
+}
+
+func TestDuplicateRoutePatternIsAConstructionError(t *testing.T) {
+	_, err := PaymentMiddleware([]Route{
+		{Pattern: "/api/premium", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Price: "1", PayTo: "0x1"}}},
+		{Pattern: "/api/premium", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Price: "2", PayTo: "0x1"}}},
+	}, MiddlewareConfig{
+		Facilitator: &Config{URL: "https://facilitator.example"},
+		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
+	})
+	if err == nil {
+		t.Fatal("duplicate pattern was accepted")
+	}
+}
+
+func TestPatternBackslashIsLiteral(t *testing.T) {
+	_, re, err := compilePattern(`GET /v1/\d`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if re.MatchString("/v1/5") {
+		t.Fatal(`\\d matched a digit; the backslash was not escaped`)
+	}
+	if !re.MatchString(`/v1/\d`) {
+		t.Fatal(`literal backslash-d did not match`)
+	}
+}
+
+func boolPtr(value bool) *bool { return &value }
+
+func mustMiddleware(t *testing.T, routes []Route, cfg MiddlewareConfig) (func(http.Handler) http.Handler, error) {
 	t.Helper()
 	return PaymentMiddleware(routes, cfg)
 }

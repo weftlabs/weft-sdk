@@ -77,6 +77,11 @@ func requestResourceURL(r *http.Request) string {
 	return scheme + "://" + host + r.URL.Path
 }
 
+type orderedRoute struct {
+	pattern string
+	config  map[string]any
+}
+
 type compiledRoute struct {
 	verb    string
 	regex   *regexp.Regexp
@@ -84,19 +89,23 @@ type compiledRoute struct {
 	config  map[string]any
 }
 
-func compileRoutes(routes map[string]any) ([]compiledRoute, error) {
-	var out []compiledRoute
-	for pattern, config := range routes {
-		item, _ := config.(map[string]any)
-		verb, re, err := compilePattern(pattern)
+func compileRoutes(routes []orderedRoute) ([]compiledRoute, error) {
+	seen := map[string]struct{}{}
+	out := make([]compiledRoute, 0, len(routes))
+	for _, route := range routes {
+		if _, ok := seen[route.pattern]; ok {
+			return nil, fmt.Errorf("duplicate route pattern %q", route.pattern)
+		}
+		seen[route.pattern] = struct{}{}
+		verb, re, err := compilePattern(route.pattern)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, compiledRoute{
 			verb:    verb,
 			regex:   re,
-			pattern: pattern,
-			config:  item,
+			pattern: route.pattern,
+			config:  route.config,
 		})
 	}
 	return out, nil
@@ -137,7 +146,8 @@ func pathRegex(path string) string {
 	for i := 0; i < len(path); {
 		switch path[i] {
 		case '\\':
-			b.WriteString(`\`)
+			// Core replaces one backslash with two, so \d is a literal, not a digit class.
+			b.WriteString(`\\`)
 			i++
 		case '*':
 			b.WriteString(`.*?`)

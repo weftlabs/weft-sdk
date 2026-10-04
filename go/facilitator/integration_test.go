@@ -56,8 +56,8 @@ func TestNetHTTPFacilitatorIntegration(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("paid"))
 	})
-	middleware, err := PaymentMiddleware(map[string]RouteConfig{
-		"GET /v1/search": {
+	middleware, err := PaymentMiddleware([]Route{
+		{Pattern: "GET /v1/search", Config: RouteConfig{
 			Accepts: paymentOption{
 				Scheme:  "exact",
 				Network: network,
@@ -69,7 +69,7 @@ func TestNetHTTPFacilitatorIntegration(t *testing.T) {
 					return map[string]any{"model": "gpt", "max_tokens": 16}, nil
 				}),
 			},
-		},
+		}},
 	}, MiddlewareConfig{
 		APIKey:       apiKey,
 		Name:         "Acme Pricing API",
@@ -283,8 +283,8 @@ func TestResumeSkipsVerifyAndStillSettles(t *testing.T) {
 		_, _ = w.Write([]byte(`{"kinds":[]}`))
 	}))
 	defer facilitator.Close()
-	middleware, err := PaymentMiddleware(map[string]RouteConfig{
-		"POST /v1/search": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "$0.01"}},
+	middleware, err := PaymentMiddleware([]Route{
+		{Pattern: "POST /v1/search", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "$0.01"}}},
 	}, MiddlewareConfig{
 		APIKey:      "wk_live_seller",
 		Facilitator: &Config{URL: facilitator.URL},
@@ -423,8 +423,8 @@ func decodeRequired(t *testing.T, header string) map[string]any {
 
 func paidMiddleware(t *testing.T, facilitatorURL, apiKey string, keySet bool, handler http.Handler) http.Handler {
 	t.Helper()
-	middleware, err := PaymentMiddleware(map[string]RouteConfig{
-		"GET /v1/search": {Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "$0.01"}},
+	middleware, err := PaymentMiddleware([]Route{
+		{Pattern: "GET /v1/search", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "$0.01"}}},
 	}, MiddlewareConfig{
 		APIKey:      apiKey,
 		APIKeySet:   keySet,

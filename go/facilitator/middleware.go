@@ -20,6 +20,12 @@ const syncRetryFloor = 30 * time.Second
 // nowFunc is the clock for facilitator re-sync. Tests replace it.
 var nowFunc = time.Now
 
+// Route is one protected route in declaration order. The first match wins.
+type Route struct {
+	Pattern string
+	Config  RouteConfig
+}
+
 // RouteConfig is one protected route. Type is consumed into the reserved tag
 // and is not forwarded. Extension values may be static objects or callbacks.
 type RouteConfig struct {
@@ -60,16 +66,17 @@ type MiddlewareConfig struct {
 }
 
 // PaymentMiddleware returns net/http seller middleware. The adapter name is nethttp.
+// Routes are matched in slice order. The first match wins. A duplicate pattern is an error.
 // A configuration error is returned. It is never replaced with the production facilitator.
-func PaymentMiddleware(routes map[string]RouteConfig, cfg MiddlewareConfig) (func(http.Handler) http.Handler, error) {
+//
+//	middleware, err := PaymentMiddleware([]Route{
+//		{Pattern: "/api/*", Config: RouteConfig{Accepts: map[string]any{"scheme": "exact", "price": "$0.01", "payTo": "0x1"}}},
+//		{Pattern: "/api/premium", Config: RouteConfig{Accepts: map[string]any{"scheme": "exact", "price": "$1.00", "payTo": "0x1"}}},
+//	}, MiddlewareConfig{Facilitator: &Config{URL: "https://x402.weft.network"}})
+func PaymentMiddleware(routes []Route, cfg MiddlewareConfig) (func(http.Handler) http.Handler, error) {
 	declaration := declarationMap(cfg)
-	identityRoutes := routesToAny(routes)
-	applied := ApplyProductIdentity(identityRoutes, declaration)
-	appliedMap, _ := applied.(map[string]any)
-	if appliedMap == nil {
-		appliedMap = map[string]any{}
-	}
-	compiled, err := compileRoutes(appliedMap)
+	applied := applyRoutesInOrder(routes, declaration)
+	compiled, err := compileRoutes(applied)
 	if err != nil {
 		return nil, err
 	}
@@ -458,37 +465,46 @@ func findScheme(schemes []Scheme, name, network string) *Scheme {
 	return nil
 }
 
-func routesToAny(routes map[string]RouteConfig) map[string]any {
-	out := map[string]any{}
-	for pattern, route := range routes {
-		item := map[string]any{"accepts": acceptsToAny(route.Accepts)}
-		if route.Description != "" {
-			item["description"] = route.Description
+func applyRoutesInOrder(routes []Route, declaration map[string]any) []orderedRoute {
+	out := make([]orderedRoute, 0, len(routes))
+	for _, route := range routes {
+		applied := ApplyProductIdentity(routeToMap(route.Config), declaration)
+		item, _ := applied.(map[string]any)
+		if item == nil {
+			item = map[string]any{}
 		}
-		if route.MimeType != "" {
-			item["mimeType"] = route.MimeType
-		}
-		if route.ServiceName != "" {
-			item["serviceName"] = route.ServiceName
-		}
-		if route.IconURL != "" {
-			item["iconUrl"] = route.IconURL
-		}
-		if route.Type != "" {
-			item["type"] = route.Type
-		}
-		if route.Resource != "" {
-			item["resource"] = route.Resource
-		}
-		if len(route.Tags) > 0 {
-			item["tags"] = route.Tags
-		}
-		if route.Extensions != nil {
-			item["extensions"] = route.Extensions
-		}
-		out[pattern] = item
+		out = append(out, orderedRoute{pattern: route.Pattern, config: item})
 	}
 	return out
+}
+
+func routeToMap(route RouteConfig) map[string]any {
+	item := map[string]any{"accepts": acceptsToAny(route.Accepts)}
+	if route.Description != "" {
+		item["description"] = route.Description
+	}
+	if route.MimeType != "" {
+		item["mimeType"] = route.MimeType
+	}
+	if route.ServiceName != "" {
+		item["serviceName"] = route.ServiceName
+	}
+	if route.IconURL != "" {
+		item["iconUrl"] = route.IconURL
+	}
+	if route.Type != "" {
+		item["type"] = route.Type
+	}
+	if route.Resource != "" {
+		item["resource"] = route.Resource
+	}
+	if len(route.Tags) > 0 {
+		item["tags"] = route.Tags
+	}
+	if route.Extensions != nil {
+		item["extensions"] = route.Extensions
+	}
+	return item
 }
 
 func acceptsToAny(value any) any {
