@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from types import TracebackType
 from typing import Any, Callable, TypeVar
@@ -42,12 +43,16 @@ def _search_filters(value: Mapping[str, Any] | None) -> SearchFilterSpec | None:
     return SearchFilterSpec.model_validate(payload)
 
 
-def _fetch_body(value: str | Mapping[str, Any] | None) -> FetchRequestBody | None:
+def _fetch_body(
+    value: str | Mapping[str, Any] | list[Any] | None,
+) -> FetchRequestBody | None:
     if value is None:
         return None
-    if isinstance(value, str):
-        return FetchRequestBody(actual_instance=value)
-    return FetchRequestBody(actual_instance=dict(value))
+    # Generated FetchRequestBodyToJSON replaces an object body with {}.
+    # json.dumps matches JSON.stringify; the server accepts that string.
+    if not isinstance(value, str):
+        value = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    return FetchRequestBody(actual_instance=value)
 
 
 class Client:
@@ -134,7 +139,7 @@ class Client:
         max_cost_usd: str,
         idempotency_key: str,
         method: str | None = None,
-        body: str | Mapping[str, Any] | None = None,
+        body: str | Mapping[str, Any] | list[Any] | None = None,
         headers: Mapping[str, str] | None = None,
         search_id: str | None = None,
         operation_id: str | None = None,
