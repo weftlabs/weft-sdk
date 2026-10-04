@@ -1,0 +1,154 @@
+[
+  {
+    "name": "each declared field is in the decoded payload",
+    "declaration": {
+      "name": "Acme Pricing API",
+      "type": "api",
+      "tags": ["finance", "pricing"],
+      "iconUrl": "https://acme.test/icon.png",
+      "dimensions": ["model", "tier"]
+    },
+    "expect": {
+      "present": true,
+      "json": {
+        "name": "Acme Pricing API",
+        "type": "api",
+        "tags": ["finance", "pricing"],
+        "icon_url": "https://acme.test/icon.png",
+        "dimensions": ["model", "tier"]
+      },
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "name alone",
+    "declaration": {"name": "Acme"},
+    "expect": {"present": true, "json": {"name": "Acme"}, "warningKeys": []}
+  },
+  {
+    "name": "type alone",
+    "declaration": {"type": "mcp"},
+    "expect": {"present": true, "json": {"type": "mcp"}, "warningKeys": []}
+  },
+  {
+    "name": "tags alone",
+    "declaration": {"tags": ["finance"]},
+    "expect": {"present": true, "json": {"tags": ["finance"]}, "warningKeys": []}
+  },
+  {
+    "name": "icon url alone",
+    "declaration": {"iconUrl": "https://acme.test/icon.png"},
+    "expect": {
+      "present": true,
+      "json": {"icon_url": "https://acme.test/icon.png"},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "unicode icon url is carried and unpadded base64url",
+    "declaration": {"iconUrl": "https://acme.test/café.png"},
+    "expect": {
+      "present": true,
+      "json": {"icon_url": "https://acme.test/café.png"},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "dimensions alone",
+    "declaration": {"dimensions": ["model"]},
+    "expect": {
+      "present": true,
+      "json": {"dimensions": ["model"]},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "unicode name is omitted",
+    "declaration": {"name": "Acme Café"},
+    "expect": {"present": false, "warningKeys": []}
+  },
+  {
+    "name": "over-long name is truncated",
+    "declaration": {"name": "Acme Real Estate Property Records API"},
+    "expect": {
+      "present": true,
+      "json": {"name": "Acme Real Estate Property Record"},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "tags over the limit are capped",
+    "declaration": {"tags": ["a", "b", "c", "d", "e", "f"]},
+    "expect": {
+      "present": true,
+      "json": {"tags": ["a", "b", "c", "d", "e"]},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "over-long tag is dropped and the rest stay",
+    "declaration": {"tags": ["finance", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]},
+    "expect": {
+      "present": true,
+      "json": {"tags": ["finance"]},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "reserved weft type tag is dropped",
+    "declaration": {"tags": ["weft:type:mcp", "finance"]},
+    "expect": {
+      "present": true,
+      "json": {"tags": ["finance"]},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "reserved weft type tag is dropped regardless of case and space",
+    "declaration": {"tags": [" WEFT:TYPE:mcp ", "finance"]},
+    "expect": {
+      "present": true,
+      "json": {"tags": ["finance"]},
+      "warningKeys": []
+    }
+  },
+  {
+    "name": "invalid dimension names are dropped",
+    "declaration": {
+      "name": "Acme",
+      "dimensions": ["model", "a b", "1st", ""]
+    },
+    "expect": {
+      "present": true,
+      "json": {"name": "Acme", "dimensions": ["model"]},
+      "warningKeys": ["dimensions"]
+    }
+  },
+  {
+    "name": "dimensions are capped at eight",
+    "declaration": {
+      "dimensions": ["d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d0"]
+    },
+    "expect": {
+      "present": true,
+      "json": {
+        "dimensions": ["d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7"]
+      },
+      "warningKeys": ["dimensions"]
+    }
+  },
+  {
+    "name": "junk dimensions do not remove a valid name",
+    "declaration": {"name": "Acme Image API", "dimensions": "model"},
+    "expect": {
+      "present": true,
+      "json": {"name": "Acme Image API"},
+      "warningKeys": ["dimensions"]
+    }
+  },
+  {
+    "name": "nothing declared omits the header",
+    "declaration": {},
+    "expect": {"present": false, "warningKeys": []}
+  }
+]

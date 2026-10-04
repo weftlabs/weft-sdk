@@ -1,0 +1,83 @@
+[
+  {
+    "name": "explicit config url",
+    "fn": "resolveUrl",
+    "args": {"config": {"url": "https://custom.example"}},
+    "expect": "https://custom.example"
+  },
+  {
+    "name": "env url when config is absent",
+    "fn": "resolveUrl",
+    "args": {"env": {"X402_FACILITATOR_URL": "https://env.example"}},
+    "expect": "https://env.example"
+  },
+  {
+    "name": "config url wins over env",
+    "fn": "resolveUrl",
+    "args": {
+      "config": {"url": "https://config.example"},
+      "env": {"X402_FACILITATOR_URL": "https://env.example"}
+    },
+    "expect": "https://config.example"
+  },
+  {
+    "name": "default url when nothing is set",
+    "fn": "resolveUrl",
+    "args": {},
+    "expect": "https://x402.weft.network"
+  },
+  {
+    "name": "empty config object uses the default",
+    "fn": "resolveUrl",
+    "args": {"config": {}},
+    "expect": "https://x402.weft.network"
+  },
+  {
+    "name": "empty config url falls through to the default",
+    "fn": "resolveUrl",
+    "args": {"config": {"url": ""}},
+    "expect": "https://x402.weft.network"
+  },
+  {
+    "name": "whitespace config url is returned unvalidated",
+    "fn": "resolveUrl",
+    "args": {"config": {"url": "   "}},
+    "expect": "   "
+  },
+  {
+    "name": "https url is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "https://x402.weft.network"},
+    "expectError": false
+  },
+  {
+    "name": "http url is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "http://localhost:7676"},
+    "expectError": false
+  },
+  {
+    "name": "empty url is rejected",
+    "fn": "validateUrl",
+    "args": {"url": ""},
+    "expectError": true
+  },
+  {
+    "name": "whitespace url is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "   "},
+    "expectError": true
+  },
+  {
+    "name": "url without a protocol is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "x402.weft.network"},
+    "expectError": true
+  },
+  {
+    "name": "ftp url is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "ftp://x402.weft.network"},
+    "expectError": true
+  }
+]

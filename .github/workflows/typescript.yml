@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "typescript/**"
+      - "conformance/**"
       - "cli/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -24,6 +25,7 @@ on:
     # pushes that don't touch the SDK.)
     paths:
       - "typescript/**"
+      - "conformance/**"
       - "cli/**"
       - "package.json"
       - "pnpm-lock.yaml"

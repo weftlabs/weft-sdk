@@ -81,10 +81,11 @@ class Client:
     def balance(self) -> BalanceResponse:
         return self._call(self._balance.get_balance)
 
-    def search(self, *, query: str, max_results: int = 10) -> SearchResponse:
-        return self._call(
-            lambda: self._search.search(SearchRequest(query=query, max_results=max_results))
-        )
+    def search(self, *, query: str, max_results: int | None = None) -> SearchResponse:
+        # Pass None explicitly so the generated model default does not appear
+        # on the wire when the caller omitted the optional field.
+        request = SearchRequest(query=query, max_results=max_results)
+        return self._call(lambda: self._search.search(request))
 
     def fetch(
         self,
@@ -92,13 +93,17 @@ class Client:
         url: str,
         max_cost_usd: str,
         idempotency_key: str,
-        method: str = "GET",
+        method: str | None = None,
     ) -> FetchResponse:
         if not max_cost_usd.strip():
             raise ValueError("max_cost_usd is required")
         if not idempotency_key.strip():
             raise ValueError("idempotency_key is required")
-        request = FetchRequest(url=url, max_cost_usd=max_cost_usd, method=method.upper())
+        request = FetchRequest(
+            url=url,
+            max_cost_usd=max_cost_usd,
+            method=None if method is None else method.upper(),
+        )
         return self._call(lambda: self._fetch.fetch(request, idempotency_key=idempotency_key))
 
     def purchases(
