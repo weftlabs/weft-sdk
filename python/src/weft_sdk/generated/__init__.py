@@ -63,6 +63,7 @@ __all__ = [
     "FetchErrorResponse",
     "FetchRequest",
     "FetchRequestBody",
+    "FetchRequestNot",
     "FetchResponse",
     "InsufficientScopeResponse",
     "MeApiKey",
@@ -174,6 +175,7 @@ from weft_sdk.generated.models.fetch_balance_snapshot import FetchBalanceSnapsho
 from weft_sdk.generated.models.fetch_error_response import FetchErrorResponse as FetchErrorResponse
 from weft_sdk.generated.models.fetch_request import FetchRequest as FetchRequest
 from weft_sdk.generated.models.fetch_request_body import FetchRequestBody as FetchRequestBody
+from weft_sdk.generated.models.fetch_request_not import FetchRequestNot as FetchRequestNot
 from weft_sdk.generated.models.fetch_response import FetchResponse as FetchResponse
 from weft_sdk.generated.models.insufficient_scope_response import InsufficientScopeResponse as InsufficientScopeResponse
 from weft_sdk.generated.models.me_api_key import MeApiKey as MeApiKey

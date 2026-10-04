@@ -56,8 +56,9 @@ and is executed from the packed npm artifact in CI.
 
 ## Bounded paid fetch
 
-Every paid fetch needs an explicit spending ceiling. Supply an idempotency key
-and reuse that same key when retrying after a timeout or uncertain response.
+Every paid fetch needs an explicit `maxCostUsd` merchant-principal ceiling;
+it excludes gas, provider fees, and prerequisite operations. Supply an
+idempotency key and preserve it if you decide to retry the same purchase.
 
 ```js
 import { randomUUID } from "node:crypto";
@@ -82,6 +83,49 @@ console.log({ idempotencyKey, artifact });
 
 Do not create a new key for a retry of the same logical purchase. Reuse the
 key from the first attempt.
+
+### Opt-in refill and total-cost controls
+
+These fields require a server that supports and enforces them. Their presence
+in the SDK does not establish server support. Omitting both preserves legacy
+behavior, including eligible Tempo refills.
+
+- `allowTempoRefill: false` prevents the request from creating, adopting, or
+  enqueueing a Base-to-Tempo refill. It does not select a payment rail or bound
+  fees. Unrelated bridges remain unchanged.
+- `maxTotalCostUsd` is an all-in buyer-debit ceiling covering merchant principal,
+  gas, provider fees, and prerequisite buyer-paid operations. Supply a decimal
+  string with at most six fractional digits. It implies no refill; explicitly
+  combining it with `allowTempoRefill: true` is invalid and the server returns
+  `422 INCOMPATIBLE_FETCH_CONTROLS`.
+
+For example, the request fields for an all-in bound are:
+
+```js
+const request = {
+  url: "https://merchant.example/data",
+  maxCostUsd: "0.050000",
+  allowTempoRefill: false,
+  maxTotalCostUsd: "0.050000",
+};
+```
+
+There is currently no supported binding upstream guarantee for all buyer costs.
+The bounded-fetch contract therefore refuses bounded paid requests with
+`402 TOTAL_COST_UNVERIFIABLE` before payment preparation, approval, reservation,
+or refill. It also refuses recovery of older payments and SIWX wallet signing
+in this mode. This is not a working bounded paid route: estimates, expected
+sponsorship, and receipts cannot supply the missing cost authority. Raising
+the ceiling does not resolve this refusal. Stored-result replay describes a
+historical payment, not a new bounded authorization.
+
+`WeftClient.fetch` preserves failures as `WeftError` and never automatically
+retries, raises bounds, or enables refill. A `409`, unknown error, or uncertain
+network outcome is not permission to retry or relax controls; `retryable: true`
+is not payment authorization. If your application decides a retry is appropriate,
+keep the same idempotency key, request attribution, and safety controls. Changing
+controls under a reserved key can produce `IDEMPOTENCY_CONFLICT`. A later refusal
+does not cancel an earlier uncertain payment or release its hold.
 
 ## Retrieve a wallet-protected result
 
@@ -158,9 +202,10 @@ try {
 - `429`: honor `Retry-After` and back off.
 - `5xx`: retry transient failures with backoff; reuse the idempotency key for a
   paid fetch.
-- `status: 0` (`NETWORK_ERROR`): the request failed before any Weft response,
-  so the outcome is uncertain. `retryable` is `true`; retry with backoff and
-  reuse the idempotency key for a paid fetch.
+- `status: 0` (`NETWORK_ERROR`): no Weft response was received, so the outcome
+  is uncertain. `retryable` is `true`, but does not authorize another payment.
+  If retrying is appropriate, use backoff and preserve the paid fetch's
+  idempotency key, attribution, and safety controls.
 - `charge`: `"none"` means this call cannot have paid. For a fetch, Weft
   refused before it signed a payment (for example `EXCEEDED_MAX_COST` or
   `MERCHANT_RETURNED_NON_402`). `"possible"` means this fetch can have paid

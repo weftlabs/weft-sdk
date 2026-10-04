@@ -2705,6 +2705,15 @@ components:
     FetchRequest:
       type: object
       required: [url]
+      not:
+        type: object
+        required: [max_total_cost_usd, allow_tempo_refill]
+        properties:
+          max_total_cost_usd:
+            type: string
+          allow_tempo_refill:
+            type: boolean
+            enum: [true]
       properties:
         url:
           type: string
