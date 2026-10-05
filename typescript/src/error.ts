@@ -26,7 +26,7 @@ const PRE_SIGN_FETCH_CODES = new Set([
   "INVALID_IDEMPOTENCY_KEY",
 ]);
 
-export function fetchCharge(status: number, code: string): WeftCharge {
+function fetchCharge(status: number, code: string): WeftCharge {
   const preSign =
     PRE_SIGN_FETCH_CODES.has(code) || code.startsWith("POLICY_VIOLATION_");
   return status >= 400 && status < 500 && preSign ? "none" : "possible";
@@ -58,7 +58,8 @@ export class WeftError extends Error {
     this.requestId = options.requestId;
     this.retryable = options.retryable;
     this.details = options.details;
-    this.charge = options.charge ?? "none";
+    // Fail closed: an error built without a charge may follow a payment.
+    this.charge = options.charge ?? "possible";
   }
 }
 
@@ -80,7 +81,18 @@ export async function normalizeWeftError(
       charge: paid ? "possible" : "none",
     });
   }
-  if (!(error instanceof ResponseError)) return error;
+  if (!(error instanceof ResponseError)) {
+    if (!paid || error instanceof WeftError) return error;
+    // Weft answered 2xx, so the fetch most likely paid, but the body did not decode.
+    return new WeftError({
+      status: 0,
+      code: "RESPONSE_DECODE_ERROR",
+      message: "Weft API returned a fetch response that could not be decoded",
+      retryable: true,
+      details: error,
+      charge: "possible",
+    });
+  }
 
   let details: unknown;
   try {

@@ -127,6 +127,22 @@ class Client:
                 details=None,
                 charge="possible" if paid else "none",
             ) from error
+        except WeftError:
+            raise
+        except Exception as error:
+            if not paid:
+                raise
+            # Weft answered 2xx, so the fetch most likely paid, but the body
+            # did not decode.
+            raise WeftError(
+                status=0,
+                code="RESPONSE_DECODE_ERROR",
+                message="Weft API returned a fetch response that could not be decoded",
+                request_id=None,
+                retryable=True,
+                details=None,
+                charge="possible",
+            ) from error
 
     def me(self) -> MeResponse:
         return self._call(self._account.get_me)

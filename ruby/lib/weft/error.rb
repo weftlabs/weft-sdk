@@ -22,12 +22,13 @@ module Weft
 
     attr_reader :status, :code, :request_id, :retryable, :details, :charge
 
+    # @api private
     def self.fetch_charge(status, code)
       pre_sign = PRE_SIGN_FETCH_CODES.include?(code) || code.to_s.start_with?('POLICY_VIOLATION_')
       status.between?(400, 499) && pre_sign ? 'none' : 'possible'
     end
 
-    def initialize(status:, code:, message:, request_id: nil, retryable: false, details: nil, charge: 'none')
+    def initialize(status:, code:, message:, request_id: nil, retryable: false, details: nil, charge: 'possible')
       super(message)
       @status = status
       @code = code

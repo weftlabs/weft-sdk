@@ -183,8 +183,17 @@ func (c *Client) Fetch(ctx context.Context, request FetchRequest, options FetchO
 		var weftErr *Error
 		if errors.As(err, &weftErr) {
 			weftErr.Charge = fetchCharge(weftErr.Status, weftErr.Code)
+			return nil, err
 		}
-		return nil, err
+		// Weft answered 2xx, so the fetch most likely paid, but the body did not decode.
+		return nil, &Error{
+			Code:       "RESPONSE_DECODE_ERROR",
+			Message:    "Weft API returned a fetch response that could not be decoded",
+			Retryable:  true,
+			Charge:     ChargePossible,
+			Details:    err,
+			hasDetails: true,
+		}
 	}
 	return &out, nil
 }

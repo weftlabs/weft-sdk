@@ -82,6 +82,17 @@ module Weft
       yield
     rescue ApiError => e
       raise normalize_api_error(e, paid: paid)
+    rescue StandardError => e
+      raise if !paid || e.is_a?(RequestError)
+
+      # Weft answered 2xx, so the fetch most likely paid, but the body did not decode.
+      raise RequestError.new(
+        status: 0,
+        code: 'RESPONSE_DECODE_ERROR',
+        message: 'Weft API returned a fetch response that could not be decoded',
+        retryable: true,
+        charge: 'possible'
+      )
     end
 
     def credential_error(api_key, access_token)

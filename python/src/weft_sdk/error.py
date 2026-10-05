@@ -15,7 +15,7 @@ Charge = Literal["none", "possible"]
 
 # Codes Weft raises before it signs a payment in that call. Same list as the
 # TypeScript reference.
-PRE_SIGN_FETCH_CODES = frozenset(
+_PRE_SIGN_FETCH_CODES = frozenset(
     {
         "EXCEEDED_MAX_COST",
         "MERCHANT_RETURNED_NON_402",
@@ -35,8 +35,8 @@ PRE_SIGN_FETCH_CODES = frozenset(
 )
 
 
-def fetch_charge(status: int, code: str) -> Charge:
-    pre_sign = code in PRE_SIGN_FETCH_CODES or code.startswith("POLICY_VIOLATION_")
+def _fetch_charge(status: int, code: str) -> Charge:
+    pre_sign = code in _PRE_SIGN_FETCH_CODES or code.startswith("POLICY_VIOLATION_")
     return "none" if 400 <= status < 500 and pre_sign else "possible"
 
 
@@ -50,7 +50,7 @@ class WeftError(Exception):
         request_id: str | None,
         retryable: bool,
         details: Any = None,
-        charge: Charge = "none",
+        charge: Charge = "possible",
     ) -> None:
         super().__init__(message)
         self.status = status
@@ -89,5 +89,5 @@ def normalize_api_exception(error: ApiException, *, paid: bool = False) -> WeftE
         request_id=str(request_id) if request_id else None,
         retryable=status == 429 or status >= 500,
         details=details,
-        charge=fetch_charge(status, code) if paid else "none",
+        charge=_fetch_charge(status, code) if paid else "none",
     )
