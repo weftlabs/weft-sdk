@@ -79,15 +79,15 @@
     "@x402/core": "^2.24.0"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
-    "@typescript-eslint/eslint-plugin": "^8.70.1",
-    "@typescript-eslint/parser": "^8.70.1",
-    "@x402/core": "2.24.0",
+    "@types/node": "^26.6.4",
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
+    "@typescript-eslint/parser": "^8.71.0",
+    "@x402/core": "2.28.0",
     "eslint": "^10.11.0",
     "express": "^5.2.1",
     "fast-check": "^4.10.2",
-    "hono": "^4.13.9",
-    "prettier": "3.9.6",
+    "hono": "^4.13.12",
+    "prettier": "3.9.9",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
