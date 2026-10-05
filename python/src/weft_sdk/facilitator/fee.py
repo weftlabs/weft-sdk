@@ -18,7 +18,14 @@ class FeeInfo(TypedDict):
 
 
 class FeeCacheConfig(TypedDict, total=False):
+    """Cache settings for fee lookup.
+
+    ``ttl`` and ``ttl_seconds`` are seconds. TypeScript ``ttl`` is milliseconds.
+    The default is 300 seconds.
+    """
+
     ttl: float
+    ttl_seconds: float
 
 
 class _FeeCache(TypedDict):
@@ -44,6 +51,22 @@ def _is_cache_valid() -> bool:
     return now - _fee_cache["fetched_at"] < _fee_cache["ttl"]
 
 
+def _supported_headers(config: Optional[WeftFacilitatorConfig]) -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if not config:
+        return headers
+    seller = config.get("create_auth_headers", config.get("create_headers"))
+    if not callable(seller):
+        return headers
+    raw = seller()
+    if not isinstance(raw, dict):
+        return headers
+    supported = raw.get("supported")
+    if isinstance(supported, dict):
+        headers.update({str(key): str(value) for key, value in supported.items()})
+    return headers
+
+
 async def get_fee_info(
     config: Optional[WeftFacilitatorConfig] = None,
     cache_config: Optional[FeeCacheConfig] = None,
@@ -59,7 +82,7 @@ async def get_fee_info(
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{url}/supported",
-            headers={"Content-Type": "application/json"},
+            headers=_supported_headers(config),
             follow_redirects=True,
         )
 
@@ -85,7 +108,11 @@ async def get_fee_info(
         "network": fee["network"],
     }
 
-    ttl = cache_config.get("ttl", DEFAULT_CACHE_TTL) if cache_config else DEFAULT_CACHE_TTL
+    ttl = DEFAULT_CACHE_TTL
+    if cache_config:
+        configured = cache_config.get("ttl_seconds", cache_config.get("ttl"))
+        if configured is not None:
+            ttl = configured
     _fee_cache = {
         "fee_info": fee_info,
         "fetched_at": time.time(),

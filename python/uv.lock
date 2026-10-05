@@ -733,7 +733,7 @@ wheels = [
 
 [[package]]
 name = "weft-sdk"
-version = "0.27.1"
+version = "0.29.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -759,7 +759,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "typing-extensions", specifier = ">=4.7.1" },
     { name = "urllib3", specifier = ">=1.25.3,<3" },
-    { name = "x402", specifier = ">=1.0.0" },
+    { name = "x402", specifier = ">=2.25.0,<3" },
 ]
 
 [package.metadata.requires-dev]
@@ -772,14 +772,14 @@ dev = [
 
 [[package]]
 name = "x402"
-version = "2.18.0"
+version = "2.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nest-asyncio" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/8a/756c978d1c507ed6b65105affc630e31b7b6fe5783f60fc8d433554f20d8/x402-2.18.0.tar.gz", hash = "sha256:fb30d8de45c8add3a28109c38527843cd7038c9c4c764e761455fd58ccf58aa9", size = 2100275, upload-time = "2026-08-04T18:48:18.807Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/dc/1dfb1f568c5a635d1312f21ba5bd7eadca3b6996fd03c0e68820aca11d59/x402-2.25.0.tar.gz", hash = "sha256:bd3ce10d1baa9c91dbd89a0517b135e28641cfbfcc26df01276c1fc0c6ed6e82", size = 2140579, upload-time = "2026-09-29T19:36:31.703Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/ba/1160d9b83d4fdc105dfa0972953845710d30a36f3773c6f7acec4dea7a02/x402-2.18.0-py3-none-any.whl", hash = "sha256:11c337ae202811916af0e241ee2510803bfd2a4da906f7373f2a6ad6a983219e", size = 2233019, upload-time = "2026-08-04T18:48:16.876Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/0b/a3409d3d96ed71253978623eba3c93381bc7d74457227e3e4e7a4f960ac8/x402-2.25.0-py3-none-any.whl", hash = "sha256:ce813932133db263fb8501d4aafedc9fd665dfbc67a9e98a5dc86acb79da9485", size = 2278713, upload-time = "2026-09-29T19:36:29.27Z" },
 ]

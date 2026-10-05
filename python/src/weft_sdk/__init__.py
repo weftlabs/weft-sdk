@@ -18,11 +18,7 @@ from .facilitator.fee import (
     get_fee_info,
     invalidate_fee_cache,
 )
-from .facilitator.middleware import (
-    WeftPaymentMiddleware,
-    weft_flask_require_payment,
-    weft_require_payment,
-)
+from .facilitator.middleware import WeftASGIMiddleware, weft_payment_middleware
 
 __all__ = [
     "Client",
@@ -37,7 +33,6 @@ __all__ = [
     "FeeCacheConfig",
     "get_fee_info",
     "invalidate_fee_cache",
-    "weft_require_payment",
-    "weft_flask_require_payment",
-    "WeftPaymentMiddleware",
+    "WeftASGIMiddleware",
+    "weft_payment_middleware",
 ]
