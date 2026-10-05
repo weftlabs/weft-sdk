@@ -18,8 +18,14 @@ module Weft
     # Target URL. Must pass Weft's URL safety check (no SSRF / private IP ranges).
     attr_accessor :url
 
-    # Hard ceiling on what the buyer is willing to pay. Defaults to `0.10` USD.
+    # Merchant-principal ceiling, excluding gas, provider fees and prerequisites. Defaults to `0.10` USD; use `max_total_cost_usd` for an all-in bound.
     attr_accessor :max_cost_usd
+
+    # Whether this request may create, adopt, or enqueue a Base-to-Tempo refill. Only JSON booleans are accepted. Omission allows legacy refill behavior unless `max_total_cost_usd` is supplied, in which case refill is disabled. False leaves unrelated bridges and jobs unchanged and reports an unfunded Tempo pocket as `INSUFFICIENT_BALANCE`. This does not select a rail or bound fees.
+    attr_accessor :allow_tempo_refill
+
+    # Optional all-in buyer-debit ceiling in USD, including principal, gas, provider fees and prerequisite operations. Requires a binding upstream upper bound before any payment effect. Current integrations have no such guarantee, so requests requiring wallet signing or payment fail closed with `TOTAL_COST_UNVERIFIABLE`, including recovery and replay of previous payments. No positive paid route is currently admitted in this mode. Estimates, expected sponsorship and receipts are not authority. Implies no refill; explicit `allow_tempo_refill: true` is invalid. Omission preserves legacy behavior.
+    attr_accessor :max_total_cost_usd
 
     # HTTP method to use against the upstream.
     attr_accessor :method
@@ -35,7 +41,7 @@ module Weft
     # Advisory operation id returned by search.
     attr_accessor :operation_id
 
-    # Advisory access-method id returned by search.
+    # Advisory access-method id returned by search; does not enforce a payment rail.
     attr_accessor :access_method_id
 
     class EnumAttributeValidator
@@ -65,6 +71,8 @@ module Weft
       {
         :'url' => :'url',
         :'max_cost_usd' => :'max_cost_usd',
+        :'allow_tempo_refill' => :'allow_tempo_refill',
+        :'max_total_cost_usd' => :'max_total_cost_usd',
         :'method' => :'method',
         :'body' => :'body',
         :'headers' => :'headers',
@@ -89,6 +97,8 @@ module Weft
       {
         :'url' => :'String',
         :'max_cost_usd' => :'String',
+        :'allow_tempo_refill' => :'Boolean',
+        :'max_total_cost_usd' => :'String',
         :'method' => :'String',
         :'body' => :'FetchRequestBody',
         :'headers' => :'Hash<String, String>',
@@ -131,6 +141,14 @@ module Weft
         self.max_cost_usd = attributes[:'max_cost_usd']
       else
         self.max_cost_usd = '0.10'
+      end
+
+      if attributes.key?(:'allow_tempo_refill')
+        self.allow_tempo_refill = attributes[:'allow_tempo_refill']
+      end
+
+      if attributes.key?(:'max_total_cost_usd')
+        self.max_total_cost_usd = attributes[:'max_total_cost_usd']
       end
 
       if attributes.key?(:'method')
@@ -176,6 +194,11 @@ module Weft
         invalid_properties.push("invalid value for \"max_cost_usd\", must conform to the pattern #{pattern}.")
       end
 
+      pattern = Regexp.new(/^\d+(\.\d{1,6})?$/)
+      if !@max_total_cost_usd.nil? && @max_total_cost_usd !~ pattern
+        invalid_properties.push("invalid value for \"max_total_cost_usd\", must conform to the pattern #{pattern}.")
+      end
+
       invalid_properties
     end
 
@@ -185,6 +208,7 @@ module Weft
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @url.nil?
       return false if !@max_cost_usd.nil? && @max_cost_usd !~ Regexp.new(/^\d+(\.\d{1,6})?$/)
+      return false if !@max_total_cost_usd.nil? && @max_total_cost_usd !~ Regexp.new(/^\d+(\.\d{1,6})?$/)
       method_validator = EnumAttributeValidator.new('String', ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
       return false unless method_validator.valid?(@method)
       true
@@ -215,6 +239,21 @@ module Weft
       @max_cost_usd = max_cost_usd
     end
 
+    # Custom attribute writer method with validation
+    # @param [Object] max_total_cost_usd Value to be assigned
+    def max_total_cost_usd=(max_total_cost_usd)
+      if max_total_cost_usd.nil?
+        fail ArgumentError, 'max_total_cost_usd cannot be nil'
+      end
+
+      pattern = Regexp.new(/^\d+(\.\d{1,6})?$/)
+      if max_total_cost_usd !~ pattern
+        fail ArgumentError, "invalid value for \"max_total_cost_usd\", must conform to the pattern #{pattern}."
+      end
+
+      @max_total_cost_usd = max_total_cost_usd
+    end
+
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] method Object to be assigned
     def method=(method)
@@ -232,6 +271,8 @@ module Weft
       self.class == o.class &&
           url == o.url &&
           max_cost_usd == o.max_cost_usd &&
+          allow_tempo_refill == o.allow_tempo_refill &&
+          max_total_cost_usd == o.max_total_cost_usd &&
           method == o.method &&
           body == o.body &&
           headers == o.headers &&
@@ -249,7 +290,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [url, max_cost_usd, method, body, headers, search_id, operation_id, access_method_id].hash
+      [url, max_cost_usd, allow_tempo_refill, max_total_cost_usd, method, body, headers, search_id, operation_id, access_method_id].hash
     end
 
     # Builds the object from hash

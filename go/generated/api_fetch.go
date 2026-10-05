@@ -33,7 +33,7 @@ func (r ApiFetchRequest) FetchRequest(fetchRequest FetchRequest) ApiFetchRequest
 	return r
 }
 
-// Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request.
+// Opaque caller-generated retry key. Reusing the same key for the same buyer converges on one paid fetch; keys are hashed and namespaced by buyer before storage. Send this header for every unattended or retryable paid request. Effective safety controls participate in retry identity. Changing them under a reserved key returns &#x60;IDEMPOTENCY_CONFLICT&#x60;; an older unconstrained payment cannot become a bounded success on retry.
 func (r ApiFetchRequest) IdempotencyKey(idempotencyKey string) ApiFetchRequest {
 	r.idempotencyKey = &idempotencyKey
 	return r
@@ -47,14 +47,14 @@ func (r ApiFetchRequest) Execute() (*FetchResponse, *http.Response, error) {
 Fetch Pay-and-fetch any URL (x402/MPP proxy)
 
 Universal x402/MPP fetch proxy. The caller provides a target `url`,
-a hard `max_cost_usd` ceiling, and optional `method` / `body` /
+a merchant-principal `max_cost_usd` ceiling, and optional `method` / `body` /
 `headers`. Weft:
 
  1. Issues the request.
  2. On `402 Payment Required`, selects a supported x402 or MPP challenge.
  3. Compares the asking price to `max_cost_usd` and the
     buyer's policy (`max_tx_usd`, daily/weekly limits).
- 4. If an eligible mainnet MPP challenge finds its Tempo token short,
+ 4. If refill is allowed and an eligible mainnet MPP challenge finds its Tempo token short,
     creates or adopts a buyer-owned Base-to-Tempo refill and returns
     `409 FUNDING_PENDING` with `details.reason=funding_active`. If an
     overlapping payment invalidates the balance observation before a
@@ -72,6 +72,26 @@ a hard `max_cost_usd` ceiling, and optional `method` / `body` /
     unsettled hold (the common case for x402, which settles
     asynchronously) reports its amount in `held_usd` instead, never
     in `paid_usd`.
+
+**Opt-in safety controls:** `allow_tempo_refill: false` prevents this
+request from creating, adopting, or enqueueing a Base-to-Tempo bridge.
+A Tempo shortfall returns `402 INSUFFICIENT_BALANCE`; unrelated bridges
+and their jobs remain unchanged. `access_method_id` is advisory and
+does not enforce a payment rail.
+
+`max_total_cost_usd` is an all-in ceiling covering merchant principal,
+network gas, provider fees, and prerequisite buyer-paid operations.
+It disables refill; explicitly combining it with `allow_tempo_refill: true`
+returns `422 INCOMPATIBLE_FETCH_CONTROLS`. Current wallet integrations
+provide no supported binding all-in fee guarantee. Therefore all-in
+requests return `402 TOTAL_COST_UNVERIFIABLE` before payment preparation,
+approval, reservation, or refill. This also refuses recovery of older
+payments and SIWX wallet signing; it admits no positive paid route.
+Increasing the ceiling does not resolve missing fee authority.
+
+Omitted controls preserve existing behavior. Ordinary non-402 merchant
+responses retain `MERCHANT_RETURNED_NON_402`. Stored-result replay is
+historical payment information, not a new bounded authorization.
 
 Errors are structured with a stable `error` code, and each error
 response carries the buyer's `policy`, `balance`, and a
