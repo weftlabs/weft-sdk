@@ -1165,7 +1165,6 @@
   },
   {
     "name": "fetch stringifies non-finite numbers as null",
-    "languages": ["typescript", "python", "ruby"],
     "call": {
       "method": "fetch",
       "args": {

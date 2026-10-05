@@ -30,6 +30,12 @@ const LANGUAGE_FACADES = [
     source: "ruby/lib/weft/client.rb",
     method: /^    def ([A-Za-z_][A-Za-z0-9_]*)\b/,
   },
+  {
+    language: "go",
+    heading: "Go façade",
+    source: "go/client.go",
+    method: /^func \(c \*Client\) ([A-Za-z_][A-Za-z0-9_]*)\(/,
+  },
 ];
 
 const CLASSIFICATIONS = {

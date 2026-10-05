@@ -24,6 +24,8 @@ type Config struct {
 	URL        string
 	HTTPClient *http.Client
 	Timeout    time.Duration
+	// Auth returns path-keyed headers. Nil means no extra headers.
+	Auth func(path string) (map[string]string, error)
 }
 
 type FeeInfo struct {
@@ -45,6 +47,7 @@ type feeCache struct {
 type HTTPFacilitatorClient struct {
 	url        string
 	httpClient *http.Client
+	auth       func(path string) (map[string]string, error)
 }
 
 func ValidateURL(url string) error {
@@ -88,7 +91,15 @@ func NewFacilitatorClient(config *Config) (*HTTPFacilitatorClient, error) {
 		httpClient = &http.Client{Timeout: timeout}
 	}
 
-	return &HTTPFacilitatorClient{url: url, httpClient: httpClient}, nil
+	var auth func(path string) (map[string]string, error)
+	if config != nil {
+		auth = config.Auth
+	}
+	return &HTTPFacilitatorClient{
+		url:        strings.TrimRight(url, "/"),
+		httpClient: httpClient,
+		auth:       auth,
+	}, nil
 }
 
 func (c *HTTPFacilitatorClient) URL() string {
@@ -102,8 +113,9 @@ type VerifyRequest struct {
 }
 
 type VerifyResponse struct {
-	Valid   bool   `json:"valid"`
-	Message string `json:"message,omitempty"`
+	Valid         bool   `json:"isValid"`
+	Message       string `json:"invalidMessage,omitempty"`
+	InvalidReason string `json:"invalidReason,omitempty"`
 }
 
 type SettleRequest struct {
@@ -113,9 +125,12 @@ type SettleRequest struct {
 }
 
 type SettleResponse struct {
-	Success bool   `json:"success"`
-	TxHash  string `json:"txHash,omitempty"`
-	Message string `json:"message,omitempty"`
+	Success     bool   `json:"success"`
+	TxHash      string `json:"transaction,omitempty"`
+	Message     string `json:"errorMessage,omitempty"`
+	ErrorReason string `json:"errorReason,omitempty"`
+	Payer       string `json:"payer,omitempty"`
+	Network     string `json:"network,omitempty"`
 }
 
 type SupportedKind struct {
@@ -148,6 +163,9 @@ func (c *HTTPFacilitatorClient) Verify(ctx context.Context, payload, requirement
 		return nil, fmt.Errorf("failed to create verify request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if err := c.applyAuth(req, "verify"); err != nil {
+		return nil, err
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -157,6 +175,9 @@ func (c *HTTPFacilitatorClient) Verify(ctx context.Context, payload, requirement
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusServiceUnavailable {
+			return nil, errors.New(FacilitatorUnavailableError)
+		}
 		return nil, fmt.Errorf("facilitator verify failed (%d): %s", resp.StatusCode, string(body))
 	}
 
@@ -185,6 +206,9 @@ func (c *HTTPFacilitatorClient) Settle(ctx context.Context, payload, requirement
 		return nil, fmt.Errorf("failed to create settle request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if err := c.applyAuth(req, "settle"); err != nil {
+		return nil, err
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -193,8 +217,17 @@ func (c *HTTPFacilitatorClient) Settle(ctx context.Context, payload, requirement
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("facilitator settle failed (%d): %s", resp.StatusCode, string(body))
+		raw, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusServiceUnavailable {
+			var candidate SettleResponse
+			if json.Unmarshal(raw, &candidate) == nil && pendingSettlement(&candidate) {
+				return &candidate, nil
+			}
+			if err := classifySettleUnavailable(raw); err != nil {
+				return nil, err
+			}
+		}
+		return nil, fmt.Errorf("Facilitator settle failed (%d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 
 	var settleResp SettleResponse
@@ -211,6 +244,9 @@ func (c *HTTPFacilitatorClient) GetSupported(ctx context.Context) (*SupportedRes
 		return nil, fmt.Errorf("failed to create supported request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if err := c.applyAuth(req, "supported"); err != nil {
+		return nil, err
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -229,4 +265,42 @@ func (c *HTTPFacilitatorClient) GetSupported(ctx context.Context) (*SupportedRes
 	}
 
 	return &supportedResp, nil
+}
+
+func (c *HTTPFacilitatorClient) applyAuth(req *http.Request, path string) error {
+	if c.auth == nil {
+		return nil
+	}
+	headers, err := c.auth(path)
+	if err != nil {
+		return err
+	}
+	for name, value := range headers {
+		req.Header.Set(name, value)
+	}
+	return nil
+}
+
+func classifySettleUnavailable(raw []byte) error {
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err != nil || body == nil {
+		return fmt.Errorf("Facilitator settle failed (503): %s", strings.TrimSpace(string(raw)))
+	}
+	if _, ok := body["success"]; !ok {
+		return fmt.Errorf("Facilitator settle failed (503): %s", strings.TrimSpace(string(raw)))
+	}
+	_, hasReason := body["errorReason"]
+	_, hasMessage := body["errorMessage"]
+	_, hasPayer := body["payer"]
+	_, hasTx := body["transaction"]
+	_, hasNetwork := body["network"]
+	if !(hasReason && hasMessage && hasPayer && hasTx && hasNetwork) {
+		return fmt.Errorf("Facilitator settle failed (503): %s", strings.TrimSpace(string(raw)))
+	}
+	reason, _ := body["errorReason"].(string)
+	tx, _ := body["transaction"].(string)
+	if reason == "settlement_pending" && tx != "" {
+		return nil
+	}
+	return errors.New(FacilitatorUnavailableError)
 }

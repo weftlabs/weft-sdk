@@ -1,254 +1,684 @@
+// Package facilitator is the net/http seller middleware.
+//
+// github.com/coinbase/x402/go resolves to module github.com/x402-foundation/x402/go
+// and requires Go 1.24. This module stays on Go 1.23, so the v2 challenge,
+// verify, and settle wire behaviour lives here instead of that dependency.
 package facilitator
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
 
-const x402Version = 2
+const syncRetryFloor = 30 * time.Second
 
-// RoutePaymentConfig defines the payment requirements for a route.
-type RoutePaymentConfig struct {
-	// Price in asset units (e.g. "0.01")
-	Price string
-	// Asset symbol (e.g. "USDC")
-	Asset string
-	// Blockchain network (e.g. "base-sepolia")
-	Network string
-	// Recipient address
-	PayTo string
-	// Human-readable description of the resource
+// nowFunc is the clock for facilitator re-sync. Tests replace it.
+var nowFunc = time.Now
+
+// Route is one protected route in declaration order. The first match wins.
+type Route struct {
+	Pattern string
+	Config  RouteConfig
+}
+
+// RouteConfig is one protected route. Type is consumed into the reserved tag
+// and is not forwarded. Extension values may be static objects or callbacks.
+type RouteConfig struct {
+	Accepts     any
 	Description string
-	// Maximum deadline in seconds for the payment
-	MaxDeadlineSeconds int
+	MimeType    string
+	ServiceName string
+	Tags        []string
+	IconURL     string
+	Type        string
+	Extensions  map[string]any
+	Resource    string
 }
 
-func (r *RoutePaymentConfig) setDefaults() {
-	if r.Network == "" {
-		r.Network = "base-sepolia"
-	}
-	if r.MaxDeadlineSeconds == 0 {
-		r.MaxDeadlineSeconds = 60
-	}
-}
+// RequestExtension builds one extension value for the current request.
+type RequestExtension func(*http.Request) (any, error)
 
-// RouteMatcher determines whether a request path requires payment.
-type RouteMatcher func(path string) *RoutePaymentConfig
+// ResumeVerifiedPayment restores a previously verified payment. The caller
+// must bind the result to the signed payload. The SDK does not authenticate it.
+type ResumeVerifiedPayment func(*http.Request, map[string]any) (map[string]any, bool)
 
-// ExactRoutes creates a RouteMatcher from a map of exact path → config.
-func ExactRoutes(routes map[string]RoutePaymentConfig) RouteMatcher {
-	return func(path string) *RoutePaymentConfig {
-		if cfg, ok := routes[path]; ok {
-			cfg.setDefaults()
-			return &cfg
-		}
-		return nil
-	}
-}
-
-// PrefixRoutes creates a RouteMatcher that matches path prefixes.
-func PrefixRoutes(routes map[string]RoutePaymentConfig) RouteMatcher {
-	return func(path string) *RoutePaymentConfig {
-		for prefix, cfg := range routes {
-			if strings.HasPrefix(path, prefix) {
-				cfg.setDefaults()
-				return &cfg
-			}
-		}
-		return nil
-	}
-}
-
-// MiddlewareConfig configures the x402 payment middleware.
+// MiddlewareConfig is the net/http seller middleware configuration.
 type MiddlewareConfig struct {
-	// Client is the facilitator client to use for verify/settle.
-	Client *HTTPFacilitatorClient
-	// Matcher determines which routes require payment.
-	Matcher RouteMatcher
+	APIKey            string
+	APIKeySet         bool
+	Facilitator       *Config
+	Schemes           []Scheme
+	SyncOnStart       *bool
+	Resume            ResumeVerifiedPayment
+	CreateAuthHeaders func() (map[string]any, error)
+	Name              string
+	Type              string
+	Tags              []string
+	IconURL           string
+	ProductID         string
+	ManifestHash      string
+	Dimensions        []string
 }
 
-// paymentRequiredBody is the 402 response body.
-type paymentRequiredBody struct {
-	X402Version int                    `json:"x402Version"`
-	Error       string                 `json:"error"`
-	Accepts     []paymentRequirements  `json:"accepts"`
-}
-
-type paymentRequirements struct {
-	Scheme            string        `json:"scheme"`
-	Network           string        `json:"network"`
-	Asset             string        `json:"asset"`
-	Amount            string        `json:"amount"`
-	PayTo             string        `json:"payTo"`
-	MaxTimeoutSeconds int           `json:"maxTimeoutSeconds"`
-	Resource          *resourceInfo `json:"resource,omitempty"`
-}
-
-type resourceInfo struct {
-	URL         string `json:"url"`
-	Method      string `json:"method"`
-	Description string `json:"description,omitempty"`
-}
-
-// PaymentMiddleware returns an http.Handler that enforces x402 payments on
-// configured routes. Requests to non-payment routes pass through directly.
+// PaymentMiddleware returns net/http seller middleware. The adapter name is nethttp.
+// Routes are matched in slice order. The first match wins. A duplicate pattern is an error.
+// A configuration error is returned. It is never replaced with the production facilitator.
 //
-// Usage:
-//
-//	client, _ := facilitator.NewFacilitatorClient(nil)
-//	handler := facilitator.PaymentMiddleware(facilitator.MiddlewareConfig{
-//	    Client: client,
-//	    Matcher: facilitator.ExactRoutes(map[string]facilitator.RoutePaymentConfig{
-//	        "/api/resource": {Price: "0.01", Asset: "USDC", Network: "base-sepolia", PayTo: "0x..."},
-//	    }),
-//	})(yourHandler)
-func PaymentMiddleware(cfg MiddlewareConfig) func(http.Handler) http.Handler {
+//	middleware, err := PaymentMiddleware([]Route{
+//		{Pattern: "/api/*", Config: RouteConfig{Accepts: map[string]any{"scheme": "exact", "price": "$0.01", "payTo": "0x1"}}},
+//		{Pattern: "/api/premium", Config: RouteConfig{Accepts: map[string]any{"scheme": "exact", "price": "$1.00", "payTo": "0x1"}}},
+//	}, MiddlewareConfig{Facilitator: &Config{URL: "https://x402.weft.network"}})
+func PaymentMiddleware(routes []Route, cfg MiddlewareConfig) (func(http.Handler) http.Handler, error) {
+	declaration := declarationMap(cfg)
+	applied := applyRoutesInOrder(routes, declaration)
+	compiled, err := compileRoutes(applied)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseBeforeHandlerFlows(cfg.Schemes); err != nil {
+		return nil, err
+	}
+	if err := refuseRoutePaymentFlows(compiled, cfg.Schemes); err != nil {
+		return nil, err
+	}
+	client, err := NewFacilitatorClient(facilitatorConfig(cfg, declaration))
+	if err != nil {
+		return nil, err
+	}
+	syncOnStart := true
+	if cfg.SyncOnStart != nil {
+		syncOnStart = *cfg.SyncOnStart
+	}
+	gate := &paymentGate{
+		routes:      compiled,
+		client:      client,
+		schemes:     cfg.Schemes,
+		syncOnStart: syncOnStart,
+		resume:      cfg.Resume,
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			route := cfg.Matcher(r.URL.Path)
-			if route == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
+			gate.serve(w, r, next)
+		})
+	}, nil
+}
 
-			paymentHeader := r.Header.Get("X-Payment")
-			if paymentHeader == "" {
-				paymentHeader = r.Header.Get("Payment-Signature")
-			}
+type paymentGate struct {
+	routes      []compiledRoute
+	client      *HTTPFacilitatorClient
+	schemes     []Scheme
+	syncOnStart bool
+	resume      ResumeVerifiedPayment
 
-			reqURL := requestURL(r)
-			requirements := paymentRequirements{
-				Scheme:            "exact",
-				Network:           route.Network,
-				Asset:             route.Asset,
-				Amount:            route.Price,
-				PayTo:             route.PayTo,
-				MaxTimeoutSeconds: route.MaxDeadlineSeconds,
-				Resource: &resourceInfo{
-					URL:         reqURL,
-					Method:      r.Method,
-					Description: route.Description,
-				},
-			}
+	mu       sync.Mutex
+	synced   bool
+	syncing  bool
+	lastFail time.Time
+	booted   bool
+}
 
-			if paymentHeader == "" {
-				writePaymentRequired(w, requirements)
-				return
-			}
+func (g *paymentGate) serve(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	matched := matchRoute(g.routes, r.Method, r.URL.EscapedPath())
+	if matched == nil {
+		next.ServeHTTP(w, r)
+		return
+	}
+	g.ensureSync(r.Context())
+	extensions := resolveExtensions(matched.config["extensions"], r)
+	requirements, err := g.requirements(matched.config, r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resource := resourceInfo(matched.config, r)
+	header := paymentHeader(r)
+	if header == "" {
+		writePaymentRequired(w, resource, requirements, extensions, "Payment required")
+		return
+	}
+	payload, err := decodePaymentHeader(header)
+	requirement, ok := findMatchingRequirement(requirements, payload)
+	if err != nil || !ok {
+		writePaymentRequired(w, resource, requirements, extensions, "No matching payment requirements")
+		return
+	}
+	if extensionEchoMismatch(extensions, payload) {
+		writePaymentRequired(w, resource, requirements, extensions, "extension_echo_mismatch")
+		return
+	}
+	if resumed, resumedOK := g.resumePayment(r, payload); resumedOK {
+		payload = resumed
+	} else if err := g.verify(r.Context(), payload, requirement); err != nil {
+		if IsFacilitatorUnavailable(err.Error()) {
+			writeFacilitatorUnavailable(w)
+			return
+		}
+		writePaymentRequired(w, resource, requirements, extensions, err.Error())
+		return
+	}
+	buffered := &bufferedResponse{header: make(http.Header), code: http.StatusOK}
+	next.ServeHTTP(buffered, r)
+	if buffered.code >= 400 {
+		stripUnsafeFailureHeaders(buffered.header)
+		buffered.flush(w, nil)
+		return
+	}
+	requirement, err = applySettlementOverride(buffered.header.Get(settlementOverrides), requirement, findScheme(g.schemes, stringOr(requirement["scheme"]), stringOr(requirement["network"])))
+	if err != nil {
+		writePaymentRequired(w, resource, requirements, extensions, err.Error())
+		return
+	}
+	settled, err := g.settle(r.Context(), payload, requirement, r.Method)
+	if err != nil {
+		if IsFacilitatorUnavailable(err.Error()) {
+			writeFacilitatorUnavailable(w)
+			return
+		}
+		writePaymentRequired(w, resource, requirements, extensions, err.Error())
+		return
+	}
+	extra := map[string]string{}
+	if settled != nil {
+		encoded, encErr := encodePaymentRequired(settled)
+		if encErr == nil {
+			extra[paymentResponseHeader] = encoded
+		}
+	}
+	existing := buffered.header.Get("Cache-Control")
+	extra["Cache-Control"] = withPrivateCacheControl(existing)
+	buffered.header.Del(settlementOverrides)
+	buffered.flush(w, extra)
+}
 
-			// Parse payment payload from header
-			var paymentPayload interface{}
-			if err := json.Unmarshal([]byte(paymentHeader), &paymentPayload); err != nil {
-				// Treat as opaque token
-				paymentPayload = map[string]string{"token": paymentHeader}
-			}
+func (g *paymentGate) ensureSync(ctx context.Context) {
+	if !g.syncOnStart || g.client == nil {
+		return
+	}
+	g.mu.Lock()
+	if !g.booted {
+		g.booted = true
+		g.mu.Unlock()
+		g.sync(ctx)
+		return
+	}
+	shouldRetry := !g.synced && !g.syncing && nowFunc().Sub(g.lastFail) >= syncRetryFloor
+	g.mu.Unlock()
+	if shouldRetry {
+		go g.sync(context.Background())
+	}
+}
 
-			// Verify payment
-			ctx := r.Context()
-			verifyResult, err := cfg.Client.Verify(ctx, paymentPayload, requirements)
-			if err != nil {
-				writeError(w, http.StatusPaymentRequired, fmt.Sprintf("Payment verification failed: %v", err))
-				return
-			}
-			if !verifyResult.Valid {
-				msg := verifyResult.Message
-				if msg == "" {
-					msg = "Payment verification failed"
-				}
-				writeError(w, http.StatusPaymentRequired, msg)
-				return
-			}
+func (g *paymentGate) sync(ctx context.Context) {
+	g.mu.Lock()
+	if g.syncing {
+		g.mu.Unlock()
+		return
+	}
+	g.syncing = true
+	g.mu.Unlock()
+	_, err := g.client.GetSupported(ctx)
+	g.mu.Lock()
+	g.syncing = false
+	if err != nil {
+		g.lastFail = nowFunc()
+		g.mu.Unlock()
+		warn("facilitator sync failed; payment-protected routes degrade until a later attempt succeeds: " + err.Error())
+		return
+	}
+	g.synced = true
+	g.mu.Unlock()
+}
 
-			// Buffer the response to check status before settling
-			recorder := &responseRecorder{
-				ResponseWriter: w,
-				statusCode:     http.StatusOK,
-			}
+func (g *paymentGate) verify(ctx context.Context, payload map[string]any, requirements map[string]any) error {
+	resp, err := g.client.Verify(ctx, payload, requirements)
+	if err != nil {
+		return err
+	}
+	if resp == nil || !resp.Valid {
+		if resp != nil && resp.InvalidReason != "" {
+			return fmt.Errorf("%s", resp.InvalidReason)
+		}
+		return fmt.Errorf("Payment verification failed")
+	}
+	return nil
+}
 
-			next.ServeHTTP(recorder, r)
+func (g *paymentGate) settle(ctx context.Context, payload, requirements map[string]any, method string) (map[string]any, error) {
+	paid := map[string]any{}
+	for key, value := range payload {
+		paid[key] = value
+	}
+	if method != "" {
+		paid["httpMethod"] = strings.ToUpper(method)
+	}
+	resp, err := g.client.Settle(ctx, paid, requirements)
+	if pendingSettlement(resp) {
+		resp, err = g.client.Settle(ctx, paid, requirements)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil || !resp.Success {
+		reason := ""
+		if resp != nil {
+			reason = resp.ErrorReason
+		}
+		if reason == "" {
+			reason = "Settlement failed"
+		}
+		return nil, fmt.Errorf("%s", reason)
+	}
+	return map[string]any{
+		"success":     resp.Success,
+		"transaction": resp.TxHash,
+		"network":     resp.Network,
+	}, nil
+}
 
-			// If downstream returned error, don't settle
-			if recorder.statusCode >= 400 {
-				return
-			}
+func (g *paymentGate) resumePayment(r *http.Request, payload map[string]any) (map[string]any, bool) {
+	if g.resume == nil || payload == nil {
+		return nil, false
+	}
+	version, _ := payload["x402Version"].(float64)
+	if int(version) != 2 {
+		return nil, false
+	}
+	if _, ok := payload["accepted"]; !ok {
+		return nil, false
+	}
+	return g.resume(r, payload)
+}
 
-			// Settle the payment
-			settleResult, err := cfg.Client.Settle(ctx, paymentPayload, requirements)
-			if err != nil {
-				// Response already sent; log but can't change status
-				return
-			}
-			if settleResult.Success && settleResult.TxHash != "" {
-				w.Header().Set("X-Payment-TxHash", settleResult.TxHash)
-			}
+func (g *paymentGate) requirements(config map[string]any, r *http.Request) ([]map[string]any, error) {
+	options := normalizeOptions(config["accepts"])
+	var out []map[string]any
+	for _, option := range options {
+		scheme := findScheme(g.schemes, option.Scheme, option.Network)
+		if scheme == nil || scheme.ParsePrice == nil {
+			return nil, fmt.Errorf("no scheme implementation registered for %s on %s", option.Scheme, option.Network)
+		}
+		amount, asset, extra, err := scheme.ParsePrice(option.Price)
+		if err != nil {
+			return nil, err
+		}
+		if extra == nil {
+			extra = map[string]any{}
+		}
+		for key, value := range option.Extra {
+			extra[key] = value
+		}
+		timeout := option.MaxTimeoutSeconds
+		if timeout == 0 {
+			timeout = 300
+		}
+		out = append(out, map[string]any{
+			"scheme":            option.Scheme,
+			"network":           option.Network,
+			"amount":            amount,
+			"asset":             asset,
+			"payTo":             option.PayTo,
+			"maxTimeoutSeconds": timeout,
+			"extra":             extra,
 		})
 	}
-}
-
-// responseRecorder captures the status code from the downstream handler.
-type responseRecorder struct {
-	http.ResponseWriter
-	statusCode int
-	written    bool
-}
-
-func (rr *responseRecorder) WriteHeader(code int) {
-	rr.statusCode = code
-	rr.ResponseWriter.WriteHeader(code)
-}
-
-func (rr *responseRecorder) Write(b []byte) (int, error) {
-	if !rr.written {
-		rr.written = true
+	if len(out) == 0 {
+		return nil, fmt.Errorf("route has no payment options")
 	}
-	return rr.ResponseWriter.Write(b)
+	return out, nil
 }
 
-// Ensure responseRecorder implements http.Flusher if the underlying writer does.
-func (rr *responseRecorder) Flush() {
-	if f, ok := rr.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
+func writePaymentRequired(w http.ResponseWriter, resource map[string]any, accepts []map[string]any, extensions map[string]any, reason string) {
+	body := map[string]any{
+		"x402Version": 2,
+		"resource":    resource,
+		"accepts":     accepts,
 	}
-}
-
-func requestURL(r *http.Request) string {
-	scheme := "https"
-	if r.TLS == nil {
-		scheme = "http"
+	if reason != "" {
+		body["error"] = reason
 	}
-	host := r.Host
-	if host == "" {
-		host = "localhost"
+	if len(extensions) > 0 {
+		body["extensions"] = extensions
 	}
-	return fmt.Sprintf("%s://%s%s", scheme, host, r.URL.Path)
-}
-
-func writePaymentRequired(w http.ResponseWriter, req paymentRequirements) {
-	body := paymentRequiredBody{
-		X402Version: x402Version,
-		Error:       "Payment Required",
-		Accepts:     []paymentRequirements{req},
+	encoded, err := encodePaymentRequired(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
+	w.Header().Set(paymentRequiredHeader, encoded)
+	w.Header().Set("Cache-Control", paymentRequiredCache)
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("X-Payment-Required", "true")
 	w.WriteHeader(http.StatusPaymentRequired)
-	json.NewEncoder(w).Encode(body)
+	_, _ = w.Write([]byte("{}"))
 }
 
-func writeError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": message})
-}
-
-// Ensure the context has at minimum a background context.
-func ensureContext(ctx context.Context) context.Context {
-	if ctx == nil {
-		return context.Background()
+func resourceInfo(config map[string]any, r *http.Request) map[string]any {
+	url := requestResourceURL(r)
+	if value, ok := config["resource"].(string); ok && value != "" {
+		url = value
 	}
-	return ctx
+	info := map[string]any{
+		"url":         url,
+		"description": stringOr(config["description"]),
+		"mimeType":    stringOr(config["mimeType"]),
+	}
+	if name, ok := config["serviceName"].(string); ok && name != "" {
+		info["serviceName"] = name
+	}
+	if icon, ok := config["iconUrl"].(string); ok && icon != "" {
+		info["iconUrl"] = icon
+	}
+	if tags, ok := config["tags"].([]string); ok && len(tags) > 0 {
+		info["tags"] = tags
+	}
+	if tags, ok := config["tags"].([]any); ok && len(tags) > 0 {
+		info["tags"] = tags
+	}
+	return info
+}
+
+func resolveExtensions(value any, r *http.Request) map[string]any {
+	source, _ := value.(map[string]any)
+	if source == nil {
+		return nil
+	}
+	out := map[string]any{}
+	for key, item := range source {
+		out[key] = item
+	}
+	sink := createWarn()
+	for key, item := range source {
+		call, ok := requestExtension(item, r)
+		if !ok {
+			continue
+		}
+		shipped := EnrichDynamicExtension(key, call, out, true, sink)
+		if shipped != nil {
+			out[key] = shipped
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func requestExtension(value any, r *http.Request) (DynamicExtension, bool) {
+	switch fn := value.(type) {
+	case RequestExtension:
+		return func() (any, error) { return fn(r) }, true
+	case func(*http.Request) (any, error):
+		return func() (any, error) { return fn(r) }, true
+	case func(*http.Request) any:
+		return func() (any, error) { return fn(r), nil }, true
+	default:
+		return asDynamic(value)
+	}
+}
+
+func normalizeOptions(value any) []paymentOption {
+	switch typed := value.(type) {
+	case paymentOption:
+		return []paymentOption{typed}
+	case []paymentOption:
+		return typed
+	case map[string]any:
+		return []paymentOption{optionFromMap(typed)}
+	case []any:
+		var out []paymentOption
+		for _, item := range typed {
+			if mapped, ok := item.(map[string]any); ok {
+				out = append(out, optionFromMap(mapped))
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func optionFromMap(value map[string]any) paymentOption {
+	timeout := 0
+	switch typed := value["maxTimeoutSeconds"].(type) {
+	case float64:
+		timeout = int(typed)
+	case int:
+		timeout = typed
+	}
+	extra, _ := value["extra"].(map[string]any)
+	return paymentOption{
+		Scheme:            stringOr(value["scheme"]),
+		Network:           stringOr(value["network"]),
+		PayTo:             stringOr(value["payTo"]),
+		Price:             stringOr(value["price"]),
+		MaxTimeoutSeconds: timeout,
+		Extra:             extra,
+	}
+}
+
+func findScheme(schemes []Scheme, name, network string) *Scheme {
+	for i := range schemes {
+		if schemes[i].Name == name && (schemes[i].Network == "" || schemes[i].Network == network) {
+			return &schemes[i]
+		}
+	}
+	return nil
+}
+
+func applyRoutesInOrder(routes []Route, declaration map[string]any) []orderedRoute {
+	out := make([]orderedRoute, 0, len(routes))
+	for _, route := range routes {
+		applied := ApplyProductIdentity(routeToMap(route.Config), declaration)
+		item, _ := applied.(map[string]any)
+		if item == nil {
+			item = map[string]any{}
+		}
+		out = append(out, orderedRoute{pattern: route.Pattern, config: item})
+	}
+	return out
+}
+
+func routeToMap(route RouteConfig) map[string]any {
+	item := map[string]any{"accepts": acceptsToAny(route.Accepts)}
+	if route.Description != "" {
+		item["description"] = route.Description
+	}
+	if route.MimeType != "" {
+		item["mimeType"] = route.MimeType
+	}
+	if route.ServiceName != "" {
+		item["serviceName"] = route.ServiceName
+	}
+	if route.IconURL != "" {
+		item["iconUrl"] = route.IconURL
+	}
+	if route.Type != "" {
+		item["type"] = route.Type
+	}
+	if route.Resource != "" {
+		item["resource"] = route.Resource
+	}
+	if len(route.Tags) > 0 {
+		item["tags"] = route.Tags
+	}
+	if route.Extensions != nil {
+		item["extensions"] = route.Extensions
+	}
+	return item
+}
+
+func acceptsToAny(value any) any {
+	switch typed := value.(type) {
+	case paymentOption:
+		return optionToMap(typed)
+	case []paymentOption:
+		var out []any
+		for _, option := range typed {
+			out = append(out, optionToMap(option))
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func optionToMap(option paymentOption) map[string]any {
+	out := map[string]any{
+		"scheme":  option.Scheme,
+		"network": option.Network,
+		"payTo":   option.PayTo,
+		"price":   option.Price,
+	}
+	if option.MaxTimeoutSeconds != 0 {
+		out["maxTimeoutSeconds"] = option.MaxTimeoutSeconds
+	}
+	if option.Extra != nil {
+		out["extra"] = option.Extra
+	}
+	return out
+}
+
+func declarationMap(cfg MiddlewareConfig) map[string]any {
+	out := map[string]any{}
+	if cfg.Name != "" {
+		out["name"] = cfg.Name
+	}
+	if cfg.Type != "" {
+		out["type"] = cfg.Type
+	}
+	if len(cfg.Tags) > 0 {
+		tags := make([]any, len(cfg.Tags))
+		for i, tag := range cfg.Tags {
+			tags[i] = tag
+		}
+		out["tags"] = tags
+	}
+	if cfg.IconURL != "" {
+		out["iconUrl"] = cfg.IconURL
+	}
+	if cfg.ProductID != "" {
+		out["productId"] = cfg.ProductID
+	}
+	if cfg.ManifestHash != "" {
+		out["manifestHash"] = cfg.ManifestHash
+	}
+	if len(cfg.Dimensions) > 0 {
+		dims := make([]any, len(cfg.Dimensions))
+		for i, dimension := range cfg.Dimensions {
+			dims[i] = dimension
+		}
+		out["dimensions"] = dims
+	}
+	return out
+}
+
+func facilitatorConfig(cfg MiddlewareConfig, declaration map[string]any) *Config {
+	base := cfg.Facilitator
+	if base == nil {
+		base = &Config{}
+	}
+	derived := BuildFacilitatorAuthHeaders(AdapterName, cfg.APIKey, cfg.APIKeySet || cfg.APIKey != "", declaration)
+	copied := *base
+	seller := cfg.CreateAuthHeaders
+	copied.Auth = func(path string) (map[string]string, error) {
+		var sellerHeaders map[string]any
+		if seller != nil {
+			var err error
+			sellerHeaders, err = seller()
+			if err != nil {
+				return nil, err
+			}
+			if err := AssertPathKeyedAuthHeaders(sellerHeaders); err != nil {
+				return nil, err
+			}
+		}
+		selected := derived.Supported
+		switch path {
+		case "settle":
+			selected = derived.Settle
+		case "verify":
+			selected = derived.Verify
+		}
+		var sellerPath map[string]string
+		if raw, ok := sellerHeaders[path].(map[string]any); ok {
+			sellerPath = stringMap(raw)
+		}
+		if raw, ok := sellerHeaders[path].(map[string]string); ok {
+			sellerPath = raw
+		}
+		return MergeSellerWins(selected, sellerPath), nil
+	}
+	return &copied
+}
+
+func stringMap(value map[string]any) map[string]string {
+	out := map[string]string{}
+	for key, item := range value {
+		if text, ok := item.(string); ok {
+			out[key] = text
+		}
+	}
+	return out
+}
+
+func stringOr(value any) string {
+	text, _ := value.(string)
+	return text
+}
+
+type bufferedResponse struct {
+	header http.Header
+	code   int
+	body   bytes.Buffer
+	wrote  bool
+}
+
+func (b *bufferedResponse) Header() http.Header { return b.header }
+
+func (b *bufferedResponse) WriteHeader(code int) {
+	if b.wrote {
+		return
+	}
+	b.code = code
+	b.wrote = true
+}
+
+func (b *bufferedResponse) Write(p []byte) (int, error) {
+	if !b.wrote {
+		b.WriteHeader(http.StatusOK)
+	}
+	return b.body.Write(p)
+}
+
+var publicCacheDirective = regexp.MustCompile(`(?i)\bpublic\b`)
+
+func stripUnsafeFailureHeaders(header http.Header) {
+	header.Del(settlementOverrides)
+	header.Del("Location")
+	header.Del("Set-Cookie")
+	if publicCacheDirective.MatchString(header.Get("Cache-Control")) {
+		header.Del("Cache-Control")
+	}
+}
+
+func (b *bufferedResponse) flush(w http.ResponseWriter, extra map[string]string) {
+	for name, values := range b.header {
+		for _, value := range values {
+			w.Header().Add(name, value)
+		}
+	}
+	for name, value := range extra {
+		w.Header().Set(name, value)
+	}
+	code := b.code
+	if code == 0 {
+		code = http.StatusOK
+	}
+	w.WriteHeader(code)
+	_, _ = w.Write(b.body.Bytes())
 }
