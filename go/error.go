@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -17,6 +18,8 @@ var ErrValidation = errors.New("weft: validation")
 // covers this call only: an earlier call under the same idempotency key can
 // still have paid. After ChargePossible, retry only with the same idempotency
 // key and request.
+//
+// The zero value "" means unknown; treat it like ChargePossible.
 type Charge string
 
 const (
@@ -41,6 +44,21 @@ var preSignFetchCodes = map[string]bool{
 	"INVALID_BODY":                true,
 	"INVALID_HEADERS":             true,
 	"INVALID_IDEMPOTENCY_KEY":     true,
+}
+
+var idempotencyKeyPattern = regexp.MustCompile(`^[!-~]{1,255}$`)
+
+// decodeError reports a 2xx fetch response that did not decode. A replay
+// returns the same body, so the caller reconciles instead of retrying.
+func decodeError(cause error) *Error {
+	return &Error{
+		Code:       "RESPONSE_DECODE_ERROR",
+		Message:    "Weft API returned a fetch response that could not be decoded",
+		Retryable:  false,
+		Charge:     ChargePossible,
+		Details:    cause,
+		hasDetails: cause != nil,
+	}
 }
 
 func fetchCharge(status int, code string) Charge {

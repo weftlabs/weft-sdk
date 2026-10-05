@@ -88,7 +88,8 @@ export async function normalizeWeftError(
       status: 0,
       code: "RESPONSE_DECODE_ERROR",
       message: "Weft API returned a fetch response that could not be decoded",
-      retryable: true,
+      // A replay returns the same body; reconcile instead of retrying.
+      retryable: false,
       details: error,
       charge: "possible",
     });

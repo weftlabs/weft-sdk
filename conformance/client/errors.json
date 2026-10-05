@@ -662,6 +662,62 @@
       "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
     },
     "response": {"status": 200, "reason": "OK", "headers": {"content-type": "application/json"}, "body": "not json"},
-    "expectError": {"status": 0, "code": "RESPONSE_DECODE_ERROR", "message": "Weft API returned a fetch response that could not be decoded", "requestId": null, "retryable": true, "charge": "possible"}
+    "expectError": {"status": 0, "code": "RESPONSE_DECODE_ERROR", "message": "Weft API returned a fetch response that could not be decoded", "requestId": null, "retryable": false, "charge": "possible"}
+  },
+  {
+    "name": "fetch 2xx with an empty body is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 200, "reason": "OK", "headers": {"content-type": "application/json"}, "body": ""},
+    "expectError": {"status": 0, "code": "RESPONSE_DECODE_ERROR", "message": "Weft API returned a fetch response that could not be decoded", "requestId": null, "retryable": false, "charge": "possible"}
+  },
+  {
+    "name": "fetch 2xx with a null body is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 200, "reason": "OK", "headers": {"content-type": "application/json"}, "body": "null"},
+    "expectError": {"status": 0, "code": "RESPONSE_DECODE_ERROR", "message": "Weft API returned a fetch response that could not be decoded", "requestId": null, "retryable": false, "charge": "possible"}
+  },
+  {
+    "name": "fetch 2xx with an array body is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 200, "reason": "OK", "headers": {"content-type": "application/json"}, "body": "[1]"},
+    "expectError": {"status": 0, "code": "RESPONSE_DECODE_ERROR", "message": "Weft API returned a fetch response that could not be decoded", "requestId": null, "retryable": false, "charge": "possible"}
+  },
+  {
+    "name": "fetch 2xx with an empty object body is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 200, "reason": "OK", "headers": {"content-type": "application/json"}, "body": "{}"},
+    "expectError": {"status": 0, "code": "RESPONSE_DECODE_ERROR", "message": "Weft API returned a fetch response that could not be decoded", "requestId": null, "retryable": false, "charge": "possible"}
   }
 ]

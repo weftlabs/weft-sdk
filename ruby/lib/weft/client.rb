@@ -53,6 +53,10 @@ module Weft
               search_id: nil, operation_id: nil, access_method_id: nil)
       raise ArgumentError, 'max_cost_usd is required' if max_cost_usd.to_s.strip.empty?
       raise ArgumentError, 'idempotency_key is required' if idempotency_key.to_s.strip.empty?
+      # Weft's limit. Checked here so a bad key never looks like a paid failure.
+      unless idempotency_key.to_s.match?(/\A[!-~]{1,255}\z/)
+        raise ArgumentError, 'idempotency_key must be 1-255 visible ASCII characters without spaces'
+      end
 
       fields = {
         url: url,
@@ -65,7 +69,11 @@ module Weft
       fields[:operation_id] = operation_id unless operation_id.nil?
       fields[:access_method_id] = access_method_id unless access_method_id.nil?
       request = FetchRequest.new(fields)
-      call(paid: true) { @fetch.fetch(request, idempotency_key: idempotency_key) }
+      response = call(paid: true) { @fetch.fetch(request, idempotency_key: idempotency_key) }
+      # A 2xx without a fetch result body: the fetch most likely paid.
+      raise decode_error if response.nil?
+
+      response
     end
 
     def purchases(page: nil, per_page: nil)
@@ -86,11 +94,16 @@ module Weft
       raise if !paid || e.is_a?(RequestError)
 
       # Weft answered 2xx, so the fetch most likely paid, but the body did not decode.
-      raise RequestError.new(
+      raise decode_error
+    end
+
+    # A replay returns the same body; reconcile instead of retrying.
+    def decode_error
+      RequestError.new(
         status: 0,
         code: 'RESPONSE_DECODE_ERROR',
         message: 'Weft API returned a fetch response that could not be decoded',
-        retryable: true,
+        retryable: false,
         charge: 'possible'
       )
     end

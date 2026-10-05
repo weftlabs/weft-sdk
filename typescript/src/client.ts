@@ -124,6 +124,12 @@ export class WeftClient {
     if (!options.idempotencyKey.trim()) {
       throw new Error("idempotencyKey is required");
     }
+    // Weft's limit. Checked here so a bad key never looks like a paid failure.
+    if (!/^[!-~]{1,255}$/.test(options.idempotencyKey)) {
+      throw new Error(
+        "idempotencyKey must be 1-255 visible ASCII characters without spaces",
+      );
+    }
 
     // Generated FetchRequestBodyToJSON replaces an object body with {}.
     // The server treats JSON.stringify(body) as the same forwarded string.
@@ -139,7 +145,16 @@ export class WeftClient {
           idempotencyKey: options.idempotencyKey,
         }),
       true,
-    );
+    ).then(async (response: FetchResponse | null) => {
+      // A 2xx without a fetch result body: the fetch most likely paid.
+      if (typeof response?.status !== "number") {
+        throw await normalizeWeftError(
+          new Error("unreadable fetch response"),
+          true,
+        );
+      }
+      return response;
+    });
   }
 
   purchases(options: PurchaseListOptions = {}): Promise<PurchaseListResponse> {
