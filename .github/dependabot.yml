@@ -6,11 +6,15 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # Majors open their own PRs, so one breaking tool (e.g. TypeScript 7)
+    # does not block the safe minor and patch updates in the group.
     groups:
       production-dependencies:
         dependency-type: production
+        update-types: ["minor", "patch"]
       development-dependencies:
         dependency-type: development
+        update-types: ["minor", "patch"]
     labels: ["dependencies", "typescript"]
     commit-message:
       prefix: "chore(deps/ts)"
