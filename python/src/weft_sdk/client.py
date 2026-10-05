@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections.abc import Mapping
 from types import TracebackType
 from typing import Any, Callable, TypeVar
@@ -31,6 +32,7 @@ from .generated.models.search_filter_spec import SearchFilterSpec
 from .generated.models.search_request import SearchRequest
 from .generated.models.search_response import SearchResponse
 
+_IDEMPOTENCY_KEY = re.compile(r"[!-~]{1,255}")
 T = TypeVar("T")
 
 
@@ -109,11 +111,11 @@ class Client:
         self._fetch = FetchApi(self._api_client)
         self._purchases = PurchasesApi(self._api_client)
 
-    def _call(self, operation: Callable[[], T]) -> T:
+    def _call(self, operation: Callable[[], T], *, paid: bool = False) -> T:
         try:
             return operation()
         except ApiException as error:
-            raise normalize_api_exception(error) from error
+            raise normalize_api_exception(error, paid=paid) from error
         except TransportError as error:
             # No HTTP response exists, so the outcome is uncertain. Callers
             # retry with backoff and, for paid fetch, reuse the same
@@ -125,7 +127,16 @@ class Client:
                 request_id=None,
                 retryable=True,
                 details=None,
+                charge="possible" if paid else "none",
             ) from error
+        except WeftError:
+            raise
+        except Exception as error:
+            if not paid:
+                raise
+            # Weft answered 2xx, so the fetch most likely paid, but the body
+            # did not decode.
+            raise _decode_error() from error
 
     def me(self) -> MeResponse:
         return self._call(self._account.get_me)
@@ -166,6 +177,11 @@ class Client:
             raise ValueError("max_cost_usd is required")
         if not idempotency_key.strip():
             raise ValueError("idempotency_key is required")
+        # Weft's limit. Checked here so a bad key never looks like a paid failure.
+        if not _IDEMPOTENCY_KEY.fullmatch(idempotency_key):
+            raise ValueError(
+                "idempotency_key must be 1-255 visible ASCII characters without spaces"
+            )
         request_fields: dict[str, Any] = {
             "url": url,
             "max_cost_usd": max_cost_usd,
@@ -188,7 +204,13 @@ class Client:
         if access_method_id is not None:
             request_fields["access_method_id"] = access_method_id
         request = FetchRequest(**request_fields)
-        return self._call(lambda: self._fetch.fetch(request, idempotency_key=idempotency_key))
+        response = self._call(
+            lambda: self._fetch.fetch(request, idempotency_key=idempotency_key), paid=True
+        )
+        if response is None:
+            # A 2xx without a fetch result body: the fetch most likely paid.
+            raise _decode_error()
+        return response
 
     def purchases(
         self, *, page: int | None = None, per_page: int | None = None
@@ -211,3 +233,16 @@ class Client:
         traceback: TracebackType | None,
     ) -> None:
         self.close()
+
+
+def _decode_error() -> WeftError:
+    # A replay returns the same body; reconcile instead of retrying.
+    return WeftError(
+        status=0,
+        code="RESPONSE_DECODE_ERROR",
+        message="Weft API returned a fetch response that could not be decoded",
+        request_id=None,
+        retryable=False,
+        details=None,
+        charge="possible",
+    )

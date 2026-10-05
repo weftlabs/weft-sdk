@@ -128,5 +128,8 @@
       "accessToken": "   "
     },
     "expectValidationError": true
-  }
+  },
+  {"name": "idempotency key with a space is a validation error", "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "has space"}}}, "client": {"credential": "wk_test"}, "expectValidationError": true},
+  {"name": "non-ASCII idempotency key is a validation error", "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "ключ"}}}, "client": {"credential": "wk_test"}, "expectValidationError": true},
+  {"name": "idempotency key over 255 bytes is a validation error", "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"}}}, "client": {"credential": "wk_test"}, "expectValidationError": true}
 ]

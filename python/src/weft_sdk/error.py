@@ -4,9 +4,40 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from .generated.exceptions import ApiException
+
+# Whether the failed call can have created a charge. "none" covers this call
+# only: an earlier call under the same idempotency key can still have paid.
+# After "possible", retry only with the same idempotency key and request.
+Charge = Literal["none", "possible"]
+
+# Codes Weft raises before it signs a payment in that call. Same list as the
+# TypeScript reference.
+_PRE_SIGN_FETCH_CODES = frozenset(
+    {
+        "EXCEEDED_MAX_COST",
+        "MERCHANT_RETURNED_NON_402",
+        "INSUFFICIENT_BALANCE",
+        "DENYLISTED_RECIPIENT",
+        "WALLET_ENVIRONMENT_MISMATCH",
+        "UNSUPPORTED_ASSET",
+        "INVALID_REQUEST",
+        "UNKNOWN_PARAMETER",
+        "INVALID_URL",
+        "INVALID_MAX_COST_USD",
+        "UNSUPPORTED_METHOD",
+        "INVALID_BODY",
+        "INVALID_HEADERS",
+        "INVALID_IDEMPOTENCY_KEY",
+    }
+)
+
+
+def _fetch_charge(status: int, code: str) -> Charge:
+    pre_sign = code in _PRE_SIGN_FETCH_CODES or code.startswith("POLICY_VIOLATION_")
+    return "none" if 400 <= status < 500 and pre_sign else "possible"
 
 
 class WeftError(Exception):
@@ -19,6 +50,7 @@ class WeftError(Exception):
         request_id: str | None,
         retryable: bool,
         details: Any = None,
+        charge: Charge = "possible",
     ) -> None:
         super().__init__(message)
         self.status = status
@@ -26,9 +58,10 @@ class WeftError(Exception):
         self.request_id = request_id
         self.retryable = retryable
         self.details = details
+        self.charge: Charge = charge
 
 
-def normalize_api_exception(error: ApiException) -> WeftError:
+def normalize_api_exception(error: ApiException, *, paid: bool = False) -> WeftError:
     status = int(error.status or 0)
     details: Any = None
     if error.body:
@@ -48,11 +81,13 @@ def normalize_api_exception(error: ApiException) -> WeftError:
     if not request_id and error.headers:
         request_id = error.headers.get("x-request-id")
 
+    code = str(code or f"HTTP_{status}")
     return WeftError(
         status=status,
-        code=str(code or f"HTTP_{status}"),
+        code=code,
         message=str(message),
         request_id=str(request_id) if request_id else None,
         retryable=status == 429 or status >= 500,
         details=details,
+        charge=_fetch_charge(status, code) if paid else "none",
     )

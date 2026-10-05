@@ -374,6 +374,9 @@ func assertClientError(t *testing.T, err error, expected map[string]any) {
 	if got.Retryable != boolField(expected, "retryable") {
 		t.Fatalf("retryable %v, want %v", got.Retryable, expected["retryable"])
 	}
+	if string(got.Charge) != stringField(expected, "charge") {
+		t.Fatalf("charge %q, want %q", got.Charge, expected["charge"])
+	}
 	if _, ok := expected["details"]; ok {
 		if expected["details"] == nil {
 			if got.HasDetails() {

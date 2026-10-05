@@ -169,6 +169,10 @@ func (c *Client) Fetch(ctx context.Context, request FetchRequest, options FetchO
 	if strings.TrimSpace(options.IdempotencyKey) == "" {
 		return nil, validation("idempotencyKey is required")
 	}
+	// Weft's limit. Checked here so a bad key never looks like a paid failure.
+	if !idempotencyKeyPattern.MatchString(strings.TrimSpace(options.IdempotencyKey)) {
+		return nil, validation("idempotencyKey must be 1-255 visible ASCII characters without spaces")
+	}
 	wire, err := fetchWire(request)
 	if err != nil {
 		return nil, err
@@ -180,7 +184,18 @@ func (c *Client) Fetch(ctx context.Context, request FetchRequest, options FetchO
 	headers := map[string]string{"Idempotency-Key": strings.TrimSpace(options.IdempotencyKey)}
 	var out generated.FetchResponse
 	if err := c.call(ctx, http.MethodPost, "/api/v1/fetch", headers, body, &out); err != nil {
-		return nil, err
+		var weftErr *Error
+		if errors.As(err, &weftErr) {
+			weftErr.Charge = fetchCharge(weftErr.Status, weftErr.Code)
+			return nil, err
+		}
+		// Weft answered 2xx, so the fetch most likely paid, but the body did not decode.
+		return nil, decodeError(err)
+	}
+	// Status is a required field and a merchant status is never 0, so 0 means
+	// an empty 2xx body: the fetch most likely paid.
+	if out.Status == 0 {
+		return nil, decodeError(nil)
 	}
 	return &out, nil
 }

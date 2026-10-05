@@ -53,6 +53,10 @@ module Weft
               search_id: nil, operation_id: nil, access_method_id: nil)
       raise ArgumentError, 'max_cost_usd is required' if max_cost_usd.to_s.strip.empty?
       raise ArgumentError, 'idempotency_key is required' if idempotency_key.to_s.strip.empty?
+      # Weft's limit. Checked here so a bad key never looks like a paid failure.
+      unless idempotency_key.to_s.match?(/\A[!-~]{1,255}\z/)
+        raise ArgumentError, 'idempotency_key must be 1-255 visible ASCII characters without spaces'
+      end
 
       fields = {
         url: url,
@@ -65,7 +69,11 @@ module Weft
       fields[:operation_id] = operation_id unless operation_id.nil?
       fields[:access_method_id] = access_method_id unless access_method_id.nil?
       request = FetchRequest.new(fields)
-      call { @fetch.fetch(request, idempotency_key: idempotency_key) }
+      response = call(paid: true) { @fetch.fetch(request, idempotency_key: idempotency_key) }
+      # A 2xx without a fetch result body: the fetch most likely paid.
+      raise decode_error if response.nil?
+
+      response
     end
 
     def purchases(page: nil, per_page: nil)
@@ -78,10 +86,26 @@ module Weft
 
     private
 
-    def call
+    def call(paid: false)
       yield
     rescue ApiError => e
-      raise normalize_api_error(e)
+      raise normalize_api_error(e, paid: paid)
+    rescue StandardError => e
+      raise if !paid || e.is_a?(RequestError)
+
+      # Weft answered 2xx, so the fetch most likely paid, but the body did not decode.
+      raise decode_error
+    end
+
+    # A replay returns the same body; reconcile instead of retrying.
+    def decode_error
+      RequestError.new(
+        status: 0,
+        code: 'RESPONSE_DECODE_ERROR',
+        message: 'Weft API returned a fetch response that could not be decoded',
+        retryable: false,
+        charge: 'possible'
+      )
     end
 
     def credential_error(api_key, access_token)
@@ -195,7 +219,7 @@ module Weft
       end
     end
 
-    def normalize_api_error(error)
+    def normalize_api_error(error, paid:)
       if error.code.to_i.zero? && !error.response_body
         cause = error.instance_variable_get(:@message).to_s
         cause = 'connection reset' if cause.empty?
@@ -205,7 +229,8 @@ module Weft
           message: "Network failure before a Weft API response: #{cause}",
           request_id: nil,
           retryable: true,
-          details: nil
+          details: nil,
+          charge: paid ? 'possible' : 'none'
         )
       end
 
@@ -213,13 +238,15 @@ module Weft
       body = details.is_a?(Hash) ? details : nil
       nested = body && body['error'].is_a?(Hash) ? body['error'] : nil
       status = error.code.to_i
+      code = nested&.[]('code') || body&.[]('code') || (body && body['error'].is_a?(String) ? body['error'] : "HTTP_#{status}")
       RequestError.new(
         status: status,
-        code: nested&.[]('code') || body&.[]('code') || (body && body['error'].is_a?(String) ? body['error'] : "HTTP_#{status}"),
+        code: code,
         message: nested&.[]('message') || body&.[]('message') || "Weft API returned HTTP #{status}",
         request_id: nested&.[]('request_id') || body&.[]('request_id') || header_request_id(error),
         retryable: status == 429 || status >= 500,
-        details: details
+        details: details,
+        charge: paid ? RequestError.fetch_charge(status, code) : 'none'
       )
     end
 

@@ -58,7 +58,7 @@ from weft_sdk import WeftError
 try:
     results = weft.search(query="weather data API")
 except WeftError as error:
-    print(error.status, error.code, error.request_id, error.retryable)
+    print(error.status, error.code, error.request_id, error.retryable, error.charge)
     print(error.details)
     raise
 ```
@@ -77,6 +77,14 @@ except WeftError as error:
 - `status == 0` (`NETWORK_ERROR`): the request failed before any Weft
   response, so the outcome is uncertain. `retryable` is `True`; retry with
   backoff and reuse the idempotency key for a paid fetch.
+- `charge`: `"none"` means this call cannot have paid. For a fetch, Weft
+  refused before it signed a payment (for example `EXCEEDED_MAX_COST` or
+  `MERCHANT_RETURNED_NON_402`). `"possible"` means this fetch can have paid
+  (a 5xx, a network error, `PAID_DELIVERY_FAILED`). After `"possible"`, retry
+  only with the same idempotency key and the same request: Weft returns the
+  stored response or reuses the existing payment. A new key can pay again.
+  `"none"` covers this call only; an earlier call with the same key can still
+  have paid.
 
 See the [API reference](https://weft.network/docs) for the complete contract.
 Product guides live on [weftlabs.com](https://weftlabs.com).

@@ -16,8 +16,13 @@ Python client: `cd python && pytest tests/test_conformance_client.py`
 
 Ruby and Go runners are later layers. They load the same files.
 
+`expectError.charge` is asserted in every language. The pre-sign fetch code
+list is the same in each façade; its owner is
+`cto-os/specs/paid-fetch/01-charge-outcome.md`, from the weft-app raise sites.
+
 ## Known differences (not asserted)
 
+- `RESPONSE_DECODE_ERROR` `details`: TypeScript and Go keep the decode cause. Python and Ruby set `details` to `None`/`nil` and keep the cause as the exception cause. The fixture does not list `details`.
 - Network-error `details`: TypeScript keeps the transport cause. Python sets `details` to `None`. The fixture does not list `details` for that case. This is not a missing façade field.
 - Ruby API errors raise `Weft::RequestError`. The generated model already owns `Weft::Error`.
 - Go map fetch body: a caller-supplied Go map is serialized with sorted keys, not `JSON.stringify` insertion order. HTML escaping is disabled.

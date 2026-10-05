@@ -57,6 +57,7 @@ interface ClientCase {
     requestId: string | null;
     retryable: boolean;
     details?: Json;
+    charge: "none" | "possible";
   };
   expectValidationError?: boolean;
 }
@@ -340,6 +341,7 @@ describe("conformance client", () => {
         expect(error.message).toBe(testCase.expectError.message);
         expect(error.requestId ?? null).toBe(testCase.expectError.requestId);
         expect(error.retryable).toBe(testCase.expectError.retryable);
+        expect(error.charge).toBe(testCase.expectError.charge);
         if ("details" in testCase.expectError) {
           if (testCase.expectError.details === null) {
             expect(error.details).toBeUndefined();

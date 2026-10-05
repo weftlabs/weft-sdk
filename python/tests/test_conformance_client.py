@@ -239,6 +239,7 @@ def test_client_conformance(filename: str, case: dict[str, Any]) -> None:
         assert str(thrown) == expected["message"]
         assert thrown.request_id == expected["requestId"]
         assert thrown.retryable is expected["retryable"]
+        assert thrown.charge == expected["charge"]
         if "details" in expected:
             assert thrown.details == expected["details"]
     else:

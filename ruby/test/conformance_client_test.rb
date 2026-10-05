@@ -102,6 +102,7 @@ class ConformanceClientTest < Minitest::Test
       assert_equal expected['message'], thrown.message
       assert_nil_or_equal expected['requestId'], thrown.request_id
       assert_equal expected['retryable'], thrown.retryable
+      assert_equal expected['charge'], thrown.charge
       assert_nil_or_equal expected['details'], thrown.details if expected.key?('details')
     else
       assert_nil thrown, thrown&.full_message
