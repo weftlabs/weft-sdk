@@ -69,6 +69,8 @@ func TestFacilitatorConformance(t *testing.T) {
 					}
 				case "route-match.json":
 					assertRouteMatch(t, item)
+				case "requirements-match.json":
+					assertRequirementsMatch(t, item)
 				default:
 					t.Fatalf("no facilitator runner for %s", entry.Name())
 				}
@@ -77,6 +79,35 @@ func TestFacilitatorConformance(t *testing.T) {
 	}
 	if count == 0 {
 		t.Fatal("no facilitator conformance cases")
+	}
+}
+
+func TestInvalidPercentEscapeKeepsTheSegment(t *testing.T) {
+	for _, path := range []string{"/files/%FF", "/files/%C3%28", "/files/%"} {
+		got := normalizePath(path)
+		if got != path {
+			t.Fatalf("normalizePath(%q) = %q, want the original segment", path, got)
+		}
+	}
+}
+
+func assertRequirementsMatch(t *testing.T, testCase map[string]any) {
+	t.Helper()
+	required, ok := testCase["required"].(map[string]any)
+	if !ok {
+		t.Fatalf("required is %T", testCase["required"])
+	}
+	accepted, ok := testCase["accepted"].(map[string]any)
+	if !ok {
+		t.Fatalf("accepted is %T", testCase["accepted"])
+	}
+	_, matched := findMatchingRequirement([]map[string]any{required}, map[string]any{
+		"x402Version": float64(2),
+		"accepted":    accepted,
+		"payload":     map[string]any{},
+	})
+	if matched != testCase["match"].(bool) {
+		t.Fatalf("match %v, want %v", matched, testCase["match"])
 	}
 }
 

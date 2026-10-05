@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
@@ -216,6 +217,16 @@ func matchRoute(routes []compiledRoute, method, path string) *compiledRoute {
 	return nil
 }
 
+func decodePathSegment(segment string) string {
+	decoded, err := url.PathUnescape(segment)
+	if err != nil || !utf8.ValidString(decoded) {
+		return segment
+	}
+	decoded = strings.ReplaceAll(decoded, "/", "%2F")
+	decoded = strings.ReplaceAll(decoded, "\\", "%5C")
+	return decoded
+}
+
 func normalizePath(path string) string {
 	for i := 0; i < len(path); i++ {
 		if path[i] == '?' || path[i] == '#' {
@@ -225,13 +236,7 @@ func normalizePath(path string) string {
 	}
 	parts := strings.Split(path, "/")
 	for i, segment := range parts {
-		decoded, err := url.PathUnescape(segment)
-		if err != nil {
-			continue
-		}
-		decoded = strings.ReplaceAll(decoded, "/", "%2F")
-		decoded = strings.ReplaceAll(decoded, "\\", "%5C")
-		parts[i] = decoded
+		parts[i] = decodePathSegment(segment)
 	}
 	path = strings.Join(parts, "/")
 	for strings.Contains(path, "//") {

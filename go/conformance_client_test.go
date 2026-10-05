@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -262,7 +263,7 @@ func fetchFromFixture(request map[string]any) FetchRequest {
 		Method:     stringField(request, "method"),
 	}
 	if _, ok := request["body"]; ok {
-		out.Body = request["body"]
+		out.Body = materializeClientFixture(request["body"])
 	}
 	if headers, ok := request["headers"].(map[string]any); ok {
 		out.Headers = map[string]string{}
@@ -475,13 +476,72 @@ func assertClientRequest(t *testing.T, clientSpec, expected map[string]any, orig
 	}
 }
 
+func materializeClientFixture(value any) any {
+	object, ok := value.(map[string]any)
+	if !ok || len(object) != 1 {
+		return value
+	}
+	kind, ok := object["$fixture"].(string)
+	if !ok {
+		return value
+	}
+	switch kind {
+	case "non-finite-body":
+		return map[string]any{
+			"n":      math.NaN(),
+			"inf":    math.Inf(1),
+			"neg":    math.Inf(-1),
+			"nested": map[string]any{"n": math.NaN()},
+			"items":  []any{math.NaN(), math.Inf(1), 1},
+		}
+	default:
+		return value
+	}
+}
+
 func jsonEqual(got, want any) bool {
+	got = canonicalizeJSONText(got)
+	want = canonicalizeJSONText(want)
 	left, _ := json.Marshal(got)
 	right, _ := json.Marshal(want)
 	var a, b any
 	_ = json.Unmarshal(left, &a)
 	_ = json.Unmarshal(right, &b)
 	return reflect.DeepEqual(a, b)
+}
+
+func canonicalizeJSONText(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for key, item := range typed {
+			out[key] = canonicalizeJSONText(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(typed))
+		for i, item := range typed {
+			out[i] = canonicalizeJSONText(item)
+		}
+		return out
+	case string:
+		var parsed any
+		if json.Unmarshal([]byte(typed), &parsed) != nil {
+			return typed
+		}
+		switch parsed.(type) {
+		case map[string]any, []any:
+			encoded, err := json.Marshal(parsed)
+			if err != nil {
+				return typed
+			}
+			return string(encoded)
+		default:
+			return typed
+		}
+	default:
+		return value
+	}
 }
 
 func mapField(value map[string]any, key string) map[string]any {
