@@ -424,6 +424,10 @@ describe("conformance facilitator", () => {
         expect(coreRouteMatches(testCase)).toBe(testCase.match);
         return;
       }
+      if (loaded.file === "requirements-match.json") {
+        expect(coreRequirementsMatch(testCase)).toBe(testCase.match);
+        return;
+      }
       throw new Error(`no facilitator runner for ${loaded.file}`);
     });
   }
@@ -443,6 +447,20 @@ function coreRouteMatches(testCase: Record<string, unknown>): boolean {
   const normalized = coreRoutes.normalizePath(String(testCase.path));
   const method = String(testCase.method).toUpperCase();
   return parsed.regex.test(normalized) && (parsed.verb === "*" || parsed.verb === method);
+}
+
+const coreRequirements = new x402ResourceServer();
+
+function coreRequirementsMatch(testCase: Record<string, unknown>): boolean {
+  const matched = coreRequirements.findMatchingRequirements(
+    [testCase.required as never],
+    {
+      x402Version: 2,
+      payload: {},
+      accepted: testCase.accepted as never,
+    },
+  );
+  return matched !== undefined;
 }
 
 async function assertAuthHeaders(testCase: Record<string, unknown>): Promise<void> {

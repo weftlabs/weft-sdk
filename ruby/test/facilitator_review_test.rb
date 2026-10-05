@@ -57,6 +57,49 @@ class FacilitatorReviewTest < Minitest::Test
     assert_equal '10000', settle.first[:json]['paymentRequirements']['amount']
   end
 
+  def test_non_object_settlement_overrides_are_ignored
+    raws = ['[]', 'null', '5']
+    index = 0
+    app = lambda do |_env|
+      raw = raws[index]
+      index += 1
+      [200, { 'Content-Type' => 'application/json', 'Settlement-Overrides' => raw }, ['{"ok":true}']]
+    end
+    middleware = build(app, scheme: scheme_without_decimals)
+    challenge = unpaid_challenge(middleware)
+    raws.each do |raw|
+      before = @requests.count { |item| item[:path] == '/settle' }
+      response = middleware.call(rack_env('/v1/search', payment: payment_header(challenge)))
+      assert_equal 200, response[0], raw
+      settles = @requests.select { |item| item[:path] == '/settle' }
+      assert_equal before + 1, settles.length, raw
+      assert_equal '10000', settles.last[:json]['paymentRequirements']['amount'], raw
+    end
+  end
+
+  def test_invalid_utf8_percent_escape_keeps_the_segment
+    assert_equal '/files/%FF', Weft::Facilitator::X402.normalize_path('/files/%FF')
+    assert_equal '/files/%C3%28', Weft::Facilitator::X402.normalize_path('/files/%C3%28')
+    assert_equal true, Weft::Facilitator::X402.route_matches?('/files/:id', 'GET', '/files/%FF')
+    assert_equal true, Weft::Facilitator::X402.route_matches?('/files/%FF', 'GET', '/files/%FF')
+    assert_equal '/files/€', Weft::Facilitator::X402.normalize_path('/files/%E2%82%AC')
+  end
+
+  def test_nested_extra_subset_matches_when_the_buyer_adds_a_key
+    middleware = Weft::Facilitator::RackMiddleware.allocate
+    assert middleware.send(
+      :extra_subset?,
+      { 'nested' => { 'mode' => 'x' } },
+      { 'nested' => { 'mode' => 'x', 'extra' => 'buyer' } }
+    )
+    refute middleware.send(
+      :extra_subset?,
+      { 'nested' => { 'mode' => 'x' } },
+      { 'nested' => { 'mode' => 'y' } }
+    )
+    assert middleware.send(:extra_subset?, { 'a' => 1 }, { 'a' => 1, 'b' => 2 })
+  end
+
   def test_extension_echo_mismatch_rejects_before_verify
     runs = 0
     app = lambda do |_env|

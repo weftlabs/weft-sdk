@@ -60,6 +60,13 @@ class ConformanceFacilitatorTest < Minitest::Test
         Weft::Facilitator::X402.route_matches?(test_case['pattern'], test_case['method'], test_case['path']),
         test_case['name']
       )
+    when 'requirements-match.json'
+      matched = Weft::Facilitator::RackMiddleware.allocate.send(
+        :match_requirements,
+        [test_case['required']],
+        { 'accepted' => test_case['accepted'] }
+      )
+      assert_equal test_case['match'], !matched.nil?, test_case['name']
     else
       raise "no facilitator runner for #{filename}"
     end

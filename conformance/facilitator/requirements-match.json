@@ -1,0 +1,251 @@
+[
+  {
+    "name": "equal core fields match",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "match": true
+  },
+  {
+    "name": "scheme mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "other",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "match": false
+  },
+  {
+    "name": "network mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:1",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "match": false
+  },
+  {
+    "name": "amount mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10001",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "match": false
+  },
+  {
+    "name": "asset mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0xother",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "match": false
+  },
+  {
+    "name": "payTo mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000002",
+      "maxTimeoutSeconds": 60
+    },
+    "match": false
+  },
+  {
+    "name": "maxTimeoutSeconds mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 1
+    },
+    "match": false
+  },
+  {
+    "name": "flat extra subset matches when the buyer adds a key",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "a": 1 }
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "a": 1, "b": 2 }
+    },
+    "match": true
+  },
+  {
+    "name": "flat extra mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "a": 1 }
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "a": 2 }
+    },
+    "match": false
+  },
+  {
+    "name": "nested extra matches when the buyer adds a key",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "nested": { "mode": "x" } }
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "nested": { "mode": "x", "extra": "buyer" } }
+    },
+    "match": true
+  },
+  {
+    "name": "nested extra mismatch rejects",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "nested": { "mode": "x" } }
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "nested": { "mode": "y" } }
+    },
+    "match": false
+  },
+  {
+    "name": "accepted extra is ignored when required extra is absent",
+    "required": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60
+    },
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x0000000000000000000000000000000000000001",
+      "maxTimeoutSeconds": 60,
+      "extra": { "a": 1 }
+    },
+    "match": true
+  }
+]

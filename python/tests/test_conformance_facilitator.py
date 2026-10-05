@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from x402.http import x402HTTPResourceServer
 from x402.http.types import HTTPRequestContext
+from x402.schemas import PaymentPayload, PaymentRequirements
 from x402.server import x402ResourceServer
 
 from weft_sdk.facilitator.client import (
@@ -142,6 +143,7 @@ def test_loads_every_facilitator_fixture() -> None:
         "facilitator-url.json",
         "product-identity.json",
         "request-extension.json",
+        "requirements-match.json",
         "route-match.json",
         "settlement.json",
     }
@@ -177,6 +179,9 @@ def test_facilitator_case(
     if filename == "route-match.json":
         assert _route_matches(case) is case["match"]
         return
+    if filename == "requirements-match.json":
+        assert _requirements_match(case) is case["match"]
+        return
     raise AssertionError(f"no facilitator runner for {filename}")
 
 
@@ -189,6 +194,14 @@ def _capture(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     monkeypatch.setattr("weft_sdk.facilitator.warn.console_warn", record)
     monkeypatch.setattr("weft_sdk.facilitator.handshake.console_warn", record)
     return warnings
+
+
+def _requirements_match(case: dict[str, Any]) -> bool:
+    required = PaymentRequirements.model_validate(case["required"])
+    accepted = PaymentRequirements.model_validate(case["accepted"])
+    payload = PaymentPayload(x402_version=2, payload={}, accepted=accepted)
+    server = x402ResourceServer(None)
+    return server.find_matching_requirements([required], payload) is not None
 
 
 def _route_matches(case: dict[str, Any]) -> bool:

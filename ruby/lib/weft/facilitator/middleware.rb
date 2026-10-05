@@ -326,7 +326,10 @@ module Weft
         return true if required.nil?
         return false unless accepted.is_a?(Hash)
 
-        required.all? { |key, value| accepted[key] == value }
+        required.all? do |key, value|
+          next false unless accepted.key?(key)
+          value.is_a?(Hash) && accepted[key].is_a?(Hash) ? extra_subset?(value, accepted[key]) : accepted[key] == value
+        end
       end
 
       def apply_overrides(requirements, headers)
@@ -334,6 +337,7 @@ module Weft
         return requirements if raw.nil? || raw.empty?
 
         parsed = JSON.parse(raw)
+        return requirements unless parsed.is_a?(Hash)
         amount = parsed['amount']
         return requirements unless amount.is_a?(String)
 

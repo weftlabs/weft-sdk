@@ -257,5 +257,26 @@
     "method": "GET",
     "path": "/any",
     "match": false
+  },
+  {
+    "name": "invalid percent escape %FF matches a parameter",
+    "pattern": "/files/:id",
+    "method": "GET",
+    "path": "/files/%FF",
+    "match": true
+  },
+  {
+    "name": "invalid UTF-8 percent sequence matches a parameter",
+    "pattern": "/files/:id",
+    "method": "GET",
+    "path": "/files/%C3%28",
+    "match": true
+  },
+  {
+    "name": "invalid percent escape does not match a different literal",
+    "pattern": "/files/x",
+    "method": "GET",
+    "path": "/files/%FF",
+    "match": false
   }
 ]

@@ -103,7 +103,10 @@ module Weft
       end
 
       def decode_component(segment)
-        segment.gsub(/%([0-9A-Fa-f]{2})/) { [Regexp.last_match(1)].pack('H*').force_encoding(Encoding::UTF_8) }
+        decoded = segment.gsub(/%([0-9A-Fa-f]{2})/) do
+          [Regexp.last_match(1)].pack('H*').force_encoding(Encoding::UTF_8)
+        end
+        decoded.valid_encoding? ? decoded : segment
       rescue StandardError
         segment
       end
