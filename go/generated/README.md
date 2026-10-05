@@ -166,7 +166,6 @@ Class | Method | HTTP request | Description
  - [FetchErrorResponse](docs/FetchErrorResponse.md)
  - [FetchRequest](docs/FetchRequest.md)
  - [FetchRequestBody](docs/FetchRequestBody.md)
- - [FetchRequestNot](docs/FetchRequestNot.md)
  - [FetchResponse](docs/FetchResponse.md)
  - [InsufficientScopeResponse](docs/InsufficientScopeResponse.md)
  - [MeApiKey](docs/MeApiKey.md)

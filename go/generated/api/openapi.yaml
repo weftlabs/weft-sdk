@@ -4229,8 +4229,6 @@ components:
         allow_tempo_refill: false
         access_method_id: access_method_id
         search_id: 11111111-1111-4111-8111-111111111111
-      not:
-        $ref: "#/components/schemas/FetchRequest_not"
       properties:
         url:
           description: Target URL. Must pass Weft's URL safety check (no SSRF / private
@@ -4648,15 +4646,6 @@ components:
       oneOf:
       - type: string
       - type: object
-    FetchRequest_not:
-      properties:
-        max_total_cost_usd: {}
-        allow_tempo_refill:
-          enum:
-          - true
-      required:
-      - allow_tempo_refill
-      - max_total_cost_usd
   securitySchemes:
     bearerAuth:
       bearerFormat: APIKey

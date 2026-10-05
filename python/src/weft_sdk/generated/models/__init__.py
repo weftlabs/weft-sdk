@@ -38,7 +38,6 @@ from weft_sdk.generated.models.fetch_balance_snapshot import FetchBalanceSnapsho
 from weft_sdk.generated.models.fetch_error_response import FetchErrorResponse
 from weft_sdk.generated.models.fetch_request import FetchRequest
 from weft_sdk.generated.models.fetch_request_body import FetchRequestBody
-from weft_sdk.generated.models.fetch_request_not import FetchRequestNot
 from weft_sdk.generated.models.fetch_response import FetchResponse
 from weft_sdk.generated.models.insufficient_scope_response import InsufficientScopeResponse
 from weft_sdk.generated.models.me_api_key import MeApiKey

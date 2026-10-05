@@ -44,33 +44,17 @@ class SmokeTest < Minitest::Test
     end
   end
 
-  def test_bounded_fetch_constraint_survives_go_schema_generation
+  def test_bounded_fetch_controls_stay_opt_in_without_a_schema_negation
     types = { 'allow_tempo_refill' => 'boolean', 'max_total_cost_usd' => 'string' }
 
     ['spec/openapi.yaml', 'go/generated/api/openapi.yaml'].each do |path|
       # The generated spec contains unquoted timestamp examples.
       schema = YAML.safe_load_file(File.expand_path("../../#{path}", __dir__), permitted_classes: [Time])
       request = schema.fetch('components').fetch('schemas').fetch('FetchRequest')
-      constraint = request.fetch('not')
-      if constraint.key?('$ref')
-        reference = constraint.fetch('$ref')
-        assert reference.start_with?('#/'), "#{path}: expected a local not reference"
-        constraint = reference.delete_prefix('#/').split('/').reduce(schema) do |node, key|
-          node.fetch(key.gsub('~1', '/').gsub('~0', '~'))
-        end
-      else
-        assert_equal 'object', constraint.fetch('type'), path
-        types.each do |name, type|
-          assert_equal type, constraint.fetch('properties').fetch(name).fetch('type'), path
-        end
-      end
+      # The server owns the refill/total conflict (422 INCOMPATIBLE_FETCH_CONTROLS).
+      # A `not` here generates an unused public FetchRequestNot type in every SDK.
+      refute request.key?('not'), "#{path}: FetchRequest must not carry a schema negation"
 
-      # Losing max_total_cost_usd here wrongly forbids refill=true on its own.
-      assert_equal types.keys.sort, constraint.fetch('required').sort, path
-      assert_equal types.keys.sort, constraint.fetch('properties').keys.sort, path
-      assert_equal [true], constraint.fetch('properties').fetch('allow_tempo_refill').fetch('enum'), path
-
-      # Go omits redundant types in `not`; the enclosing request still enforces them.
       types.each do |name, type|
         property = request.fetch('properties').fetch(name)
         assert_equal type, property.fetch('type'), path
