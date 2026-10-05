@@ -1,9 +1,10 @@
 # Weft SDK
 
-Build buyer applications and agents on Weft. The TypeScript SDK, the separate
-`weft` CLI package, and the Python buyer client are the supported application surfaces;
-generated clients remain available when you need direct access to the OpenAPI
-contract.
+Build buyer applications and agents on Weft. The TypeScript SDK and the Python
+buyer client are the supported application surfaces in this repository.
+Generated clients remain available when you need direct access to the OpenAPI
+contract. The `weft` command-line client is a separate package:
+[weftlabs/weft-cli](https://github.com/weftlabs/weft-cli).
 
 ## TypeScript quickstart
 
@@ -40,40 +41,26 @@ contract.
 
 `WeftClient` uses `https://weft.network` by default. See the
 [TypeScript guide](typescript/README.md) for bounded paid fetches, retries, error
-handling, the CLI, and low-level generated APIs. The executable source for the
+handling, and low-level generated APIs. The executable source for the
 quickstart is shipped in the package at
 [`examples/quickstart.mjs`](typescript/examples/quickstart.mjs).
 
-## CLI quickstart
+## CLI
 
-The CLI is published separately from the application SDK.
-
-```sh
-npm install -g @weftlabs/cli
-weft --help
-
-npx --package @weftlabs/cli weft me
-npx --package @weftlabs/cli weft search "weather data API"
-npx --package @weftlabs/cli weft fetch "https://merchant.example/data" \
-  --max-cost-usd 0.05
-```
-
-`fetch` requires a maximum cost. The CLI also generates an idempotency key and
-returns it in `meta.idempotency_key` so that a retry the user explicitly
-decides on can reuse it without being charged twice; an agent must not retry
-an uncertain paid request on its own — surface the outcome and stop. A global npm install also installs the
-`weft` Skill for supported agent hosts already present on the machine. The
-Skill is vendored from [weftlabs/skills](https://github.com/weftlabs/skills)
-at the commit pinned in `skills/SKILLS_REF`. See the
-[CLI guide](cli/README.md) for credential-free bootstrap and human claim.
+The command-line client is not in this repository. Install and use it from
+[weftlabs/weft-cli](https://github.com/weftlabs/weft-cli).
 
 ## npm scope migration
 
-The npm packages now use `@weftlabs/sdk` and `@weftlabs/cli`. To migrate an
-existing project, replace `@weft-labs/sdk` in its dependencies and imports,
-including subpath imports such as `/server` and `/facilitator/middleware`.
+The SDK npm package now uses `@weftlabs/sdk`. To migrate an existing project,
+replace `@weft-labs/sdk` in its dependencies and imports, including subpath
+imports such as `/server` and `/facilitator/middleware`.
+
+The CLI package is
+[`@weftlabs/cli`](https://github.com/weftlabs/weft-cli).
 For a global CLI installation, uninstall `@weft-labs/cli` before installing
-`@weftlabs/cli`; both packages provide the same `weft` command.
+[`@weftlabs/cli`](https://github.com/weftlabs/weft-cli); both packages provide
+the same `weft` command.
 
 The old packages remain available for existing installations. This scope change
 keeps the shared version at `0.25.0` and does not change the public API. If your
@@ -85,7 +72,6 @@ upgrade.
 | Language | Package | Support level | Recommended surface |
 |---|---|---|---|
 | TypeScript | `@weftlabs/sdk` | Supported | `WeftClient` |
-| CLI | `@weftlabs/cli` | Supported | `weft` executable |
 | Python | `weft-sdk` | Supported | `Client` buyer façade |
 | Ruby | `weft-sdk` | Generated client preview | Generated APIs |
 | Go | `github.com/weftlabs/weft-sdk/go` | Generated client preview | Generated APIs |
@@ -113,7 +99,6 @@ contract, but has not yet passed a clean-install buyer quickstart gate.
 
 - `spec/openapi.yaml` — canonical contract copy synchronized from `weft-app`
 - `typescript/` — npm package `@weftlabs/sdk`
-- `cli/` — npm package `@weftlabs/cli`
 - `python/` — PyPI package `weft-sdk`
 - `ruby/` — RubyGems package `weft-sdk`
 - `go/` — Go module `github.com/weftlabs/weft-sdk/go`
@@ -125,8 +110,8 @@ sources are updated by the spec-sync workflow and must not be edited manually.
 ## Local development tools
 
 Mise pins Node 24.21.0 for repository development and JavaScript build/test CI,
-along with the other runtimes and standalone source tools. Published SDK and
-CLI packages still support Node.js 18 or newer. Install the tools and enable
+along with the other runtimes and standalone source tools. Published SDK
+packages still support Node.js 18 or newer. Install the tools and enable
 the Git hooks with:
 
 ```sh
@@ -145,6 +130,5 @@ mise exec -- lefthook install
 Pre-commit checks lint or format staged files only. Pre-push runs whole-repo
 lint and format checks plus the TypeScript SDK, Python, Ruby, and Go unit tests.
 The Python hook uses the installed environment without dependency sync. Run the
-setup commands again after dependency changes. CLI tests need a built SDK, so
-they remain in CI with builds, generated-code checks, type checks, quickstarts,
-and network tests.
+setup commands again after dependency changes. Builds, generated-code checks,
+type checks, quickstarts, and network tests remain in CI.

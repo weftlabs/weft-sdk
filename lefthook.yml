@@ -9,11 +9,6 @@ pre-commit:
       glob: "typescript/**/*.{ts,js,mjs}"
       run: mise exec -- pnpm exec eslint {staged_files}
       fail_text: "Run the TypeScript SDK ESLint fixer"
-    cli-eslint:
-      root: "cli/"
-      glob: "cli/**/*.{ts,js,mjs}"
-      run: mise exec -- pnpm exec eslint {staged_files}
-      fail_text: "Run the TypeScript ESLint fixer"
     python-ruff:
       glob: "python/**/*.py"
       run: >-

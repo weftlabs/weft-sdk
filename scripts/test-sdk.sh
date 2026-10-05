@@ -32,8 +32,6 @@ require_file "${ROOT_DIR}/typescript/src/client.ts" \
   "Hand-written TypeScript buyer client was removed during generation."
 require_file "${ROOT_DIR}/pnpm-lock.yaml" \
   "pnpm workspace lockfile missing. Run pnpm install --lockfile-only."
-require_file "${ROOT_DIR}/cli/src/cli.ts" \
-  "Hand-written CLI package missing."
 [ ! -f "${ROOT_DIR}/typescript/package-lock.json" ] || \
   fail "package-lock.json is forbidden; use the root pnpm-lock.yaml."
 require_file "${ROOT_DIR}/python/src/weft_sdk/generated/__init__.py" \
@@ -49,8 +47,6 @@ require_file "${ROOT_DIR}/go/generated/client.go" \
 
 TS_VERSION="$(extract_first 's/^[[:space:]]*"version": "([^"]+)",?$/\1/p' \
   "${ROOT_DIR}/typescript/package.json")"
-CLI_VERSION="$(extract_first 's/^[[:space:]]*"version": "([^"]+)",?$/\1/p' \
-  "${ROOT_DIR}/cli/package.json")"
 TS_GENERATED_VERSION="$(extract_first 's/^ \* The version of the OpenAPI document: ([^[:space:]]+)$/\1/p' \
   "${ROOT_DIR}/typescript/src/generated/models/AccountDetails.ts")"
 PYTHON_VERSION="$(extract_first 's/^version = "([^"]+)"$/\1/p' \
@@ -68,7 +64,6 @@ GO_GENERATED_VERSION="$(extract_first 's/^API version: ([^[:space:]]+)$/\1/p' \
 
 for entry in \
   "TypeScript package:${TS_VERSION}" \
-  "CLI package:${CLI_VERSION}" \
   "TypeScript generated client:${TS_GENERATED_VERSION}" \
   "Python package:${PYTHON_VERSION}" \
   "Python generated client:${PYTHON_GENERATED_VERSION}" \
@@ -81,9 +76,6 @@ for entry in \
   [ "$version" = "$SPEC_VERSION" ] ||
     fail "$label version '${version:-missing}' does not match OpenAPI version '$SPEC_VERSION'."
 done
-
-grep -q '"@weftlabs/sdk": "workspace:\*"' "${ROOT_DIR}/cli/package.json" ||
-  fail "CLI must depend on the public SDK through the pnpm workspace protocol."
 
 [ ! -f "${ROOT_DIR}/go/generated/go.mod" ] ||
   fail "go/generated/go.mod makes generated code a nested module skipped by root CI."

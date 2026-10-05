@@ -1,3 +1,0 @@
-# Build artifacts — produced by `npm install` + `mcpb pack` (see README).
-node_modules/
-*.mcpb

@@ -154,7 +154,7 @@ jobs:
           chmod +x scripts/generate-all.sh scripts/generate-*.sh scripts/test-sdk.sh
           ./scripts/generate-all.sh
 
-      - name: Build TypeScript SDK and CLI
+      - name: Build TypeScript SDK
         # The e2e step imports the dist/ output of THIS build. That is the
         # whole point of S6: e2e against the locally-built artifact, before
         # we push a tag and before npm sees anything.

@@ -10,7 +10,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Testing the packed TypeScript SDK and CLI packages..."
+echo "Testing the packed TypeScript SDK package..."
 (
   cd "$ROOT_DIR"
   pnpm run test:artifacts

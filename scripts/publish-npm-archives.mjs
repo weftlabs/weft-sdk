@@ -1,5 +1,5 @@
-// Release orchestration: promote tested archives; fail closed on registry errors
-// or byte mismatches. Reruns skip only versions with identical integrity.
+// Release orchestration: promote the tested SDK archive; fail closed on registry
+// errors or byte mismatches. A rerun skips only a version with identical integrity.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -45,51 +45,42 @@ export async function publishArchives(
       ),
   } = {},
 ) {
-  assert.equal(packages.length, 2, "Expected SDK and CLI archives only");
-  packages.sort((a, b) => (a.manifest.name === "@weftlabs/sdk" ? -1 : 1));
-  const [sdk, cli] = packages;
+  assert.equal(packages.length, 1, "Expected the SDK archive only");
+  const [sdk] = packages;
   assert.equal(sdk.manifest.name, "@weftlabs/sdk");
-  assert.equal(cli.manifest.name, "@weftlabs/cli");
   assert.match(sdk.manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(
     tag,
     `v${sdk.manifest.version}`,
-    "Release tag must match the tested archives",
+    "Release tag must match the tested archive",
   );
-  assert.equal(cli.manifest.version, sdk.manifest.version);
-  assert.deepEqual(cli.manifest.dependencies, {
-    "@weftlabs/sdk": sdk.manifest.version,
-  });
-  // Check both package names before publishing either package. Trusted publishing
-  // must be configured on npm after the first manual package bootstrap.
-  for (const { manifest } of packages) {
-    assert.ok(
-      await get(encodeURIComponent(manifest.name)),
-      `${manifest.name} must be bootstrapped and configured for trusted publishing`,
-    );
-  }
-  for (const { archive, manifest, integrity } of packages) {
-    const path = `${encodeURIComponent(manifest.name)}/${manifest.version}`;
-    let existing = await get(path);
-    if (!existing) {
-      await publish(archive);
-      // npm can briefly return 404 after accepting a publish. Retry only the
-      // read; never submit another publish after an uncertain result.
-      for (let attempt = 0; attempt < 6; attempt += 1) {
-        existing = await get(path);
-        if (existing) break;
-        if (attempt < 5) await wait(2_000);
-      }
+  // Check the package name before publishing. Trusted publishing must be
+  // configured on npm after the first manual package bootstrap.
+  assert.ok(
+    await get(encodeURIComponent(sdk.manifest.name)),
+    `${sdk.manifest.name} must be bootstrapped and configured for trusted publishing`,
+  );
+  const { archive, manifest, integrity } = sdk;
+  const path = `${encodeURIComponent(manifest.name)}/${manifest.version}`;
+  let existing = await get(path);
+  if (!existing) {
+    await publish(archive);
+    // npm can briefly return 404 after accepting a publish. Retry only the
+    // read; never submit another publish after an uncertain result.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      existing = await get(path);
+      if (existing) break;
+      if (attempt < 5) await wait(2_000);
     }
-    assert.equal(
-      existing?.dist?.integrity,
-      integrity,
-      `${manifest.name}@${manifest.version}: registry bytes differ from the tested archive`,
-    );
-    console.log(
-      `${manifest.name}@${manifest.version}: registry integrity verified`,
-    );
   }
+  assert.equal(
+    existing?.dist?.integrity,
+    integrity,
+    `${manifest.name}@${manifest.version}: registry bytes differ from the tested archive`,
+  );
+  console.log(
+    `${manifest.name}@${manifest.version}: registry integrity verified`,
+  );
 }
 
 if (

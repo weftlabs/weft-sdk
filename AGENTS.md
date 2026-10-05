@@ -8,7 +8,7 @@ Polyglot client SDK monorepo for Weft Labs, consumed by external developers and 
 
 - **Contract source:** OpenAPI 3.x at `spec/openapi.yaml`, synced from `weft-app/docs/openapi.yaml`.
 - **Code generation:** OpenAPI Generator through `scripts/generate-*.sh`; generated clients are committed.
-- **TypeScript:** pnpm workspace, Node >=18, TypeScript 5, tsup, Vitest, ESLint, Prettier. `@weftlabs/sdk` is the library; `@weftlabs/cli` owns the `weft` executable.
+- **TypeScript:** pnpm workspace, Node >=18, TypeScript 5, tsup, Vitest, ESLint, Prettier. `@weftlabs/sdk` is the library. The `weft` executable is a separate repository: [weftlabs/weft-cli](https://github.com/weftlabs/weft-cli).
 - **Python:** Python >=3.10, Hatchling, httpx, pytest, Ruff, strict mypy.
 - **Ruby:** Ruby 3.2 in CI, Bundler, Minitest, RubyGems packaging.
 - **Go:** Go 1.23 module at `github.com/weftlabs/weft-sdk/go`.
@@ -20,7 +20,7 @@ scripts/generate-all.sh                         # Regenerate all language SDKs f
 scripts/test-sdk.sh                             # Verify generated SDK outputs exist
 node scripts/check-operation-inventory.mjs      # Fail when an OpenAPI operation is unclassified
 mise exec -- pnpm install --frozen-lockfile     # Install TypeScript workspace
-mise exec -- pnpm run check                     # SDK + CLI tests, artifacts, lint, format, build
+mise exec -- pnpm run check                     # SDK tests, artifacts, lint, format, build
 cd python && pip install -e . pytest pytest-asyncio ruff mypy && pytest
 cd python && ruff check . && mypy src           # Python lint + typecheck
 cd ruby && bundle install && bundle exec rake test
@@ -31,7 +31,7 @@ If pre-commit / pre-push hooks exist, they run automatically; agents should not 
 
 ## Repo-Specific Constraints
 
-- All four SDKs and the CLI share one version tied to the OpenAPI spec version; use `scripts/bump-version.sh` instead of editing package versions by hand.
+- All four SDKs share one version tied to the OpenAPI spec version; use `scripts/bump-version.sh` instead of editing package versions by hand.
 - Never hand-edit generated clients under `typescript/src/generated/`, `python/src/weft_sdk/generated/`, `ruby/lib/weft/generated/`, or `go/generated/`; update `spec/openapi.yaml` and rerun generation.
 - `spec/openapi.yaml` is copied from `weft-app`; repo-local API contract changes should be treated as drift unless paired with the app-side canonical spec.
 - The release pipeline is auto-PR-led: each `weft-app-openapi-updated` dispatch opens an auto-merge PR on `sdk-candidate/weft-app-<short_sha>`, gated by per-language build/test + staging e2e (`e2e.yml`) checks. No `.release-candidates/` JSON marker exists anymore.

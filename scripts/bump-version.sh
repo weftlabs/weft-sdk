@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bumps all SDK and CLI version files to the specified version.
+# Bumps all SDK version files to the specified version.
 # Usage: ./scripts/bump-version.sh 0.3.0
 
 VERSION="${1:-}"
@@ -59,7 +59,7 @@ bump_file() {
   fi
 }
 
-echo "Bumping all SDK and CLI versions to $VERSION"
+echo "Bumping all SDK versions to $VERSION"
 echo "---"
 
 # 1. OpenAPI spec — info.version
@@ -74,13 +74,7 @@ bump_file \
   "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" \
   "typescript/package.json"
 
-# 3. CLI — package.json "version"
-bump_file \
-  "$ROOT_DIR/cli/package.json" \
-  "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" \
-  "cli/package.json"
-
-# 4. pnpm lockfile — synchronize workspace package versions without resolving
+# 3. pnpm lockfile — synchronize workspace package versions without resolving
 # new dependency versions.
 if (
   cd "$ROOT_DIR"
@@ -92,31 +86,31 @@ else
   errors=$((errors + 1))
 fi
 
-# 5. Python — pyproject.toml version
+# 4. Python — pyproject.toml version
 bump_file \
   "$ROOT_DIR/python/pyproject.toml" \
   "s/^version = \".*\"/version = \"$VERSION\"/" \
   "python/pyproject.toml"
 
-# 6. Ruby — gemspec spec.version
+# 5. Ruby — gemspec spec.version
 bump_file \
   "$ROOT_DIR/ruby/weft-sdk.gemspec" \
   "s/spec\.version       = '.*'/spec.version       = '$VERSION'/" \
   "ruby/weft-sdk.gemspec"
 
-# 7. Ruby — version.rb VERSION constant
+# 6. Ruby — version.rb VERSION constant
 bump_file \
   "$ROOT_DIR/ruby/lib/weft/generated/version.rb" \
   "s/VERSION = '.*'/VERSION = '$VERSION'/" \
   "ruby/lib/weft/generated/version.rb"
 
-# 8. Ruby — SDK VERSION constant (hand-written, not generated)
+# 7. Ruby — SDK VERSION constant (hand-written, not generated)
 bump_file \
   "$ROOT_DIR/ruby/lib/weft/sdk.rb" \
   "s/VERSION = '.*'/VERSION = '$VERSION'/" \
   "ruby/lib/weft/sdk.rb"
 
-# 9. Ruby — Gemfile.lock pins the `weft-sdk` path-gem version twice (PATH/specs
+# 8. Ruby — Gemfile.lock pins the `weft-sdk` path-gem version twice (PATH/specs
 # and CHECKSUMS). Without this, `bundle install --deployment` (used by the
 # per-language Ruby SDK workflow and the Release workflow) fails frozen-mode
 # with "The gemspecs for path gems changed, but the lockfile can't be updated".
@@ -132,4 +126,4 @@ if [ "$errors" -gt 0 ]; then
   exit 1
 fi
 
-echo "All SDK and CLI versions bumped to $VERSION"
+echo "All SDK versions bumped to $VERSION"

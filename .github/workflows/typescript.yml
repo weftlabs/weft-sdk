@@ -1,17 +1,15 @@
-name: TypeScript SDK and CLI
+name: TypeScript SDK
 
 on:
   pull_request:
     paths:
       - "typescript/**"
       - "conformance/**"
-      - "cli/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "spec/**"
       - "scripts/**"
-      - "skills/**"
       # Self-test: a change to this workflow must run this workflow, otherwise
       # CI-config regressions land unexercised.
       - ".github/workflows/typescript.yml"
@@ -26,13 +24,11 @@ on:
     paths:
       - "typescript/**"
       - "conformance/**"
-      - "cli/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "spec/**"
       - "scripts/**"
-      - "skills/**"
 
 # Default GITHUB_TOKEN is read-only for the whole workflow. The publish job
 # overrides this with its own job-level `permissions:` (id-token: write for
@@ -121,7 +117,7 @@ jobs:
           name: npm-archives-${{ github.sha }}
           path: ${{ runner.temp }}/npm-archives
       # No dependency installation or build occurs in the OIDC-enabled job.
-      - name: Publish tested SDK then CLI archives with provenance
+      - name: Publish the tested SDK archive with provenance
         env:
           ARCHIVE_DIRECTORY: ${{ runner.temp }}/npm-archives
         run: node scripts/publish-npm-archives.mjs "$ARCHIVE_DIRECTORY"

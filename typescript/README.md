@@ -80,8 +80,8 @@ const artifact = await weft.fetch(
 console.log({ idempotencyKey, artifact });
 ```
 
-Do not create a new key for a retry of the same logical purchase. The CLI
-generates a key automatically and returns it in its success envelope.
+Do not create a new key for a retry of the same logical purchase. Reuse the
+key from the first attempt.
 
 ## Retrieve a wallet-protected result
 
@@ -111,23 +111,10 @@ fresh provider state even when the idempotency key is repeated. Do not repeat
 the paid submission to poll. `SIWX_RETRIEVAL_FAILED` means the challenge was
 unsafe or authentication failed; keep the zero ceiling when investigating.
 
-## CLI
+## Command-line client
 
-The `weft` executable is published separately as `@weftlabs/cli`.
-
-```sh
-npx --package @weftlabs/cli weft me
-npx --package @weftlabs/cli weft balance
-npx --package @weftlabs/cli weft search "weather data API" --max-results 5
-npx --package @weftlabs/cli weft fetch "https://merchant.example/data" \
-  --max-cost-usd 0.05
-```
-
-The CLI accepts credentials from `--api-key-stdin`, `WEFT_API_KEY`, or its
-protected local stored OAuth/bootstrap credentials. It never accepts a key in
-process arguments. Every response is a versioned JSON envelope suitable for
-scripts. See the [CLI guide](../cli/README.md) for credential-free bootstrap,
-human claim, and automatic Skill installation.
+The `weft` executable is a separate package. See
+[weftlabs/weft-cli](https://github.com/weftlabs/weft-cli).
 
 ## Error handling
 

@@ -9,7 +9,7 @@
     "hooks:pre-push": "node scripts/check-operation-inventory.mjs && pnpm run lint:check && pnpm run format:check && pnpm --filter @weftlabs/sdk run test:unit",
     "lint:check": "pnpm --recursive --if-present run lint:check",
     "test": "node --test scripts/publish-npm-archives.test.mjs scripts/push-release-refs.test.mjs scripts/check-operation-inventory.test.mjs && pnpm --recursive --if-present run test:unit && pnpm run test:artifacts",
-    "test:artifacts": "pnpm run build && node scripts/test-typescript-quickstarts.mjs && node scripts/test-seller-quickstarts.mjs && node scripts/test-cli-delivery.mjs"
+    "test:artifacts": "pnpm run build && node scripts/test-typescript-quickstarts.mjs && node scripts/test-seller-quickstarts.mjs"
   },
   "pnpm": {
     "overrides": {
