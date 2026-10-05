@@ -120,6 +120,14 @@ source runtimes and tools; manifests and lockfiles own package dependencies.
 Published TypeScript packages still support Node.js 18 or newer; the source
 build runtime is a separate selection, not the consumer compatibility floor.
 
+TypeScript 7 checks sources with `pnpm --filter @weftlabs/sdk run typecheck`
+and runs before each build. ESLint and tsup declaration generation still need
+the TypeScript 6 JavaScript API, so the `typescript` dependency uses Microsoft's
+[`@typescript/typescript6` compatibility package](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0).
+The `@typescript/native` alias supplies TypeScript 7's `tsc`; the compatibility
+package supplies `tsc6`. Vitest 5 runs on the repository's Node 24 toolchain.
+These development dependencies do not change the published SDK's Node support.
+
 No Weft account, API key, wallet key or provider credential is needed for
 source installation, builds or unit tests. Use a credential-free environment;
 do not copy active account configuration into the checkout. Tool/dependency
