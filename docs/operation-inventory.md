@@ -6,30 +6,30 @@ and autonomous agents; credential lifecycle, seller, and organization-scoped
 operations stay on the lower-level generated clients.
 
 <!-- operation-inventory:start -->
-| operation | TypeScript façade | Python façade | CLI | classification/reason |
-| --- | --- | --- | --- | --- |
-| `getOpenApiDocument` | — | — | — | Excluded: contract discovery metadata |
-| `createAccountBootstrap` | — | — | `weft bootstrap` | CLI-only: Credential bootstrap lifecycle |
-| `getAccountBootstrap` | — | — | `weft auth status` | CLI-only: Credential bootstrap lifecycle |
-| `cancelAccountBootstrap` | — | — | — | Excluded: credential cancellation and revocation |
-| `enrollResource` | — | — | — | Excluded: seller resource enrollment |
-| `signUp` | — | — | — | Excluded: interactive account lifecycle |
-| `confirmAccount` | — | — | — | Excluded: interactive account lifecycle |
-| `resendConfirmation` | — | — | — | Excluded: interactive account lifecycle |
-| `signIn` | — | — | — | Excluded: CLI uses API keys or stored bootstrap credentials |
-| `requestPasswordReset` | — | — | — | Excluded: interactive account lifecycle |
-| `updatePassword` | — | — | — | Excluded: interactive account lifecycle |
-| `getMe` | `me` | `me` | `weft me` | Facade: Buyer runtime |
-| `listApiKeys` | — | — | — | Excluded: credential lifecycle |
-| `createApiKey` | — | — | — | Excluded: prevents secrets in CLI output/history |
-| `revokeApiKey` | — | — | — | Excluded: credential lifecycle |
-| `getBalance` | `balance` | `balance` | `weft balance` | Facade: Buyer runtime |
-| `search` | `search` | `search` | `weft search QUERY` | Facade: Buyer runtime |
-| `fetch` | `fetch` | `fetch` | `weft fetch URL --max-cost-usd USD` | Facade: Paid buyer runtime |
-| `listPayments` | — | — | — | Excluded: organization-scoped seller ledger |
-| `getPayment` | — | — | — | Excluded: organization-scoped seller ledger |
-| `listPurchases` | `purchases` | `purchases` | `weft purchases` | Facade: Buyer purchase ledger |
-| `getPurchase` | `purchase` | `purchase` | `weft purchases ID` | Facade: Buyer purchase detail |
+| operation | TypeScript façade | Python façade | Ruby façade | CLI | classification/reason |
+| --- | --- | --- | --- | --- | --- |
+| `getOpenApiDocument` | — | — | — | — | Excluded: contract discovery metadata |
+| `createAccountBootstrap` | — | — | — | `weft bootstrap` | CLI-only: Credential bootstrap lifecycle |
+| `getAccountBootstrap` | — | — | — | `weft auth status` | CLI-only: Credential bootstrap lifecycle |
+| `cancelAccountBootstrap` | — | — | — | — | Excluded: credential cancellation and revocation |
+| `enrollResource` | — | — | — | — | Excluded: seller resource enrollment |
+| `signUp` | — | — | — | — | Excluded: interactive account lifecycle |
+| `confirmAccount` | — | — | — | — | Excluded: interactive account lifecycle |
+| `resendConfirmation` | — | — | — | — | Excluded: interactive account lifecycle |
+| `signIn` | — | — | — | — | Excluded: CLI uses API keys or stored bootstrap credentials |
+| `requestPasswordReset` | — | — | — | — | Excluded: interactive account lifecycle |
+| `updatePassword` | — | — | — | — | Excluded: interactive account lifecycle |
+| `getMe` | `me` | `me` | `me` | `weft me` | Facade: Buyer runtime |
+| `listApiKeys` | — | — | — | — | Excluded: credential lifecycle |
+| `createApiKey` | — | — | — | — | Excluded: prevents secrets in CLI output/history |
+| `revokeApiKey` | — | — | — | — | Excluded: credential lifecycle |
+| `getBalance` | `balance` | `balance` | `balance` | `weft balance` | Facade: Buyer runtime |
+| `search` | `search` | `search` | `search` | `weft search QUERY` | Facade: Buyer runtime |
+| `fetch` | `fetch` | `fetch` | `fetch` | `weft fetch URL --max-cost-usd USD` | Facade: Paid buyer runtime |
+| `listPayments` | — | — | — | — | Excluded: organization-scoped seller ledger |
+| `getPayment` | — | — | — | — | Excluded: organization-scoped seller ledger |
+| `listPurchases` | `purchases` | `purchases` | `purchases` | `weft purchases` | Facade: Buyer purchase ledger |
+| `getPurchase` | `purchase` | `purchase` | `purchase` | `weft purchases ID` | Facade: Buyer purchase detail |
 <!-- operation-inventory:end -->
 
 ## CLI contract

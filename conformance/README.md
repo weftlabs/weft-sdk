@@ -19,6 +19,7 @@ Ruby and Go runners are later layers. They load the same files.
 ## Known differences (not asserted)
 
 - Network-error `details`: TypeScript keeps the transport cause. Python sets `details` to `None`. The fixture does not list `details` for that case. This is not a missing façade field.
+- Ruby API errors raise `Weft::RequestError`. The generated model already owns `Weft::Error`.
 - `match_quality` default: the generated Python model emits `"none"` when the field is absent. TypeScript omits it. Shared search cases set the field. This is generated-model output, not a façade choice.
 - `principalType`: the generated TypeScript serializer adds this camelCase key beside `principal_type`. The runner checks it, then compares the snake_case wire object. This is not a second API field.
 - Datetime and UUID: Python `to_dict()` leaves those objects, and `to_json()` cannot encode them. The Python runner encodes them as wire strings before the exact compare. This is generated-serializer output, not a façade choice.
