@@ -202,6 +202,18 @@ async def _send_with_settlement(
     await _send_response(send, status, headers, body)
 
 
+def _merge_headers(
+    headers: list[tuple[bytes, bytes]],
+    extra: Mapping[str, str] | None,
+) -> list[tuple[bytes, bytes]]:
+    if not isinstance(extra, Mapping) or not extra:
+        return list(headers)
+    merged = list(headers)
+    for name, value in extra.items():
+        merged = _upsert_header(merged, str(name), str(value))
+    return merged
+
+
 def _unavailable_response() -> tuple[int, list[tuple[bytes, bytes]], bytes]:
     headers = [
         (b"retry-after", b"1"),
@@ -393,24 +405,49 @@ class WeftASGIMiddleware:
                 if not message.get("more_body", False):
                     complete = True
 
+        before = _result_field(result, "before_handler_settlement", "beforeHandlerSettlement")
         try:
             await self.app(scope, _replay_receive(body), capture)
         except Exception as error:
-            await _cancel(dispatcher, "handler_threw", error=error)
-            raise
+            cancel_settlement = await _cancel(dispatcher, "handler_threw", error=error)
+            failure_headers = self._http.create_failure_path_settlement_headers(
+                cancel_settlement,
+                before,
+                payload,
+            )
+            if not isinstance(failure_headers, dict) or not failure_headers:
+                raise
+            await _send_response(
+                send,
+                500,
+                _merge_headers([(b"content-type", b"application/json")], failure_headers),
+                b'{"error":"Internal Server Error"}',
+            )
+            return
         if not complete or status >= 400:
-            await _cancel(
+            cancel_settlement = await _cancel(
                 dispatcher,
                 "handler_failed",
                 response_status=status if complete else 500,
             )
+            failure_headers = self._http.create_failure_path_settlement_headers(
+                cancel_settlement,
+                before,
+                payload,
+                _header_value(response_headers, "cache-control"),
+            )
             if complete:
-                await _send_response(send, status, response_headers, b"".join(chunks))
+                await _send_response(
+                    send,
+                    status,
+                    _merge_headers(response_headers, failure_headers),
+                    b"".join(chunks),
+                )
             else:
                 await _send_response(
                     send,
                     500,
-                    [(b"content-type", b"application/json")],
+                    _merge_headers([(b"content-type", b"application/json")], failure_headers),
                     b"{}",
                 )
             return
@@ -426,7 +463,6 @@ class WeftASGIMiddleware:
                 parsed = None
             if isinstance(parsed, dict):
                 overrides = parsed
-        before = getattr(result, "before_handler_settlement", None)
         flow = before_handler_flow(before)
         if flow is not None and not settles_after_handler(flow):
             echoed: dict[str, str] = {}
@@ -568,9 +604,9 @@ async def _cancel(
     reason: VerifiedPaymentCancellationReason,
     error: BaseException | None = None,
     response_status: int | None = None,
-) -> None:
+) -> Any:
     if dispatcher is None:
-        return
+        return None
     options = VerifiedPaymentCancelOptions(
         reason=reason,
         error=error,
@@ -578,7 +614,8 @@ async def _cancel(
     )
     cancel = getattr(dispatcher, "cancel", None)
     if cancel is None:
-        return
+        return None
     result = cancel(options)
     if isinstance(result, Awaitable):
-        await result
+        return await result
+    return result

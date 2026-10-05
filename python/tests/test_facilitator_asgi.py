@@ -123,11 +123,15 @@ def _facilitator(state: FacilitatorState) -> tuple[ThreadingHTTPServer, str]:
                         },
                     )
                     return
+                parsed = json.loads(body.decode() or "{}")
+                requirements = parsed.get("paymentRequirements") or {}
+                extra = requirements.get("extra") or {}
+                transaction = "0xrefund" if extra.get("settleOnCancel") == "refund" else "0xtx"
                 self._json(
                     200,
                     {
                         "success": True,
-                        "transaction": "0xtx",
+                        "transaction": transaction,
                         "network": NETWORK,
                         "payer": "0xpayer",
                     },
@@ -145,10 +149,16 @@ def _facilitator(state: FacilitatorState) -> tuple[ThreadingHTTPServer, str]:
     return server, f"http://{host}:{port}"
 
 
-def _app(handler_status: int, calls: list[str]) -> Any:
+def _app(
+    handler_status: int,
+    calls: list[str],
+    handler_error: BaseException | None = None,
+) -> Any:
     async def app(scope: dict[str, Any], receive: Any, send: Any) -> None:
         del receive
         calls.append(scope["method"])
+        if handler_error is not None:
+            raise handler_error
         body = b'{"ok":true}'
         await send(
             {
@@ -174,9 +184,10 @@ def _middleware(
     calls: list[str] | None = None,
     resume: Any = None,
     scheme: Any = None,
+    handler_error: BaseException | None = None,
 ) -> WeftASGIMiddleware:
     return WeftASGIMiddleware(
-        _app(handler_status, calls if calls is not None else []),
+        _app(handler_status, calls if calls is not None else [], handler_error),
         {
             "* /v1/search": {
                 "accepts": {
@@ -490,6 +501,95 @@ async def test_resume_before_handler_settlement_does_not_settle_again() -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+class UpfrontRefundScheme(ExactScheme):
+    """Exact scheme that refunds an upfront deposit through settleOnCancel."""
+
+    def settle_on_cancel(self, context: Any) -> Any:
+        requirements = context.requirements
+        extra = dict(requirements.extra or {})
+        extra["settleOnCancel"] = "refund"
+        return requirements.model_copy(update={"amount": "0", "extra": extra})
+
+
+def _upfront_resume(_context: Any, candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "paymentPayload": candidate["paymentPayload"],
+        "paymentRequirements": candidate["paymentRequirements"],
+        "beforeHandlerSettlement": {
+            "flow": "upfront",
+            "result": {
+                "success": True,
+                "transaction": "0xoriginal",
+                "network": NETWORK,
+                "payer": "0xpayer",
+            },
+        },
+    }
+
+
+async def _resumed_upfront_failure(
+    *,
+    handler_status: int = 200,
+    handler_error: BaseException | None = None,
+) -> tuple[int, dict[str, str], bytes, list[dict[str, Any]]]:
+    state = FacilitatorState()
+    server, url = _facilitator(state)
+    app = _middleware(
+        url,
+        handler_status=handler_status,
+        handler_error=handler_error,
+        resume=_upfront_resume,
+        scheme=UpfrontRefundScheme(),
+    )
+    try:
+        unpaid, unpaid_headers, _ = await _http(app, "GET", "/v1/search", {"x-model": "gpt"})
+        assert unpaid == 402
+        challenge = decode_payment_required_header(unpaid_headers["payment-required"])
+        before = len(_calls(state, "/settle"))
+        status, headers, body = await _http(
+            app,
+            "POST",
+            "/v1/search",
+            {
+                "x-model": "gpt",
+                "payment-signature": _payment_header(challenge),
+            },
+        )
+        refunds = _calls(state, "/settle")[before:]
+        return status, headers, body, refunds
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def _assert_cancel_refund(headers: dict[str, str], refunds: list[dict[str, Any]]) -> None:
+    assert len(refunds) == 1
+    refund = json.loads(refunds[0]["body"])
+    assert refund["paymentRequirements"]["extra"]["settleOnCancel"] == "refund"
+    assert refund["paymentRequirements"]["amount"] == "0"
+    receipt = decode_payment_response_header(headers["payment-response"])
+    assert receipt.success is True
+    assert receipt.transaction == "0xrefund"
+
+
+@pytest.mark.asyncio
+async def test_resumed_upfront_handler_failure_settles_cancel_refund() -> None:
+    status, headers, body, refunds = await _resumed_upfront_failure(handler_status=500)
+    assert status == 500
+    assert body == b'{"ok":true}'
+    _assert_cancel_refund(headers, refunds)
+
+
+@pytest.mark.asyncio
+async def test_resumed_upfront_handler_throw_settles_cancel_refund() -> None:
+    status, headers, body, refunds = await _resumed_upfront_failure(
+        handler_error=RuntimeError("handler failed")
+    )
+    assert status == 500
+    assert json.loads(body) == {"error": "Internal Server Error"}
+    _assert_cancel_refund(headers, refunds)
 
 
 @pytest.mark.asyncio

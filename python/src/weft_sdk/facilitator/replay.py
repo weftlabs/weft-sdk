@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from x402.http import decode_payment_signature_header
-from x402.schemas import PaymentPayload
+from x402.schemas import PaymentPayload, SettlePhase
 
 PaymentResumeCandidate = dict[str, Any]
 VerifiedPaymentResume = dict[str, Any]
@@ -48,11 +48,13 @@ def resume_payment_result(
     before = resumed.get("beforeHandlerSettlement", resumed.get("before_handler_settlement"))
     dispatcher = resumed.get("cancellationDispatcher", resumed.get("cancellation_dispatcher"))
     if dispatcher is None:
+        settled_phases: list[SettlePhase] = ["before-handler"] if before is not None else []
         dispatcher = resource_server.create_payment_cancellation_dispatcher(
             resumed["paymentPayload"],
             resumed["paymentRequirements"],
             resumed.get("declaredExtensions", resumed.get("declared_extensions")),
             {"request": context},
+            settled_phases,
         )
     return {
         "type": "payment-verified",
