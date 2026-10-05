@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping
 from types import TracebackType
 from typing import Any, Callable, TypeVar
@@ -43,15 +44,31 @@ def _search_filters(value: Mapping[str, Any] | None) -> SearchFilterSpec | None:
     return SearchFilterSpec.model_validate(payload)
 
 
+def _json_null_non_finite(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, Mapping):
+        return {key: _json_null_non_finite(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_null_non_finite(item) for item in value]
+    return value
+
+
 def _fetch_body(
     value: str | Mapping[str, Any] | list[Any] | None,
 ) -> FetchRequestBody | None:
     if value is None:
         return None
     # Generated FetchRequestBodyToJSON replaces an object body with {}.
-    # json.dumps matches JSON.stringify; the server accepts that string.
+    # json.dumps matches JSON.stringify, including NaN and Infinity as null.
+    # The server accepts that string.
     if not isinstance(value, str):
-        value = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        value = json.dumps(
+            _json_null_non_finite(value),
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
     return FetchRequestBody(actual_instance=value)
 
 
@@ -161,7 +178,11 @@ class Client:
         if headers is not None:
             request_fields["headers"] = dict(headers)
         if search_id is not None:
-            request_fields["search_id"] = UUID(search_id)
+            # A value that is not a well-formed handle is ignored, not rejected.
+            try:
+                request_fields["search_id"] = UUID(search_id)
+            except ValueError:
+                pass
         if operation_id is not None:
             request_fields["operation_id"] = operation_id
         if access_method_id is not None:

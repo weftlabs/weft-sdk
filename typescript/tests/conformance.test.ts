@@ -208,7 +208,35 @@ function materialize(value: unknown): unknown {
       return circular;
     }
     if (kind === "nan-field") return { n: Number.NaN };
+    if (kind === "non-finite-body") {
+      return {
+        n: Number.NaN,
+        inf: Number.POSITIVE_INFINITY,
+        neg: Number.NEGATIVE_INFINITY,
+        nested: { n: Number.NaN },
+        items: [Number.NaN, Number.POSITIVE_INFINITY, 1],
+      };
+    }
     throw new Error(`unknown fixture value ${kind}`);
+  }
+  return value;
+}
+
+function materializeClientValue(value: unknown): unknown {
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    "$fixture" in value
+  ) {
+    return materialize(value);
+  }
+  if (Array.isArray(value)) return value.map((item) => materializeClientValue(item));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, materializeClientValue(item)]),
+    );
   }
   return value;
 }
@@ -279,7 +307,7 @@ describe("conformance client", () => {
         }
         if (method === "fetch") {
           return client.fetch(
-            args.request as never,
+            materializeClientValue(args.request) as never,
             args.options as never,
           );
         }
