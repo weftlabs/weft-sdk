@@ -179,7 +179,20 @@ module Weft
     def fetch_body(value)
       return value if value.is_a?(String)
 
-      JSON.generate(value)
+      JSON.generate(json_null_non_finite(value))
+    end
+
+    def json_null_non_finite(value)
+      case value
+      when Float
+        value.finite? ? value : nil
+      when Hash
+        value.each_with_object({}) { |(key, item), out| out[key] = json_null_non_finite(item) }
+      when Array
+        value.map { |item| json_null_non_finite(item) }
+      else
+        value
+      end
     end
 
     def normalize_api_error(error)

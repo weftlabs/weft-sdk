@@ -149,7 +149,7 @@ class ConformanceClientTest < Minitest::Test
       request = map_fields(args['request'], SEARCH_FIELDS)
       client.search(**request)
     when 'fetch'
-      request = map_fields(args['request'], FETCH_FIELDS)
+      request = map_fields(materialize(args['request']), FETCH_FIELDS)
       options = map_fields(args['options'], FETCH_OPTIONS)
       client.fetch(**request, **options)
     when 'purchases'
@@ -158,6 +158,29 @@ class ConformanceClientTest < Minitest::Test
       client.purchase(args['id'])
     else
       raise "unknown call #{method}"
+    end
+  end
+
+  def materialize(value)
+    if value.is_a?(Hash) && value.keys == ['$fixture']
+      case value['$fixture']
+      when 'non-finite-body'
+        {
+          'n' => Float::NAN,
+          'inf' => Float::INFINITY,
+          'neg' => -Float::INFINITY,
+          'nested' => { 'n' => Float::NAN },
+          'items' => [Float::NAN, Float::INFINITY, 1]
+        }
+      else
+        raise "unknown fixture value #{value['$fixture']}"
+      end
+    elsif value.is_a?(Hash)
+      value.transform_values { |item| materialize(item) }
+    elsif value.is_a?(Array)
+      value.map { |item| materialize(item) }
+    else
+      value
     end
   end
 
