@@ -685,14 +685,14 @@ paths:
     post:
       description: |
         Universal x402/MPP fetch proxy. The caller provides a target `url`,
-        a hard `max_cost_usd` ceiling, and optional `method` / `body` /
+        a merchant-principal `max_cost_usd` ceiling, and optional `method` / `body` /
         `headers`. Weft:
 
           1. Issues the request.
           2. On `402 Payment Required`, selects a supported x402 or MPP challenge.
           3. Compares the asking price to `max_cost_usd` and the
              buyer's policy (`max_tx_usd`, daily/weekly limits).
-          4. If an eligible mainnet MPP challenge finds its Tempo token short,
+          4. If refill is allowed and an eligible mainnet MPP challenge finds its Tempo token short,
              creates or adopts a buyer-owned Base-to-Tempo refill and returns
              `409 FUNDING_PENDING` with `details.reason=funding_active`. If an
              overlapping payment invalidates the balance observation before a
@@ -710,6 +710,26 @@ paths:
              unsettled hold (the common case for x402, which settles
              asynchronously) reports its amount in `held_usd` instead, never
              in `paid_usd`.
+
+        **Opt-in safety controls:** `allow_tempo_refill: false` prevents this
+        request from creating, adopting, or enqueueing a Base-to-Tempo bridge.
+        A Tempo shortfall returns `402 INSUFFICIENT_BALANCE`; unrelated bridges
+        and their jobs remain unchanged. `access_method_id` is advisory and
+        does not enforce a payment rail.
+
+        `max_total_cost_usd` is an all-in ceiling covering merchant principal,
+        network gas, provider fees, and prerequisite buyer-paid operations.
+        It disables refill; explicitly combining it with `allow_tempo_refill: true`
+        returns `422 INCOMPATIBLE_FETCH_CONTROLS`. Current wallet integrations
+        provide no supported binding all-in fee guarantee. Therefore all-in
+        requests return `402 TOTAL_COST_UNVERIFIABLE` before payment preparation,
+        approval, reservation, or refill. This also refuses recovery of older
+        payments and SIWX wallet signing; it admits no positive paid route.
+        Increasing the ceiling does not resolve missing fee authority.
+
+        Omitted controls preserve existing behavior. Ordinary non-402 merchant
+        responses retain `MERCHANT_RETURNED_NON_402`. Stored-result replay is
+        historical payment information, not a new bounded authorization.
 
         Errors are structured with a stable `error` code, and each error
         response carries the buyer's `policy`, `balance`, and a
@@ -732,6 +752,9 @@ paths:
           same buyer converges on one paid fetch; keys are hashed and
           namespaced by buyer before storage. Send this header for every
           unattended or retryable paid request.
+          Effective safety controls participate in retry identity. Changing
+          them under a reserved key returns `IDEMPOTENCY_CONFLICT`; an older
+          unconstrained payment cannot become a bounded success on retry.
         explode: false
         in: header
         name: Idempotency-Key
@@ -770,7 +793,12 @@ paths:
             Payment refused. `EXCEEDED_MAX_COST` (over the caller cap) or
             `INSUFFICIENT_BALANCE` (the buyer is genuinely short —
             `details.asset`, when present, names the exact token the failed
-            check read). Both use `FetchErrorResponse`.
+            check read). `TOTAL_COST_UNVERIFIABLE` means no binding upper bound
+            on all buyer costs is available; `details.reason` is
+            `binding_cost_unavailable`. No payment operation or refill is
+            authorized by this refusal. An earlier uncertain payment remains
+            uncertain; the refusal does not cancel or release it. These errors
+            use `FetchErrorResponse`.
         "403":
           content:
             application/json:
@@ -829,7 +857,9 @@ paths:
                 $ref: "#/components/schemas/FetchErrorResponse"
           description: |
             Invalid request fields, method, cost, body, headers, idempotency
-            key, or URL. `UNSUPPORTED_ASSET` means the merchant requested an
+            key, or URL. Safety controls use `INVALID_ALLOW_TEMPO_REFILL`,
+            `INVALID_MAX_TOTAL_COST_USD`, or `INCOMPATIBLE_FETCH_CONTROLS`.
+            `UNSUPPORTED_ASSET` means the merchant requested an
             asset this wallet cannot settle. `UNSUPPORTED_PAYMENT_METHOD`
             means the MPP challenge requested a method Weft cannot execute.
         "424":
@@ -4191,10 +4221,12 @@ components:
           Accept: application/json
           User-Agent: my-agent/1.0
         method: GET
+        max_total_cost_usd: "0.05"
         operation_id: operation_id
         body: FetchRequest_body
         max_cost_usd: "0.05"
         url: https://x402.api.agentmail.to/v0/inboxes
+        allow_tempo_refill: false
         access_method_id: access_method_id
         search_id: 11111111-1111-4111-8111-111111111111
       properties:
@@ -4206,8 +4238,33 @@ components:
           type: string
         max_cost_usd:
           default: "0.10"
-          description: Hard ceiling on what the buyer is willing to pay. Defaults
-            to `0.10` USD.
+          description: "Merchant-principal ceiling, excluding gas, provider fees and\
+            \ prerequisites. Defaults to `0.10` USD; use `max_total_cost_usd` for\
+            \ an all-in bound."
+          example: "0.05"
+          pattern: "^\\d+(\\.\\d{1,6})?$"
+          type: string
+        allow_tempo_refill:
+          description: |
+            Whether this request may create, adopt, or enqueue a Base-to-Tempo
+            refill. Only JSON booleans are accepted. Omission allows legacy
+            refill behavior unless `max_total_cost_usd` is supplied, in which
+            case refill is disabled. False leaves unrelated bridges and jobs
+            unchanged and reports an unfunded Tempo pocket as
+            `INSUFFICIENT_BALANCE`. This does not select a rail or bound fees.
+          example: false
+          type: boolean
+        max_total_cost_usd:
+          description: |
+            Optional all-in buyer-debit ceiling in USD, including principal,
+            gas, provider fees and prerequisite operations. Requires a binding
+            upstream upper bound before any payment effect. Current integrations
+            have no such guarantee, so requests requiring wallet signing or
+            payment fail closed with `TOTAL_COST_UNVERIFIABLE`, including
+            recovery and replay of previous payments. No positive paid route
+            is currently admitted in this mode. Estimates, expected sponsorship
+            and receipts are not authority. Implies no refill; explicit
+            `allow_tempo_refill: true` is invalid. Omission preserves legacy behavior.
           example: "0.05"
           pattern: "^\\d+(\\.\\d{1,6})?$"
           type: string
@@ -4255,7 +4312,8 @@ components:
           description: Advisory operation id returned by search.
           type: string
         access_method_id:
-          description: Advisory access-method id returned by search.
+          description: Advisory access-method id returned by search; does not enforce
+            a payment rail.
           type: string
       required:
       - url
@@ -4416,6 +4474,9 @@ components:
           - UNKNOWN_PARAMETER
           - INVALID_URL
           - INVALID_MAX_COST_USD
+          - INVALID_ALLOW_TEMPO_REFILL
+          - INVALID_MAX_TOTAL_COST_USD
+          - INCOMPATIBLE_FETCH_CONTROLS
           - UNSUPPORTED_METHOD
           - INVALID_BODY
           - INVALID_HEADERS
@@ -4423,6 +4484,7 @@ components:
           - IDEMPOTENCY_CONFLICT
           - ACCOUNT_CLOSING
           - EXCEEDED_MAX_COST
+          - TOTAL_COST_UNVERIFIABLE
           - FUNDING_PENDING
           - INSUFFICIENT_BALANCE
           - PAYMENT_AUTHORIZATION_REQUIRED

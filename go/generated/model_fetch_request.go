@@ -23,8 +23,12 @@ var _ MappedNullable = &FetchRequest{}
 type FetchRequest struct {
 	// Target URL. Must pass Weft's URL safety check (no SSRF / private IP ranges).
 	Url string `json:"url"`
-	// Hard ceiling on what the buyer is willing to pay. Defaults to `0.10` USD.
+	// Merchant-principal ceiling, excluding gas, provider fees and prerequisites. Defaults to `0.10` USD; use `max_total_cost_usd` for an all-in bound.
 	MaxCostUsd *string `json:"max_cost_usd,omitempty" validate:"regexp=^\\\\d+(\\\\.\\\\d{1,6})?$"`
+	// Whether this request may create, adopt, or enqueue a Base-to-Tempo refill. Only JSON booleans are accepted. Omission allows legacy refill behavior unless `max_total_cost_usd` is supplied, in which case refill is disabled. False leaves unrelated bridges and jobs unchanged and reports an unfunded Tempo pocket as `INSUFFICIENT_BALANCE`. This does not select a rail or bound fees.
+	AllowTempoRefill *bool `json:"allow_tempo_refill,omitempty"`
+	// Optional all-in buyer-debit ceiling in USD, including principal, gas, provider fees and prerequisite operations. Requires a binding upstream upper bound before any payment effect. Current integrations have no such guarantee, so requests requiring wallet signing or payment fail closed with `TOTAL_COST_UNVERIFIABLE`, including recovery and replay of previous payments. No positive paid route is currently admitted in this mode. Estimates, expected sponsorship and receipts are not authority. Implies no refill; explicit `allow_tempo_refill: true` is invalid. Omission preserves legacy behavior.
+	MaxTotalCostUsd *string `json:"max_total_cost_usd,omitempty" validate:"regexp=^\\\\d+(\\\\.\\\\d{1,6})?$"`
 	// HTTP method to use against the upstream.
 	Method *string                  `json:"method,omitempty"`
 	Body   NullableFetchRequestBody `json:"body,omitempty"`
@@ -34,7 +38,7 @@ type FetchRequest struct {
 	SearchId *string `json:"search_id,omitempty"`
 	// Advisory operation id returned by search.
 	OperationId *string `json:"operation_id,omitempty"`
-	// Advisory access-method id returned by search.
+	// Advisory access-method id returned by search; does not enforce a payment rail.
 	AccessMethodId *string `json:"access_method_id,omitempty"`
 }
 
@@ -120,6 +124,70 @@ func (o *FetchRequest) HasMaxCostUsd() bool {
 // SetMaxCostUsd gets a reference to the given string and assigns it to the MaxCostUsd field.
 func (o *FetchRequest) SetMaxCostUsd(v string) {
 	o.MaxCostUsd = &v
+}
+
+// GetAllowTempoRefill returns the AllowTempoRefill field value if set, zero value otherwise.
+func (o *FetchRequest) GetAllowTempoRefill() bool {
+	if o == nil || IsNil(o.AllowTempoRefill) {
+		var ret bool
+		return ret
+	}
+	return *o.AllowTempoRefill
+}
+
+// GetAllowTempoRefillOk returns a tuple with the AllowTempoRefill field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *FetchRequest) GetAllowTempoRefillOk() (*bool, bool) {
+	if o == nil || IsNil(o.AllowTempoRefill) {
+		return nil, false
+	}
+	return o.AllowTempoRefill, true
+}
+
+// HasAllowTempoRefill returns a boolean if a field has been set.
+func (o *FetchRequest) HasAllowTempoRefill() bool {
+	if o != nil && !IsNil(o.AllowTempoRefill) {
+		return true
+	}
+
+	return false
+}
+
+// SetAllowTempoRefill gets a reference to the given bool and assigns it to the AllowTempoRefill field.
+func (o *FetchRequest) SetAllowTempoRefill(v bool) {
+	o.AllowTempoRefill = &v
+}
+
+// GetMaxTotalCostUsd returns the MaxTotalCostUsd field value if set, zero value otherwise.
+func (o *FetchRequest) GetMaxTotalCostUsd() string {
+	if o == nil || IsNil(o.MaxTotalCostUsd) {
+		var ret string
+		return ret
+	}
+	return *o.MaxTotalCostUsd
+}
+
+// GetMaxTotalCostUsdOk returns a tuple with the MaxTotalCostUsd field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *FetchRequest) GetMaxTotalCostUsdOk() (*string, bool) {
+	if o == nil || IsNil(o.MaxTotalCostUsd) {
+		return nil, false
+	}
+	return o.MaxTotalCostUsd, true
+}
+
+// HasMaxTotalCostUsd returns a boolean if a field has been set.
+func (o *FetchRequest) HasMaxTotalCostUsd() bool {
+	if o != nil && !IsNil(o.MaxTotalCostUsd) {
+		return true
+	}
+
+	return false
+}
+
+// SetMaxTotalCostUsd gets a reference to the given string and assigns it to the MaxTotalCostUsd field.
+func (o *FetchRequest) SetMaxTotalCostUsd(v string) {
+	o.MaxTotalCostUsd = &v
 }
 
 // GetMethod returns the Method field value if set, zero value otherwise.
@@ -338,6 +406,12 @@ func (o FetchRequest) ToMap() (map[string]interface{}, error) {
 	toSerialize["url"] = o.Url
 	if !IsNil(o.MaxCostUsd) {
 		toSerialize["max_cost_usd"] = o.MaxCostUsd
+	}
+	if !IsNil(o.AllowTempoRefill) {
+		toSerialize["allow_tempo_refill"] = o.AllowTempoRefill
+	}
+	if !IsNil(o.MaxTotalCostUsd) {
+		toSerialize["max_total_cost_usd"] = o.MaxTotalCostUsd
 	}
 	if !IsNil(o.Method) {
 		toSerialize["method"] = o.Method
