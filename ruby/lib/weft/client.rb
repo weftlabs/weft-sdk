@@ -65,7 +65,7 @@ module Weft
       fields[:operation_id] = operation_id unless operation_id.nil?
       fields[:access_method_id] = access_method_id unless access_method_id.nil?
       request = FetchRequest.new(fields)
-      call { @fetch.fetch(request, idempotency_key: idempotency_key) }
+      call(paid: true) { @fetch.fetch(request, idempotency_key: idempotency_key) }
     end
 
     def purchases(page: nil, per_page: nil)
@@ -78,10 +78,10 @@ module Weft
 
     private
 
-    def call
+    def call(paid: false)
       yield
     rescue ApiError => e
-      raise normalize_api_error(e)
+      raise normalize_api_error(e, paid: paid)
     end
 
     def credential_error(api_key, access_token)
@@ -195,7 +195,7 @@ module Weft
       end
     end
 
-    def normalize_api_error(error)
+    def normalize_api_error(error, paid:)
       if error.code.to_i.zero? && !error.response_body
         cause = error.instance_variable_get(:@message).to_s
         cause = 'connection reset' if cause.empty?
@@ -205,7 +205,8 @@ module Weft
           message: "Network failure before a Weft API response: #{cause}",
           request_id: nil,
           retryable: true,
-          details: nil
+          details: nil,
+          charge: paid ? 'possible' : 'none'
         )
       end
 
@@ -213,13 +214,15 @@ module Weft
       body = details.is_a?(Hash) ? details : nil
       nested = body && body['error'].is_a?(Hash) ? body['error'] : nil
       status = error.code.to_i
+      code = nested&.[]('code') || body&.[]('code') || (body && body['error'].is_a?(String) ? body['error'] : "HTTP_#{status}")
       RequestError.new(
         status: status,
-        code: nested&.[]('code') || body&.[]('code') || (body && body['error'].is_a?(String) ? body['error'] : "HTTP_#{status}"),
+        code: code,
         message: nested&.[]('message') || body&.[]('message') || "Weft API returned HTTP #{status}",
         request_id: nested&.[]('request_id') || body&.[]('request_id') || header_request_id(error),
         retryable: status == 429 || status >= 500,
-        details: details
+        details: details,
+        charge: paid ? RequestError.fetch_charge(status, code) : 'none'
       )
     end
 

@@ -94,11 +94,11 @@ export class WeftClient {
     this.purchaseHistory = new PurchasesApi(configuration);
   }
 
-  private async call<T>(operation: () => Promise<T>): Promise<T> {
+  private async call<T>(operation: () => Promise<T>, paid = false): Promise<T> {
     try {
       return await operation();
     } catch (error) {
-      throw await normalizeWeftError(error);
+      throw await normalizeWeftError(error, paid);
     }
   }
 
@@ -132,11 +132,13 @@ export class WeftClient {
         ? { ...request, body: JSON.stringify(request.body) }
         : request;
 
-    return this.call(() =>
-      this.fetches.fetch({
-        fetchRequest,
-        idempotencyKey: options.idempotencyKey,
-      }),
+    return this.call(
+      () =>
+        this.fetches.fetch({
+          fetchRequest,
+          idempotencyKey: options.idempotencyKey,
+        }),
+      true,
     );
   }
 

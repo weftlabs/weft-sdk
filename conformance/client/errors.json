@@ -30,6 +30,8 @@
       "message": "slow down",
       "requestId": "req-body",
       "retryable": true,
+
+      "charge": "none",
       "details": {
         "error": {
           "code": "RATE_LIMITED",
@@ -65,6 +67,8 @@
       "message": "missing",
       "requestId": "req-flat",
       "retryable": false,
+
+      "charge": "none",
       "details": {
         "code": "NOT_FOUND",
         "message": "missing",
@@ -94,6 +98,8 @@
       "message": "Weft API returned HTTP 400",
       "requestId": null,
       "retryable": false,
+
+      "charge": "none",
       "details": {"error": "invalid_request"}
     }
   },
@@ -122,6 +128,8 @@
       "message": "no",
       "requestId": "req-header",
       "retryable": false,
+
+      "charge": "none",
       "details": {"code": "FORBIDDEN", "message": "no"}
     }
   },
@@ -147,6 +155,8 @@
       "message": "Weft API returned HTTP 502",
       "requestId": null,
       "retryable": true,
+
+      "charge": "none",
       "details": null
     }
   },
@@ -172,6 +182,8 @@
       "message": "down",
       "requestId": null,
       "retryable": true,
+
+      "charge": "none",
       "details": {"error": {"code": "UPSTREAM", "message": "down"}}
     }
   },
@@ -185,7 +197,100 @@
       "code": "NETWORK_ERROR",
       "message": "Network failure before a Weft API response: connection reset",
       "requestId": null,
-      "retryable": true
+      "retryable": true,
+
+      "charge": "none"
     }
+  },
+  {
+    "name": "fetch refused for price before signing is not charged",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 402, "reason": "Payment Required", "headers": {"content-type": "application/json"}, "body": {"error": "EXCEEDED_MAX_COST"}},
+    "expectError": {"status": 402, "code": "EXCEEDED_MAX_COST", "message": "Weft API returned HTTP 402", "requestId": null, "retryable": false, "details": {"error": "EXCEEDED_MAX_COST"}, "charge": "none"}
+  },
+  {
+    "name": "fetch to a merchant that did not ask for payment is not charged",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 424, "reason": "Failed Dependency", "headers": {"content-type": "application/json"}, "body": {"error": "MERCHANT_RETURNED_NON_402"}},
+    "expectError": {"status": 424, "code": "MERCHANT_RETURNED_NON_402", "message": "Weft API returned HTTP 424", "requestId": null, "retryable": false, "details": {"error": "MERCHANT_RETURNED_NON_402"}, "charge": "none"}
+  },
+  {
+    "name": "fetch refused by the spending policy is not charged",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 403, "reason": "Forbidden", "headers": {"content-type": "application/json"}, "body": {"error": "POLICY_VIOLATION_DAILY"}},
+    "expectError": {"status": 403, "code": "POLICY_VIOLATION_DAILY", "message": "Weft API returned HTTP 403", "requestId": null, "retryable": false, "details": {"error": "POLICY_VIOLATION_DAILY"}, "charge": "none"}
+  },
+  {
+    "name": "fetch paid delivery failure is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 424, "reason": "Failed Dependency", "headers": {"content-type": "application/json"}, "body": {"error": "PAID_DELIVERY_FAILED"}},
+    "expectError": {"status": 424, "code": "PAID_DELIVERY_FAILED", "message": "Weft API returned HTTP 424", "requestId": null, "retryable": false, "details": {"error": "PAID_DELIVERY_FAILED"}, "charge": "possible"}
+  },
+  {
+    "name": "fetch idempotency conflict is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 409, "reason": "Conflict", "headers": {"content-type": "application/json"}, "body": {"error": "IDEMPOTENCY_CONFLICT"}},
+    "expectError": {"status": 409, "code": "IDEMPOTENCY_CONFLICT", "message": "Weft API returned HTTP 409", "requestId": null, "retryable": false, "details": {"error": "IDEMPOTENCY_CONFLICT"}, "charge": "possible"}
+  },
+  {
+    "name": "fetch gateway timeout is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {"authorization": "Bearer wk_test", "idempotency-key": "k-1"},
+      "jsonBody": {"url": "https://m.example/x", "max_cost_usd": "0.05"}
+    },
+    "response": {"status": 504, "reason": "Gateway Timeout", "headers": {"content-type": "text/html"}, "body": "<html>504</html>"},
+    "expectError": {"status": 504, "code": "HTTP_504", "message": "Weft API returned HTTP 504", "requestId": null, "retryable": true, "details": null, "charge": "possible"}
+  },
+  {
+    "name": "fetch network failure is a possible charge",
+    "call": {"method": "fetch", "args": {"request": {"url": "https://m.example/x", "maxCostUsd": "0.05"}, "options": {"idempotencyKey": "k-1"}}},
+    "client": {"credential": "wk_test", "baseUrl": "https://api.example"},
+    "response": {"networkFailure": true},
+    "expectError": {"status": 0, "code": "NETWORK_ERROR", "message": "Network failure before a Weft API response: connection reset", "requestId": null, "retryable": true, "charge": "possible"}
   }
 ]

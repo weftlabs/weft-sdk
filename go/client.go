@@ -180,6 +180,10 @@ func (c *Client) Fetch(ctx context.Context, request FetchRequest, options FetchO
 	headers := map[string]string{"Idempotency-Key": strings.TrimSpace(options.IdempotencyKey)}
 	var out generated.FetchResponse
 	if err := c.call(ctx, http.MethodPost, "/api/v1/fetch", headers, body, &out); err != nil {
+		var weftErr *Error
+		if errors.As(err, &weftErr) {
+			weftErr.Charge = fetchCharge(weftErr.Status, weftErr.Code)
+		}
 		return nil, err
 	}
 	return &out, nil

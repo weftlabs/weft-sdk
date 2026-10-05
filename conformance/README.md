@@ -16,6 +16,10 @@ Python client: `cd python && pytest tests/test_conformance_client.py`
 
 Ruby and Go runners are later layers. They load the same files.
 
+`expectError.charge` is asserted in every language. The pre-sign fetch code
+list is the same in each façade; its owner is
+`cto-os/specs/paid-fetch/01-charge-outcome.md`, from the weft-app raise sites.
+
 ## Known differences (not asserted)
 
 - Network-error `details`: TypeScript keeps the transport cause. Python sets `details` to `None`. The fixture does not list `details` for that case. This is not a missing façade field.

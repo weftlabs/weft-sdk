@@ -7,10 +7,49 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // ErrValidation marks a caller mistake that is rejected before any HTTP request.
 var ErrValidation = errors.New("weft: validation")
+
+// Charge says whether a failed call can have created a charge. ChargeNone
+// covers this call only: an earlier call under the same idempotency key can
+// still have paid. After ChargePossible, retry only with the same idempotency
+// key and request.
+type Charge string
+
+const (
+	ChargeNone     Charge = "none"
+	ChargePossible Charge = "possible"
+)
+
+// preSignFetchCodes are raised by Weft before it signs a payment in that call.
+// Same list as the TypeScript reference.
+var preSignFetchCodes = map[string]bool{
+	"EXCEEDED_MAX_COST":           true,
+	"MERCHANT_RETURNED_NON_402":   true,
+	"INSUFFICIENT_BALANCE":        true,
+	"DENYLISTED_RECIPIENT":        true,
+	"WALLET_ENVIRONMENT_MISMATCH": true,
+	"UNSUPPORTED_ASSET":           true,
+	"INVALID_REQUEST":             true,
+	"UNKNOWN_PARAMETER":           true,
+	"INVALID_URL":                 true,
+	"INVALID_MAX_COST_USD":        true,
+	"UNSUPPORTED_METHOD":          true,
+	"INVALID_BODY":                true,
+	"INVALID_HEADERS":             true,
+	"INVALID_IDEMPOTENCY_KEY":     true,
+}
+
+func fetchCharge(status int, code string) Charge {
+	preSign := preSignFetchCodes[code] || strings.HasPrefix(code, "POLICY_VIOLATION_")
+	if status >= 400 && status < 500 && preSign {
+		return ChargeNone
+	}
+	return ChargePossible
+}
 
 // Error is the normalized buyer-API failure. It matches the TypeScript WeftError
 // fields: status 0 and code NETWORK_ERROR mean the outcome is uncertain.
@@ -21,6 +60,7 @@ type Error struct {
 	RequestID  *string
 	Retryable  bool
 	Details    any
+	Charge     Charge
 	hasDetails bool
 }
 
@@ -59,6 +99,7 @@ func normalizeHTTPError(resp *http.Response, body []byte) *Error {
 		Code:      fmt.Sprintf("HTTP_%d", status),
 		Message:   fmt.Sprintf("Weft API returned HTTP %d", status),
 		Retryable: status == http.StatusTooManyRequests || status >= 500,
+		Charge:    ChargeNone,
 	}
 	if resp != nil && resp.Header.Values("X-Request-Id") != nil {
 		raw := resp.Header.Get("X-Request-Id")
@@ -132,6 +173,7 @@ func networkError(err error) *Error {
 		Code:       "NETWORK_ERROR",
 		Message:    "Network failure before a Weft API response: " + message,
 		Retryable:  true,
+		Charge:     ChargeNone,
 		Details:    err,
 		hasDetails: err != nil,
 	}

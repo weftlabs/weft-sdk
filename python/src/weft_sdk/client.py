@@ -109,11 +109,11 @@ class Client:
         self._fetch = FetchApi(self._api_client)
         self._purchases = PurchasesApi(self._api_client)
 
-    def _call(self, operation: Callable[[], T]) -> T:
+    def _call(self, operation: Callable[[], T], *, paid: bool = False) -> T:
         try:
             return operation()
         except ApiException as error:
-            raise normalize_api_exception(error) from error
+            raise normalize_api_exception(error, paid=paid) from error
         except TransportError as error:
             # No HTTP response exists, so the outcome is uncertain. Callers
             # retry with backoff and, for paid fetch, reuse the same
@@ -125,6 +125,7 @@ class Client:
                 request_id=None,
                 retryable=True,
                 details=None,
+                charge="possible" if paid else "none",
             ) from error
 
     def me(self) -> MeResponse:
@@ -188,7 +189,9 @@ class Client:
         if access_method_id is not None:
             request_fields["access_method_id"] = access_method_id
         request = FetchRequest(**request_fields)
-        return self._call(lambda: self._fetch.fetch(request, idempotency_key=idempotency_key))
+        return self._call(
+            lambda: self._fetch.fetch(request, idempotency_key=idempotency_key), paid=True
+        )
 
     def purchases(
         self, *, page: int | None = None, per_page: int | None = None
