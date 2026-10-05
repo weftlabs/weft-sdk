@@ -1,0 +1,445 @@
+[
+  {
+    "name": "declared identity ships on the route and in weft.product",
+    "routes": {
+      "GET /v1/search": {
+        "accepts": {
+          "scheme": "exact",
+          "network": "eip155:84532",
+          "payTo": "0x0000000000000000000000000000000000000001",
+          "price": "$0.01"
+        }
+      }
+    },
+    "declaration": {
+      "name": "Acme Pricing API",
+      "type": "api",
+      "tags": ["finance"],
+      "iconUrl": "https://acme.test/icon.png",
+      "productId": " prod_1 ",
+      "manifestHash": "abc"
+    },
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {
+            "scheme": "exact",
+            "network": "eip155:84532",
+            "payTo": "0x0000000000000000000000000000000000000001",
+            "price": "$0.01"
+          },
+          "serviceName": "Acme Pricing API",
+          "tags": ["weft:type:api", "finance"],
+          "iconUrl": "https://acme.test/icon.png",
+          "extensions": {
+            "weft.product": {
+              "info": {
+                "kind": "api",
+                "product_id": "prod_1",
+                "manifest_hash": "abc"
+              },
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                  "product_id": {"type": "string", "minLength": 1},
+                  "manifest_hash": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "route service name wins over the product name",
+    "routes": {
+      "GET /v1/search": {
+        "accepts": {"scheme": "exact"},
+        "serviceName": "Route Name"
+      }
+    },
+    "declaration": {"name": "Product Name"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "serviceName": "Route Name"
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "route tags replace product tags and the type tag stays",
+    "routes": {
+      "GET /v1/search": {
+        "accepts": {"scheme": "exact"},
+        "tags": ["route"]
+      }
+    },
+    "declaration": {"type": "api", "tags": ["product"]},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["weft:type:api", "route"],
+          "extensions": {
+            "weft.product": {
+              "info": {"kind": "api"},
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                  "product_id": {"type": "string", "minLength": 1},
+                  "manifest_hash": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "duplicate tags are removed without a warning",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"type": "api", "tags": ["finance", "finance"]},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["weft:type:api", "finance"],
+          "extensions": {
+            "weft.product": {
+              "info": {"kind": "api"},
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                  "product_id": {"type": "string", "minLength": 1},
+                  "manifest_hash": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "nothing declared returns the routes unchanged",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}, "serviceName": "Kept"}
+    },
+    "declaration": {},
+    "expect": {"unchanged": true, "rejected": []}
+  },
+  {
+    "name": "null identity fields count as absent",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"name": null, "type": null, "tags": null, "iconUrl": null},
+    "expect": {"unchanged": true, "rejected": []}
+  },
+  {
+    "name": "dimensions do not appear on the route",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"dimensions": ["model"]},
+    "expect": {"unchanged": true, "rejected": []}
+  },
+  {
+    "name": "over-long name is truncated",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"name": "Acme Real Estate Property Records API"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "serviceName": "Acme Real Estate Property Record"
+        }
+      },
+      "rejected": ["name"]
+    }
+  },
+  {
+    "name": "unicode name is rejected",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"name": "Acme Café"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {"accepts": {"scheme": "exact"}}
+      },
+      "rejected": ["name"]
+    }
+  },
+  {
+    "name": "non-string name is rejected",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"name": 12},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {"accepts": {"scheme": "exact"}}
+      },
+      "rejected": ["name"]
+    }
+  },
+  {
+    "name": "illegal type is rejected and seller tags stay",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"type": "feed", "tags": ["finance"]},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["finance"]
+        }
+      },
+      "rejected": ["type"]
+    }
+  },
+  {
+    "name": "reserved type tag is rejected",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"tags": ["weft:type:mcp", "finance"]},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["finance"]
+        }
+      },
+      "rejected": ["tags"]
+    }
+  },
+  {
+    "name": "tags over the limit keep the type tag",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {
+      "type": "api",
+      "tags": ["a", "b", "c", "d", "e", "f"]
+    },
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["weft:type:api", "a", "b", "c", "d"],
+          "extensions": {
+            "weft.product": {
+              "info": {"kind": "api"},
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                  "product_id": {"type": "string", "minLength": 1},
+                  "manifest_hash": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "rejected": ["tags"]
+    }
+  },
+  {
+    "name": "javascript icon url is rejected",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"iconUrl": "javascript:alert(1)"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {"accepts": {"scheme": "exact"}}
+      },
+      "rejected": ["iconUrl"]
+    }
+  },
+  {
+    "name": "empty product id is rejected",
+    "routes": {
+      "GET /v1/search": {"accepts": {"scheme": "exact"}}
+    },
+    "declaration": {"productId": "  "},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {"accepts": {"scheme": "exact"}}
+      },
+      "rejected": ["productId"]
+    }
+  },
+  {
+    "name": "route type is consumed and not forwarded",
+    "routes": {
+      "GET /mcp": {
+        "accepts": {"scheme": "exact"},
+        "type": "mcp",
+        "tags": ["tools"]
+      }
+    },
+    "declaration": {},
+    "expect": {
+      "routes": {
+        "GET /mcp": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["weft:type:mcp", "tools"],
+          "extensions": {
+            "weft.product": {
+              "info": {"kind": "mcp"},
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                  "product_id": {"type": "string", "minLength": 1},
+                  "manifest_hash": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "single route config is accepted",
+    "singleRoute": true,
+    "routes": {
+      "accepts": {"scheme": "exact"},
+      "type": "agent"
+    },
+    "declaration": {},
+    "expect": {
+      "route": {
+        "accepts": {"scheme": "exact"},
+        "tags": ["weft:type:agent"],
+        "extensions": {
+          "weft.product": {
+            "info": {"kind": "agent"},
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                "product_id": {"type": "string", "minLength": 1},
+                "manifest_hash": {"type": "string", "minLength": 1}
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "route weft.product wins over the declaration",
+    "routes": {
+      "GET /v1/search": {
+        "accepts": {"scheme": "exact"},
+        "extensions": {
+          "weft.product": {"info": {"kind": "mcp"}, "schema": {"type": "object"}},
+          "other": {"kept": true}
+        }
+      }
+    },
+    "declaration": {"productId": "prod_1", "type": "api"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "tags": ["weft:type:api"],
+          "extensions": {
+            "weft.product": {"info": {"kind": "mcp"}, "schema": {"type": "object"}},
+            "other": {"kept": true}
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "other route extensions stay beside weft.product",
+    "routes": {
+      "GET /v1/search": {
+        "accepts": {"scheme": "exact"},
+        "extensions": {"vendor.meta": {"pages": 1}}
+      }
+    },
+    "declaration": {"productId": "prod_1"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "extensions": {
+            "vendor.meta": {"pages": 1},
+            "weft.product": {
+              "info": {"product_id": "prod_1"},
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "kind": {"type": "string", "enum": ["api", "agent", "mcp"]},
+                  "product_id": {"type": "string", "minLength": 1},
+                  "manifest_hash": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "rejected": []
+    }
+  },
+  {
+    "name": "junk route extensions are left untouched",
+    "routes": {
+      "GET /v1/search": {
+        "accepts": {"scheme": "exact"},
+        "extensions": ["nope"]
+      }
+    },
+    "declaration": {"productId": "prod_1"},
+    "expect": {
+      "routes": {
+        "GET /v1/search": {
+          "accepts": {"scheme": "exact"},
+          "extensions": ["nope"]
+        }
+      },
+      "rejected": ["extensions"]
+    }
+  }
+]

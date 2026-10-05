@@ -1,0 +1,52 @@
+[
+  {
+    "name": "weft unavailable token",
+    "reason": "weft:facilitator-settle-unavailable",
+    "expect": true
+  },
+  {
+    "name": "core 503 prefix with a detail",
+    "reason": "Facilitator settle failed (503): upstream down",
+    "expect": true
+  },
+  {
+    "name": "core 503 prefix with nothing after the colon",
+    "reason": "Facilitator settle failed (503):",
+    "expect": true
+  },
+  {
+    "name": "core 503 prefix without the required space",
+    "reason": "Facilitator settle failed (503):upstream",
+    "expect": false
+  },
+  {
+    "name": "lowercase core prefix does not match",
+    "reason": "facilitator settle failed (503): upstream",
+    "expect": false
+  },
+  {
+    "name": "a different status is not the core prefix",
+    "reason": "Facilitator settle failed (402): no",
+    "expect": false
+  },
+  {
+    "name": "the weft token is exact",
+    "reason": "weft:facilitator-settle-unavailable-extra",
+    "expect": false
+  },
+  {
+    "name": "settlement pending is not unavailable",
+    "reason": "settlement_pending",
+    "expect": false
+  },
+  {
+    "name": "absent reason is not unavailable",
+    "reason": null,
+    "expect": false
+  },
+  {
+    "name": "empty reason is not unavailable",
+    "reason": "",
+    "expect": false
+  }
+]

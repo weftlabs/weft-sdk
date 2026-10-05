@@ -1,0 +1,1237 @@
+[
+  {
+    "name": "me sends the bearer credential",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
+  },
+  {
+    "name": "balance reads the wallet snapshot",
+    "call": {
+      "method": "balance",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/balance",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "promo": {
+          "balance_usd": "0.00",
+          "scope": "weft-search",
+          "expires_at": "2026-12-31T00:00:00.000Z"
+        },
+        "wallet": {
+          "provider": "crossmint",
+          "address": "0xabc",
+          "balance_usdc": "2.00",
+          "balance_tempo_usd": "0.00",
+          "total_usd": "2.00",
+          "network": "base"
+        },
+        "spent_today_usd": "0.00",
+        "spent_week_usd": "0.00",
+        "policy_used_today_usd": "0.00",
+        "policy_used_week_usd": "0.00",
+        "policy": {
+          "max_tx_usd": "1.00",
+          "daily_limit_usd": "2.00",
+          "weekly_limit_usd": "5.00"
+        }
+      }
+    },
+    "expectResult": {
+      "promo": {
+        "balance_usd": "0.00",
+        "scope": "weft-search",
+        "expires_at": "2026-12-31T00:00:00.000Z"
+      },
+      "wallet": {
+        "provider": "crossmint",
+        "address": "0xabc",
+        "balance_usdc": "2.00",
+        "balance_tempo_usd": "0.00",
+        "total_usd": "2.00",
+        "network": "base"
+      },
+      "spent_today_usd": "0.00",
+      "spent_week_usd": "0.00",
+      "policy_used_today_usd": "0.00",
+      "policy_used_week_usd": "0.00",
+      "policy": {
+        "max_tx_usd": "1.00",
+        "daily_limit_usd": "2.00",
+        "weekly_limit_usd": "5.00"
+      }
+    }
+  },
+  {
+    "name": "search omits optional max results",
+    "call": {
+      "method": "search",
+      "args": {
+        "request": {
+          "query": "weather"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/search",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      },
+      "jsonBody": {
+        "query": "weather"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "query_trace_id": "11111111-1111-4111-8111-111111111111",
+        "query": "weather",
+        "embedder_model": "embed-v1",
+        "candidates_considered": 0,
+        "warnings": [],
+        "results": [],
+        "match_quality": "none"
+      }
+    },
+    "expectResult": {
+      "query_trace_id": "11111111-1111-4111-8111-111111111111",
+      "query": "weather",
+      "embedder_model": "embed-v1",
+      "candidates_considered": 0,
+      "warnings": [],
+      "results": [],
+      "match_quality": "none"
+    }
+  },
+  {
+    "name": "search sends max results when the caller sets it",
+    "call": {
+      "method": "search",
+      "args": {
+        "request": {
+          "query": "weather",
+          "maxResults": 3
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/search",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      },
+      "jsonBody": {
+        "query": "weather",
+        "max_results": 3
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "query_trace_id": "11111111-1111-4111-8111-111111111111",
+        "query": "weather",
+        "embedder_model": "embed-v1",
+        "candidates_considered": 3,
+        "warnings": [],
+        "results": [],
+        "match_quality": "none"
+      }
+    },
+    "expectResult": {
+      "query_trace_id": "11111111-1111-4111-8111-111111111111",
+      "query": "weather",
+      "embedder_model": "embed-v1",
+      "candidates_considered": 3,
+      "warnings": [],
+      "results": [],
+      "match_quality": "none"
+    }
+  },
+  {
+    "name": "fetch sends idempotency key and max cost",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05"
+        },
+        "options": {
+          "idempotencyKey": "k-1"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example/"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-1"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  },
+  {
+    "name": "fetch sends the caller method",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0",
+          "method": "POST"
+        },
+        "options": {
+          "idempotencyKey": "k-2"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-2"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0",
+        "method": "POST"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {},
+        "body_base64": "",
+        "paid_usd": "0.00",
+        "held_usd": null,
+        "payment_status": "not_required",
+        "tx_hash": null,
+        "protocol": "x402",
+        "artifact_id": null
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {},
+      "body_base64": "",
+      "paid_usd": "0.00",
+      "held_usd": null,
+      "payment_status": "not_required",
+      "tx_hash": null,
+      "protocol": "x402",
+      "artifact_id": null
+    }
+  },
+  {
+    "name": "purchases omits page query when the caller omits it",
+    "call": {
+      "method": "purchases",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/purchases",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": [],
+        "pagination": {
+          "page": 1,
+          "per_page": 25,
+          "total": 0,
+          "total_pages": 0
+        }
+      }
+    },
+    "expectResult": {
+      "data": [],
+      "pagination": {
+        "page": 1,
+        "per_page": 25,
+        "total": 0,
+        "total_pages": 0
+      }
+    }
+  },
+  {
+    "name": "purchases sends page and per page",
+    "call": {
+      "method": "purchases",
+      "args": {
+        "options": {
+          "page": 2,
+          "perPage": 10
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/purchases",
+      "query": {
+        "page": "2",
+        "per_page": "10"
+      },
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": [
+          {
+            "id": 7,
+            "status": "settled",
+            "amount_usd": "0.05",
+            "recipient_address": "0xabc",
+            "network": "base",
+            "protocol": "x402",
+            "context": null,
+            "search_id": null,
+            "attribution_status": "unattributed",
+            "tx_hash": null,
+            "reject_reason": null,
+            "failure_reason": null,
+            "idempotency_key": "k-1",
+            "signed_at": "2026-01-02T03:04:05.000Z",
+            "settled_at": null,
+            "artifact": null
+          }
+        ],
+        "pagination": {
+          "page": 2,
+          "per_page": 10,
+          "total": 1,
+          "total_pages": 1
+        }
+      }
+    },
+    "expectResult": {
+      "data": [
+        {
+          "id": 7,
+          "status": "settled",
+          "amount_usd": "0.05",
+          "recipient_address": "0xabc",
+          "network": "base",
+          "protocol": "x402",
+          "context": null,
+          "search_id": null,
+          "attribution_status": "unattributed",
+          "tx_hash": null,
+          "reject_reason": null,
+          "failure_reason": null,
+          "idempotency_key": "k-1",
+          "signed_at": "2026-01-02T03:04:05.000Z",
+          "settled_at": null,
+          "artifact": null
+        }
+      ],
+      "pagination": {
+        "page": 2,
+        "per_page": 10,
+        "total": 1,
+        "total_pages": 1
+      }
+    }
+  },
+  {
+    "name": "purchase reads one id",
+    "call": {
+      "method": "purchase",
+      "args": {
+        "id": 7
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/purchases/7",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "id": 7,
+          "status": "settled",
+          "amount_usd": "0.05",
+          "recipient_address": "0xabc",
+          "network": "base",
+          "protocol": "x402",
+          "context": null,
+          "search_id": null,
+          "attribution_status": "unattributed",
+          "tx_hash": null,
+          "reject_reason": null,
+          "failure_reason": null,
+          "idempotency_key": "k-1",
+          "signed_at": "2026-01-02T03:04:05.000Z",
+          "settled_at": null,
+          "artifact": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "id": 7,
+        "status": "settled",
+        "amount_usd": "0.05",
+        "recipient_address": "0xabc",
+        "network": "base",
+        "protocol": "x402",
+        "context": null,
+        "search_id": null,
+        "attribution_status": "unattributed",
+        "tx_hash": null,
+        "reject_reason": null,
+        "failure_reason": null,
+        "idempotency_key": "k-1",
+        "signed_at": "2026-01-02T03:04:05.000Z",
+        "settled_at": null,
+        "artifact": null
+      }
+    }
+  },
+  {
+    "name": "trailing slash base URL is stripped",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example/"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
+  },
+  {
+    "name": "repeated trailing slashes are stripped",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example///"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
+  },
+  {
+    "name": "default base URL is https://weft.network",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
+  },
+  {
+    "name": "credential is trimmed before it is sent",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "  wk_test  ",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
+  },
+  {
+    "name": "access token is sent as the bearer credential",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "accessToken": "oauth_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer oauth_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
+  },
+  {
+    "name": "search sends filters",
+    "call": {
+      "method": "search",
+      "args": {
+        "request": {
+          "query": "weather",
+          "filters": {
+            "price": {
+              "lte": "1.00"
+            },
+            "type": {
+              "eq": "api"
+            },
+            "protocol": {
+              "eq": "x402"
+            },
+            "executionMode": {
+              "eq": "sync"
+            },
+            "weftFetchCompatible": true
+          }
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/search",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      },
+      "jsonBody": {
+        "query": "weather",
+        "filters": {
+          "price": {
+            "lte": "1.00"
+          },
+          "type": {
+            "eq": "api"
+          },
+          "protocol": {
+            "eq": "x402"
+          },
+          "execution_mode": {
+            "eq": "sync"
+          },
+          "weft_fetch_compatible": true
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "query_trace_id": "11111111-1111-4111-8111-111111111111",
+        "query": "weather",
+        "embedder_model": "embed-v1",
+        "candidates_considered": 0,
+        "warnings": [],
+        "results": [],
+        "match_quality": "none"
+      }
+    },
+    "expectResult": {
+      "query_trace_id": "11111111-1111-4111-8111-111111111111",
+      "query": "weather",
+      "embedder_model": "embed-v1",
+      "candidates_considered": 0,
+      "warnings": [],
+      "results": [],
+      "match_quality": "none"
+    }
+  },
+  {
+    "name": "fetch sends body, headers, and advisory ids",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "method": "POST",
+          "body": "{\"q\":\"rain\"}",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "searchId": "11111111-1111-4111-8111-111111111111",
+          "operationId": "op-1",
+          "accessMethodId": "am-1"
+        },
+        "options": {
+          "idempotencyKey": "k-3"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-3"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "method": "POST",
+        "body": "{\"q\":\"rain\"}",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "search_id": "11111111-1111-4111-8111-111111111111",
+        "operation_id": "op-1",
+        "access_method_id": "am-1"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  },
+  {
+    "name": "fetch sends an object body as a JSON string",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "method": "POST",
+          "body": {
+            "city": "café",
+            "nested": {
+              "n": 1
+            }
+          }
+        },
+        "options": {
+          "idempotencyKey": "k-obj"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-obj"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "method": "POST",
+        "body": "{\"city\":\"café\",\"nested\":{\"n\":1}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  },
+  {
+    "name": "fetch sends an array body as a JSON string",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "method": "POST",
+          "body": [
+            "a",
+            "café",
+            2
+          ]
+        },
+        "options": {
+          "idempotencyKey": "k-arr"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-arr"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "method": "POST",
+        "body": "[\"a\",\"café\",2]"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  },
+  {
+    "name": "fetch does not reject a malformed search id",
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "searchId": "not-a-uuid"
+        },
+        "options": {
+          "idempotencyKey": "k-bad"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-bad"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "search_id": "not-a-uuid"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  },
+  {
+    "name": "fetch stringifies non-finite numbers as null",
+    "languages": ["typescript", "python"],
+    "call": {
+      "method": "fetch",
+      "args": {
+        "request": {
+          "url": "https://m.example/x",
+          "maxCostUsd": "0.05",
+          "method": "POST",
+          "body": {
+            "$fixture": "non-finite-body"
+          }
+        },
+        "options": {
+          "idempotencyKey": "k-nan"
+        }
+      }
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "https://api.example"
+    },
+    "expectRequest": {
+      "method": "POST",
+      "path": "/api/v1/fetch",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test",
+        "idempotency-key": "k-nan"
+      },
+      "jsonBody": {
+        "url": "https://m.example/x",
+        "max_cost_usd": "0.05",
+        "method": "POST",
+        "body": "{\"n\":null,\"inf\":null,\"neg\":null,\"nested\":{\"n\":null},\"items\":[null,null,1]}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_base64": "e30=",
+        "paid_usd": "0.05",
+        "held_usd": null,
+        "payment_status": "settled",
+        "tx_hash": "0xabc",
+        "protocol": "x402",
+        "artifact_id": 9
+      }
+    },
+    "expectResult": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body_base64": "e30=",
+      "paid_usd": "0.05",
+      "held_usd": null,
+      "payment_status": "settled",
+      "tx_hash": "0xabc",
+      "protocol": "x402",
+      "artifact_id": 9
+    }
+  }
+]

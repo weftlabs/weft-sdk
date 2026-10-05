@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "python/**"
+      - "conformance/**"
       - "spec/**"
       - "scripts/**"
       # Self-test: a change to this workflow must run this workflow, otherwise
@@ -19,6 +20,7 @@ on:
     # pushes that don't touch the SDK.)
     paths:
       - "python/**"
+      - "conformance/**"
       - "spec/**"
       - "scripts/**"
 
