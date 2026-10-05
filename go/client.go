@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -389,8 +392,17 @@ func fetchBody(value any) (any, error) {
 }
 
 func isJSONContainer(value any) bool {
-	switch value.(type) {
-	case map[string]any, []any, map[string]string, json.RawMessage:
+	if value == nil {
+		return false
+	}
+	if _, ok := value.(json.RawMessage); ok {
+		return true
+	}
+	if _, ok := value.([]byte); ok {
+		return false
+	}
+	switch reflect.TypeOf(value).Kind() {
+	case reflect.Map, reflect.Slice, reflect.Array:
 		return true
 	default:
 		return false
@@ -398,11 +410,91 @@ func isJSONContainer(value any) bool {
 }
 
 func marshalJSON(value any) ([]byte, error) {
+	normalized, err := normalizeJSONValue(value)
+	if err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(value); err != nil {
+	if err := encoder.Encode(normalized); err != nil {
 		return nil, err
 	}
 	return bytes.TrimRight(buf.Bytes(), "\n"), nil
+}
+
+// normalizeJSONValue matches JSON.stringify: NaN and Inf become null.
+var errCircularJSON = errors.New("circular JSON")
+
+func normalizeJSONValue(value any) (any, error) {
+	return normalizeJSONValueSeen(value, map[uintptr]struct{}{})
+}
+
+func normalizeJSONValueSeen(value any, seen map[uintptr]struct{}) (any, error) {
+	if value == nil {
+		return nil, nil
+	}
+	switch typed := value.(type) {
+	case json.RawMessage, []byte:
+		return typed, nil
+	}
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Pointer, reflect.Interface:
+		if rv.IsNil() {
+			return nil, nil
+		}
+		return normalizeJSONValueSeen(rv.Elem().Interface(), seen)
+	case reflect.Map:
+		if rv.IsNil() {
+			return nil, nil
+		}
+		ptr := rv.Pointer()
+		if _, ok := seen[ptr]; ok {
+			return nil, errCircularJSON
+		}
+		seen[ptr] = struct{}{}
+		defer delete(seen, ptr)
+		out := make(map[string]any, rv.Len())
+		for _, key := range rv.MapKeys() {
+			if key.Kind() != reflect.String {
+				return value, nil
+			}
+			item, err := normalizeJSONValueSeen(rv.MapIndex(key).Interface(), seen)
+			if err != nil {
+				return nil, err
+			}
+			out[key.String()] = item
+		}
+		return out, nil
+	case reflect.Slice, reflect.Array:
+		if rv.Kind() == reflect.Slice && rv.IsNil() {
+			return nil, nil
+		}
+		if rv.Kind() == reflect.Slice && rv.Pointer() != 0 {
+			ptr := rv.Pointer()
+			if _, ok := seen[ptr]; ok {
+				return nil, errCircularJSON
+			}
+			seen[ptr] = struct{}{}
+			defer delete(seen, ptr)
+		}
+		out := make([]any, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			item, err := normalizeJSONValueSeen(rv.Index(i).Interface(), seen)
+			if err != nil {
+				return nil, err
+			}
+			out[i] = item
+		}
+		return out, nil
+	case reflect.Float32, reflect.Float64:
+		number := rv.Float()
+		if math.IsNaN(number) || math.IsInf(number, 0) {
+			return nil, nil
+		}
+		return number, nil
+	default:
+		return value, nil
+	}
 }

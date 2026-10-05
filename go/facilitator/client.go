@@ -219,6 +219,10 @@ func (c *HTTPFacilitatorClient) Settle(ctx context.Context, payload, requirement
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode == http.StatusServiceUnavailable {
+			var candidate SettleResponse
+			if json.Unmarshal(raw, &candidate) == nil && pendingSettlement(&candidate) {
+				return &candidate, nil
+			}
 			if err := classifySettleUnavailable(raw); err != nil {
 				return nil, err
 			}

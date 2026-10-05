@@ -162,6 +162,66 @@ func TestMalformedSettlementOverrideIsIgnored(t *testing.T) {
 	}
 }
 
+func TestHandler422StripsUnsafeFailureHeaders(t *testing.T) {
+	var settled bool
+	facilitator := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/settle" {
+			settled = true
+		}
+		if r.URL.Path == "/verify" {
+			_, _ = w.Write([]byte(`{"isValid":true}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"kinds":[]}`))
+	}))
+	defer facilitator.Close()
+	middleware, err := mustMiddleware(t, []Route{
+		{Pattern: "GET /paid", Config: RouteConfig{Accepts: paymentOption{Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1"}}},
+	}, MiddlewareConfig{
+		Facilitator: &Config{URL: facilitator.URL},
+		Schemes:     []Scheme{{Name: "exact", ParsePrice: fixedPrice("1", "0xasset")}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Settlement-Overrides", `{"amount":"50%"}`)
+		w.Header().Set("Location", "/success")
+		w.Header().Add("Set-Cookie", "a=1")
+		w.Header().Add("Set-Cookie", "b=2")
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Header().Set("X-Keep", "yes")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"error":"invalid"}`))
+	})))
+	defer server.Close()
+	challenge := getChallenge(t, server.URL+"/paid")
+	resp := payResponseTo(t, server.URL+"/paid", challenge["accepts"].([]any)[0].(map[string]any))
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d body %s", resp.StatusCode, body)
+	}
+	if resp.Header.Get("Settlement-Overrides") != "" {
+		t.Fatalf("Settlement-Overrides leaked: %q", resp.Header.Get("Settlement-Overrides"))
+	}
+	if resp.Header.Get("Location") != "" {
+		t.Fatalf("Location leaked: %q", resp.Header.Get("Location"))
+	}
+	if cookies := resp.Header.Values("Set-Cookie"); len(cookies) != 0 {
+		t.Fatalf("Set-Cookie leaked: %#v", cookies)
+	}
+	if strings.Contains(strings.ToLower(resp.Header.Get("Cache-Control")), "public") {
+		t.Fatalf("public Cache-Control leaked: %q", resp.Header.Get("Cache-Control"))
+	}
+	if resp.Header.Get("X-Keep") != "yes" {
+		t.Fatalf("safe header %q, want yes", resp.Header.Get("X-Keep"))
+	}
+	if settled {
+		t.Fatal("422 handler settled")
+	}
+}
+
 func TestDollarOverrideWithoutDecimalsFailsClosed(t *testing.T) {
 	var settled bool
 	facilitator := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -243,6 +303,68 @@ func TestUnknownRoutePatternIsAConstructionError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("unknown {id} pattern was accepted and would pass through unpaid")
+	}
+}
+
+func TestRoutePaymentFlowRejectedAtConstruction(t *testing.T) {
+	scheme := Scheme{
+		Name:                       "exact",
+		DefaultAssetTransferMethod: "authorization",
+		ParsePrice:                 fixedPrice("1", "0xasset"),
+		PaymentFlows: map[string]FlowSupport{
+			"authorization": {Supported: []string{"authorization"}, Default: "authorization"},
+		},
+	}
+	cases := []struct {
+		name string
+		flow string
+		want string
+	}{
+		{
+			name: "escrow",
+			flow: "escrow",
+			want: `[x402] Scheme "exact" assetTransferMethod "authorization" does not support paymentFlow "escrow". Supported: authorization (default: authorization).`,
+		},
+		{
+			name: "upfront",
+			flow: "upfront",
+			want: `[x402] Scheme "exact" assetTransferMethod "authorization" does not support paymentFlow "upfront". Supported: authorization (default: authorization).`,
+		},
+		{
+			name: "undeclared",
+			flow: "wire",
+			want: `[x402] Scheme "exact" assetTransferMethod "authorization" does not support paymentFlow "wire". Supported: authorization (default: authorization).`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := PaymentMiddleware([]Route{{
+				Pattern: "GET /paid",
+				Config: RouteConfig{Accepts: paymentOption{
+					Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1",
+					Extra: map[string]any{"paymentFlow": tc.flow},
+				}},
+			}}, MiddlewareConfig{
+				Facilitator: &Config{URL: "https://facilitator.example"},
+				Schemes:     []Scheme{scheme},
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v, want %s", err, tc.want)
+			}
+		})
+	}
+	_, err := PaymentMiddleware([]Route{{
+		Pattern: "GET /paid",
+		Config: RouteConfig{Accepts: paymentOption{
+			Scheme: "exact", Network: "eip155:84532", PayTo: "0x1", Price: "1",
+			Extra: map[string]any{"paymentFlow": "authorization"},
+		}},
+	}}, MiddlewareConfig{
+		Facilitator: &Config{URL: "https://facilitator.example"},
+		Schemes:     []Scheme{scheme},
+	})
+	if err != nil {
+		t.Fatalf("declared authorization flow was rejected: %v", err)
 	}
 }
 

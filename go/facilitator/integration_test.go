@@ -163,6 +163,56 @@ func TestNetHTTPFacilitatorIntegration(t *testing.T) {
 	}
 }
 
+func TestLetsCoreRetryTransactionBearingPendingSettlementOnce(t *testing.T) {
+	const network = "eip155:84532"
+	var mu sync.Mutex
+	var settleBodies [][]byte
+	facilitator := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		switch r.URL.Path {
+		case "/verify":
+			_, _ = w.Write([]byte(`{"isValid":true}`))
+		case "/settle":
+			mu.Lock()
+			settleBodies = append(settleBodies, append([]byte(nil), body...))
+			n := len(settleBodies)
+			mu.Unlock()
+			if n == 1 {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte(`{"success":false,"errorReason":"settlement_pending","transaction":"0xbroadcast","network":"` + network + `"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"success":true,"transaction":"0xtx","network":"` + network + `"}`))
+		default:
+			_, _ = w.Write([]byte(`{"kinds":[]}`))
+		}
+	}))
+	defer facilitator.Close()
+	middleware := paidMiddleware(t, facilitator.URL, "wk_live_seller", true, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	server := httptest.NewServer(middleware)
+	defer server.Close()
+	challenge := unpaidChallenge(t, server.URL)
+	response := payResponse(t, server.URL, challenge)
+	defer response.Body.Close()
+	body, _ := io.ReadAll(response.Body)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(settleBodies) != 2 {
+		t.Fatalf("settle calls %d, want 2; status %d body %s", len(settleBodies), response.StatusCode, body)
+	}
+	if string(settleBodies[1]) != string(settleBodies[0]) {
+		t.Fatalf("retry body %s, want %s", settleBodies[1], settleBodies[0])
+	}
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status %d body %s", response.StatusCode, body)
+	}
+	if response.Header.Get(paymentResponseHeader) == "" {
+		t.Fatal("missing payment-response")
+	}
+}
+
 func TestHandlerErrorDoesNotSettle(t *testing.T) {
 	var settled bool
 	facilitator := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

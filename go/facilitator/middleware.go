@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -81,6 +82,9 @@ func PaymentMiddleware(routes []Route, cfg MiddlewareConfig) (func(http.Handler)
 		return nil, err
 	}
 	if err := refuseBeforeHandlerFlows(cfg.Schemes); err != nil {
+		return nil, err
+	}
+	if err := refuseRoutePaymentFlows(compiled, cfg.Schemes); err != nil {
 		return nil, err
 	}
 	client, err := NewFacilitatorClient(facilitatorConfig(cfg, declaration))
@@ -161,6 +165,7 @@ func (g *paymentGate) serve(w http.ResponseWriter, r *http.Request, next http.Ha
 	buffered := &bufferedResponse{header: make(http.Header), code: http.StatusOK}
 	next.ServeHTTP(buffered, r)
 	if buffered.code >= 400 {
+		stripUnsafeFailureHeaders(buffered.header)
 		buffered.flush(w, nil)
 		return
 	}
@@ -648,6 +653,17 @@ func (b *bufferedResponse) Write(p []byte) (int, error) {
 		b.WriteHeader(http.StatusOK)
 	}
 	return b.body.Write(p)
+}
+
+var publicCacheDirective = regexp.MustCompile(`(?i)\bpublic\b`)
+
+func stripUnsafeFailureHeaders(header http.Header) {
+	header.Del(settlementOverrides)
+	header.Del("Location")
+	header.Del("Set-Cookie")
+	if publicCacheDirective.MatchString(header.Get("Cache-Control")) {
+		header.Del("Cache-Control")
+	}
 }
 
 func (b *bufferedResponse) flush(w http.ResponseWriter, extra map[string]string) {

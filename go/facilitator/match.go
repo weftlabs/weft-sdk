@@ -194,6 +194,79 @@ func assetDecimals(scheme *Scheme, asset, network string) (int, bool) {
 	return scheme.AssetDecimals(asset, network)
 }
 
+func refuseRoutePaymentFlows(routes []compiledRoute, schemes []Scheme) error {
+	for _, route := range routes {
+		for _, option := range normalizeOptions(route.config["accepts"]) {
+			if err := refuseOptionPaymentFlow(route.pattern, option, schemes); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func refuseOptionPaymentFlow(pattern string, option paymentOption, schemes []Scheme) error {
+	if option.Extra == nil {
+		return nil
+	}
+	requested, ok := option.Extra["paymentFlow"]
+	if !ok || requested == nil {
+		return nil
+	}
+	scheme := findScheme(schemes, option.Scheme, option.Network)
+	name := option.Scheme
+	atm := ""
+	var flows map[string]FlowSupport
+	if scheme != nil {
+		if scheme.Name != "" {
+			name = scheme.Name
+		}
+		atm = scheme.DefaultAssetTransferMethod
+		flows = scheme.PaymentFlows
+	}
+	if text, ok := option.Extra["assetTransferMethod"].(string); ok {
+		atm = text
+	}
+	flow := fmt.Sprint(requested)
+	if text, isString := requested.(string); isString {
+		flow = text
+	}
+	config, hasConfig := flows[atm]
+	if !hasConfig {
+		return fmt.Errorf("Route %q: [x402] Scheme %q does not support assetTransferMethod %q. Supported: %s.", pattern, name, atm, flowMethodNames(flows))
+	}
+	if !containsString(config.Supported, config.Default) {
+		return fmt.Errorf("Route %q: [x402] Scheme %q paymentFlows[%q].default is not in supported.", pattern, name, atm)
+	}
+	if !containsString(config.Supported, flow) {
+		return fmt.Errorf("Route %q: [x402] Scheme %q assetTransferMethod %q does not support paymentFlow %q. Supported: %s (default: %s).", pattern, name, atm, flow, strings.Join(config.Supported, ", "), config.Default)
+	}
+	if flow == "upfront" || flow == "escrow" {
+		return fmt.Errorf("scheme %s asset transfer %s declares %s, which settles before the handler; escrow and upfront settlement are not implemented", name, atm, flow)
+	}
+	if flow != "authorization" {
+		return fmt.Errorf("scheme %s declares unknown payment flow %q", name, flow)
+	}
+	return nil
+}
+
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
+}
+
+func flowMethodNames(flows map[string]FlowSupport) string {
+	names := make([]string, 0, len(flows))
+	for name := range flows {
+		names = append(names, name)
+	}
+	return strings.Join(names, ", ")
+}
+
 func refuseBeforeHandlerFlows(schemes []Scheme) error {
 	for _, scheme := range schemes {
 		for method, support := range scheme.PaymentFlows {
