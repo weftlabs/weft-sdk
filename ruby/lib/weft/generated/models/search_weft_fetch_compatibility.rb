@@ -21,6 +21,9 @@ module Weft
 
     attr_accessor :contract_version
 
+    # Extent of the operation covered by weft_fetch. `terminal_response` covers the terminal result; `submission_only` covers submission but not completion or retrieval of the result; `none` means no coverage. When absent, coverage is unknown, not terminal. Do not infer terminal coverage from synchronous execution mode alone.
+    attr_accessor :coverage
+
     class EnumAttributeValidator
       attr_reader :datatype
       attr_reader :allowable_values
@@ -48,7 +51,8 @@ module Weft
       {
         :'state' => :'state',
         :'reason' => :'reason',
-        :'contract_version' => :'contract_version'
+        :'contract_version' => :'contract_version',
+        :'coverage' => :'coverage'
       }
     end
 
@@ -67,7 +71,8 @@ module Weft
       {
         :'state' => :'String',
         :'reason' => :'String',
-        :'contract_version' => :'Integer'
+        :'contract_version' => :'Integer',
+        :'coverage' => :'String'
       }
     end
 
@@ -110,6 +115,10 @@ module Weft
       else
         self.contract_version = nil
       end
+
+      if attributes.key?(:'coverage')
+        self.coverage = attributes[:'coverage']
+      end
     end
 
     # Show invalid properties with the reasons. Usually used together with valid?
@@ -141,6 +150,8 @@ module Weft
       return false unless state_validator.valid?(@state)
       return false if @reason.nil?
       return false if @contract_version.nil?
+      coverage_validator = EnumAttributeValidator.new('String', ["terminal_response", "submission_only", "none"])
+      return false unless coverage_validator.valid?(@coverage)
       true
     end
 
@@ -174,6 +185,16 @@ module Weft
       @contract_version = contract_version
     end
 
+    # Custom attribute writer method checking allowed values (enum).
+    # @param [Object] coverage Object to be assigned
+    def coverage=(coverage)
+      validator = EnumAttributeValidator.new('String', ["terminal_response", "submission_only", "none"])
+      unless validator.valid?(coverage)
+        fail ArgumentError, "invalid value for \"coverage\", must be one of #{validator.allowable_values}."
+      end
+      @coverage = coverage
+    end
+
     # Checks equality by comparing each attribute.
     # @param [Object] Object to be compared
     def ==(o)
@@ -181,7 +202,8 @@ module Weft
       self.class == o.class &&
           state == o.state &&
           reason == o.reason &&
-          contract_version == o.contract_version
+          contract_version == o.contract_version &&
+          coverage == o.coverage
     end
 
     # @see the `==` method
@@ -193,7 +215,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [state, reason, contract_version].hash
+      [state, reason, contract_version, coverage].hash
     end
 
     # Builds the object from hash

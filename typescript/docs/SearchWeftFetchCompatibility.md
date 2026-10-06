@@ -9,6 +9,7 @@ Name | Type
 `state` | string
 `reason` | string
 `contractVersion` | number
+`coverage` | string
 
 ## Example
 
@@ -20,6 +21,7 @@ const example = {
   "state": null,
   "reason": null,
   "contractVersion": null,
+  "coverage": null,
 } satisfies SearchWeftFetchCompatibility
 
 console.log(example)

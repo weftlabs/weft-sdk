@@ -7,6 +7,7 @@ Name | Type | Description | Notes
 **State** | **string** |  |
 **Reason** | **string** |  |
 **ContractVersion** | **int32** |  |
+**Coverage** | Pointer to **string** | Extent of the operation covered by weft_fetch. &#x60;terminal_response&#x60; covers the terminal result; &#x60;submission_only&#x60; covers submission but not completion or retrieval of the result; &#x60;none&#x60; means no coverage. When absent, coverage is unknown, not terminal. Do not infer terminal coverage from synchronous execution mode alone.  | [optional]
 
 ## Methods
 
@@ -86,6 +87,31 @@ and a boolean to check if the value has been set.
 
 SetContractVersion sets ContractVersion field to given value.
 
+
+### GetCoverage
+
+`func (o *SearchWeftFetchCompatibility) GetCoverage() string`
+
+GetCoverage returns the Coverage field if non-nil, zero value otherwise.
+
+### GetCoverageOk
+
+`func (o *SearchWeftFetchCompatibility) GetCoverageOk() (*string, bool)`
+
+GetCoverageOk returns a tuple with the Coverage field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCoverage
+
+`func (o *SearchWeftFetchCompatibility) SetCoverage(v string)`
+
+SetCoverage sets Coverage field to given value.
+
+### HasCoverage
+
+`func (o *SearchWeftFetchCompatibility) HasCoverage() bool`
+
+HasCoverage returns a boolean if a field has been set.
 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

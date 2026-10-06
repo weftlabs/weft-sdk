@@ -37,6 +37,17 @@ export interface SearchWeftFetchCompatibility {
      * @memberof SearchWeftFetchCompatibility
      */
     contractVersion: number;
+    /**
+     * Extent of the operation covered by weft_fetch. `terminal_response`
+     * covers the terminal result; `submission_only` covers submission but
+     * not completion or retrieval of the result; `none` means no coverage.
+     * When absent, coverage is unknown, not terminal. Do not infer terminal
+     * coverage from synchronous execution mode alone.
+     *
+     * @type {string}
+     * @memberof SearchWeftFetchCompatibility
+     */
+    coverage?: SearchWeftFetchCompatibilityCoverageEnum;
 }
 
 
@@ -49,6 +60,16 @@ export const SearchWeftFetchCompatibilityStateEnum = {
     Unknown: 'unknown'
 } as const;
 export type SearchWeftFetchCompatibilityStateEnum = typeof SearchWeftFetchCompatibilityStateEnum[keyof typeof SearchWeftFetchCompatibilityStateEnum];
+
+/**
+ * @export
+ */
+export const SearchWeftFetchCompatibilityCoverageEnum = {
+    TerminalResponse: 'terminal_response',
+    SubmissionOnly: 'submission_only',
+    None: 'none'
+} as const;
+export type SearchWeftFetchCompatibilityCoverageEnum = typeof SearchWeftFetchCompatibilityCoverageEnum[keyof typeof SearchWeftFetchCompatibilityCoverageEnum];
 
 
 /**
@@ -74,6 +95,7 @@ export function SearchWeftFetchCompatibilityFromJSONTyped(json: any, ignoreDiscr
         'state': json['state'],
         'reason': json['reason'],
         'contractVersion': json['contract_version'],
+        'coverage': json['coverage'] == null ? undefined : json['coverage'],
     };
 }
 
@@ -91,5 +113,6 @@ export function SearchWeftFetchCompatibilityToJSONTyped(value?: SearchWeftFetchC
         'state': value['state'],
         'reason': value['reason'],
         'contract_version': value['contractVersion'],
+        'coverage': value['coverage'],
     };
 }

@@ -17,8 +17,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -29,13 +29,24 @@ class SearchWeftFetchCompatibility(BaseModel):
     state: StrictStr
     reason: StrictStr
     contract_version: StrictInt
-    __properties: ClassVar[List[str]] = ["state", "reason", "contract_version"]
+    coverage: Optional[StrictStr] = Field(default=None, description="Extent of the operation covered by weft_fetch. `terminal_response` covers the terminal result; `submission_only` covers submission but not completion or retrieval of the result; `none` means no coverage. When absent, coverage is unknown, not terminal. Do not infer terminal coverage from synchronous execution mode alone. ")
+    __properties: ClassVar[List[str]] = ["state", "reason", "contract_version", "coverage"]
 
     @field_validator('state')
     def state_validate_enum(cls, value):
         """Validates the enum"""
         if value not in set(['supported', 'unsupported', 'unknown']):
             raise ValueError("must be one of enum values ('supported', 'unsupported', 'unknown')")
+        return value
+
+    @field_validator('coverage')
+    def coverage_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['terminal_response', 'submission_only', 'none']):
+            raise ValueError("must be one of enum values ('terminal_response', 'submission_only', 'none')")
         return value
 
     model_config = ConfigDict(
@@ -91,6 +102,7 @@ class SearchWeftFetchCompatibility(BaseModel):
         _obj = cls.model_validate({
             "state": obj.get("state"),
             "reason": obj.get("reason"),
-            "contract_version": obj.get("contract_version")
+            "contract_version": obj.get("contract_version"),
+            "coverage": obj.get("coverage")
         })
         return _obj

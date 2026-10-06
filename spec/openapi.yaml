@@ -2610,6 +2610,15 @@ components:
           type: string
         contract_version:
           type: integer
+        coverage:
+          type: string
+          enum: [terminal_response, submission_only, none]
+          description: |
+            Extent of the operation covered by weft_fetch. `terminal_response`
+            covers the terminal result; `submission_only` covers submission but
+            not completion or retrieval of the result; `none` means no coverage.
+            When absent, coverage is unknown, not terminal. Do not infer terminal
+            coverage from synchronous execution mode alone.
     SearchHelperDocs:
       type: object
       additionalProperties: false
