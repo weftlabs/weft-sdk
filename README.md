@@ -6,6 +6,9 @@ Generated clients remain available when you need direct access to the OpenAPI
 contract. The `weft` command-line client is a separate package:
 [weftlabs/weft-cli](https://github.com/weftlabs/weft-cli).
 
+For a source checkout, start with [local development tools](#local-development-tools).
+The buyer quickstarts below use a real account; they are not local setup checks.
+
 ## TypeScript quickstart
 
 1. Sign in at [weft.network](https://weft.network).
@@ -109,12 +112,19 @@ sources are updated by the spec-sync workflow and must not be edited manually.
 
 ## Local development tools
 
-Mise pins Node 24.21.0 for repository development and JavaScript build/test CI,
-along with the other runtimes and standalone source tools. Published SDK
-packages still support Node.js 18 or newer. Install the tools and enable
-the Git hooks with:
+Install Git and [Mise](https://mise.jdx.dev/getting-started.html), then run
+these commands from the repository root. [`.mise.toml`](.mise.toml) owns the
+source runtimes and tools; manifests and lockfiles own package dependencies.
+Published TypeScript packages still support Node.js 18 or newer; the source
+build runtime is a separate selection, not the consumer compatibility floor.
+
+No Weft account, API key, wallet key or provider credential is needed for
+source installation, builds or unit tests. Use a credential-free environment;
+do not copy active account configuration into the checkout. Tool/dependency
+installation needs download access. Review the tool configuration, then:
 
 ```sh
+mise trust
 mise install
 mise exec -- pnpm install --frozen-lockfile
 mise exec -- uv sync --project python --python "$(mise which python)" --frozen --group dev
@@ -127,8 +137,23 @@ mise exec -- go -C go mod download
 mise exec -- lefthook install
 ```
 
-Pre-commit checks lint or format staged files only. Pre-push runs whole-repo
-lint and format checks plus the TypeScript SDK, Python, Ruby, and Go unit tests.
-The Python hook uses the installed environment without dependency sync. Run the
-setup commands again after dependency changes. Builds, generated-code checks,
+Build the source packages and run the TypeScript unit checks:
+
+```sh
+mise exec -- pnpm run build
+mise exec -- pnpm --filter @weftlabs/sdk run test:unit
+```
+
+[package.json](package.json) owns the build and broader `check` commands.
+[lefthook.yml](lefthook.yml) owns the language-specific unit gates: pre-commit
+checks lint or format staged files only; pre-push runs whole-repo lint and
+format checks plus TypeScript, Python, Ruby and Go unit tests. The Python hook
+uses the installed environment without dependency sync. Run the setup
+commands again after dependency changes. Builds, generated-code checks,
 type checks, quickstarts, and network tests remain in CI.
+
+These packages are libraries, not an API server. Build/unit commands return
+when finished; there is no persistent SDK service to start or stop. Live
+buyer/seller examples, staging checks, spec regeneration and publishing are
+separate operations. Do not use a paid fetch or wallet bootstrap as setup
+verification, and do not hand-edit generated clients.
