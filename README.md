@@ -112,8 +112,10 @@ sources are updated by the spec-sync workflow and must not be edited manually.
 
 ## Local development tools
 
-Install Git and [Mise](https://mise.jdx.dev/getting-started.html), then run
-these commands from the repository root. [`.mise.toml`](.mise.toml) owns the
+Install Git and [Mise](https://mise.jdx.dev/getting-started.html), and
+[activate Mise in your interactive shell](https://mise.jdx.dev/getting-started.html#activate-mise)
+once. Run these blocks separately from the repository root; after tool
+installation, wait for the next shell prompt before installing dependencies. [`.mise.toml`](.mise.toml) owns the
 source runtimes and tools; manifests and lockfiles own package dependencies.
 Published TypeScript packages still support Node.js 18 or newer; the source
 build runtime is a separate selection, not the consumer compatibility floor.
@@ -126,22 +128,27 @@ installation needs download access. Review the tool configuration, then:
 ```sh
 mise trust
 mise install
-mise exec -- pnpm install --frozen-lockfile
-mise exec -- uv sync --project python --python "$(mise which python)" --frozen --group dev
+```
+
+Then install dependencies and hooks:
+
+```sh
+pnpm install --frozen-lockfile
+uv sync --project python --python "$(mise which python)" --frozen --group dev
 cd ruby
-mise exec -- bundle config set --local path vendor/bundle
-mise exec -- bundle config set --local frozen true
-mise exec -- bundle install
+bundle config set --local path vendor/bundle
+bundle config set --local frozen true
+bundle install
 cd ..
-mise exec -- go -C go mod download
-mise exec -- lefthook install
+go -C go mod download
+lefthook install
 ```
 
 Build the source packages and run the TypeScript unit checks:
 
 ```sh
-mise exec -- pnpm run build
-mise exec -- pnpm --filter @weftlabs/sdk run test:unit
+pnpm run build
+pnpm --filter @weftlabs/sdk run test:unit
 ```
 
 [package.json](package.json) owns the build and broader `check` commands.
