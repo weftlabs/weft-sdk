@@ -5,7 +5,15 @@ available under `weft_sdk.generated` as an advanced escape hatch.
 
 ## Install and authenticate
 
-Create a buyer `wk_*` key in
+Use Python compatible with the `requires-python` contract in
+[pyproject.toml](pyproject.toml). For source development, use the pinned Mise
+runtime and installation/build/unit steps in the
+[repository README](../README.md#local-development-tools); those checks need
+no buyer key. This package is a library, not a server, so no independent
+start/stop step applies.
+
+The examples below call a real Weft account and are optional consumer usage,
+not source setup verification. Create a buyer `wk_*` key in
 [Dashboard → API keys](https://weft.network/dashboard/buyer/api_keys), then:
 
 ```sh
