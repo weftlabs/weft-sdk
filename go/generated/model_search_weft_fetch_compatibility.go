@@ -24,6 +24,8 @@ type SearchWeftFetchCompatibility struct {
 	State           string `json:"state"`
 	Reason          string `json:"reason"`
 	ContractVersion int32  `json:"contract_version"`
+	// Extent of the operation covered by weft_fetch. `terminal_response` covers the terminal result; `submission_only` covers submission but not completion or retrieval of the result; `none` means no coverage. When absent, coverage is unknown, not terminal. Do not infer terminal coverage from synchronous execution mode alone.
+	Coverage *string `json:"coverage,omitempty"`
 }
 
 type _SearchWeftFetchCompatibility SearchWeftFetchCompatibility
@@ -120,6 +122,38 @@ func (o *SearchWeftFetchCompatibility) SetContractVersion(v int32) {
 	o.ContractVersion = v
 }
 
+// GetCoverage returns the Coverage field value if set, zero value otherwise.
+func (o *SearchWeftFetchCompatibility) GetCoverage() string {
+	if o == nil || IsNil(o.Coverage) {
+		var ret string
+		return ret
+	}
+	return *o.Coverage
+}
+
+// GetCoverageOk returns a tuple with the Coverage field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchWeftFetchCompatibility) GetCoverageOk() (*string, bool) {
+	if o == nil || IsNil(o.Coverage) {
+		return nil, false
+	}
+	return o.Coverage, true
+}
+
+// HasCoverage returns a boolean if a field has been set.
+func (o *SearchWeftFetchCompatibility) HasCoverage() bool {
+	if o != nil && !IsNil(o.Coverage) {
+		return true
+	}
+
+	return false
+}
+
+// SetCoverage gets a reference to the given string and assigns it to the Coverage field.
+func (o *SearchWeftFetchCompatibility) SetCoverage(v string) {
+	o.Coverage = &v
+}
+
 func (o SearchWeftFetchCompatibility) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -133,6 +167,9 @@ func (o SearchWeftFetchCompatibility) ToMap() (map[string]interface{}, error) {
 	toSerialize["state"] = o.State
 	toSerialize["reason"] = o.Reason
 	toSerialize["contract_version"] = o.ContractVersion
+	if !IsNil(o.Coverage) {
+		toSerialize["coverage"] = o.Coverage
+	}
 	return toSerialize, nil
 }
 
