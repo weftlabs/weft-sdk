@@ -77,3 +77,19 @@ updates:
     labels: ["dependencies", "github-actions"]
     commit-message:
       prefix: "ci(deps)"
+
+  - package-ecosystem: uv
+    directory: "/python"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
