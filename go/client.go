@@ -170,7 +170,8 @@ func (c *Client) Fetch(ctx context.Context, request FetchRequest, options FetchO
 		return nil, validation("idempotencyKey is required")
 	}
 	// Weft's limit. Checked here so a bad key never looks like a paid failure.
-	if !idempotencyKeyPattern.MatchString(strings.TrimSpace(options.IdempotencyKey)) {
+	// Match the caller bytes. Trimming would accept a different retry identity.
+	if !idempotencyKeyPattern.MatchString(options.IdempotencyKey) {
 		return nil, validation("idempotencyKey must be 1-255 visible ASCII characters without spaces")
 	}
 	wire, err := fetchWire(request)
@@ -181,7 +182,7 @@ func (c *Client) Fetch(ctx context.Context, request FetchRequest, options FetchO
 	if err != nil {
 		return nil, err
 	}
-	headers := map[string]string{"Idempotency-Key": strings.TrimSpace(options.IdempotencyKey)}
+	headers := map[string]string{"Idempotency-Key": options.IdempotencyKey}
 	var out generated.FetchResponse
 	if err := c.call(ctx, http.MethodPost, "/api/v1/fetch", headers, body, &out); err != nil {
 		var weftErr *Error
