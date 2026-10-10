@@ -11,6 +11,8 @@ import {
   FetchResponseToJSON,
 } from "../src/generated/models/FetchResponse";
 
+import { SearchResponseToJSON } from "../src/generated/models/SearchResponse";
+
 function jsonResponse(value: unknown): Response {
   return new Response(JSON.stringify(value), {
     status: 200,
@@ -19,6 +21,73 @@ function jsonResponse(value: unknown): Response {
 }
 
 describe("WeftClient", () => {
+  describe("search coverage", () => {
+    it.each(["terminal_response", "submission_only", "none", undefined])(
+      "preserves %s coverage through HTTP decoding and generated encoding (absent stays unknown)",
+      async (coverage) => {
+        const wire = {
+          query_trace_id: "coverage-search-1",
+          query: "search",
+          embedder_model: "offline",
+          candidates_considered: 1,
+          warnings: [],
+          results: [
+            {
+              provider: { provider_id: "provider-1" },
+              capability: { capability_id: "search" },
+              score: 1,
+              endpoints: [
+                {
+                  endpoint_id: "endpoint-1",
+                  // Synchronous execution must not invent terminal coverage.
+                  execution: { mode: "sync" },
+                  access_methods: [
+                    {
+                      access_method_id: "access-1",
+                      protocol: "x402",
+                      price: { amount: "0.01", currency: "USD" },
+                      weft_fetch: {
+                        state: "supported",
+                        reason: "supported",
+                        contract_version: 1,
+                        ...(coverage === undefined ? {} : { coverage }),
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+        const fetchApi = vi.fn(
+          async (_input: RequestInfo | URL, _init?: RequestInit) =>
+            jsonResponse(wire),
+        );
+        const client = new WeftClient({ apiKey: "wk_test", fetchApi });
+
+        const response = await client.search({ query: "search" });
+
+        expect(fetchApi).toHaveBeenCalledTimes(1);
+        const [url, init] = fetchApi.mock.calls[0];
+        expect(String(url)).toBe("https://weft.network/api/v1/search");
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({ query: "search" });
+        const compatibility =
+          response.results[0].endpoints[0].accessMethods?.[0].weftFetch;
+        expect(compatibility).toEqual({
+          state: "supported",
+          reason: "supported",
+          contractVersion: 1,
+          coverage,
+        });
+        expect(compatibility?.coverage).toBe(coverage);
+        expect(
+          JSON.parse(JSON.stringify(SearchResponseToJSON(response))),
+        ).toEqual(wire);
+      },
+    );
+  });
+
   describe("bounded fetch", () => {
     const legacyRequest = {
       url: "https://merchant.example/data",
