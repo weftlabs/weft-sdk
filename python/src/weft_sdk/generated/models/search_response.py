@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
+from weft_sdk.generated.models.search_compact_result import SearchCompactResult
 from weft_sdk.generated.models.search_filter_spec import SearchFilterSpec
 from weft_sdk.generated.models.search_response_warnings_inner import SearchResponseWarningsInner
 from weft_sdk.generated.models.search_result import SearchResult
@@ -36,7 +37,7 @@ class SearchResponse(BaseModel):
     query: StrictStr
     format: Optional[StrictStr] = Field(default=None, description="Which view this response carries, echoing the requested format. `json` populates `results` and leaves `markdown` null; `markdown` populates `markdown` and leaves `results` empty. Exactly one is populated per response, never both — returning both eagerly would double the payload. ")
     markdown: Optional[StrictStr] = Field(default=None, description="The flat comparison table, when `format` is `markdown`; null otherwise. Rendered deterministically from the same stored result the `json` view returns, so the two views of one search can never disagree. ")
-    result_count: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="How many `(Provider + Capability)` results the search produced. Read THIS, not `results.length`, for the count: on a `markdown` response `results` is empty by design, so `result_count > 0` with an empty `results` is a rendered table while `result_count == 0` is a genuine zero-result. ")
+    result_count: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="How many `(Provider + Capability)` results the search produced. Read THIS, not `results.length`, for the count: on a `markdown` response `results` is empty by design, so `result_count > 0` with an empty `results` is a rendered table while `result_count == 0` is a genuine zero-result. On a `compact` view response it counts `compact_results`; there, `result_count == 0` with `omitted_results` means every ranked result was too large to show. ")
     served_from: Optional[StrictStr] = Field(default=None, description="`live` for a fresh serve; `snapshot` for an immutable replay of a completed search. A re-read is a snapshot and says so — read it with `as_of` and `stale`. ")
     as_of: Optional[datetime] = Field(default=None, description="When the results were produced. Now on a `live` serve; on a `snapshot` the ORIGINAL serve time, because a replay returns exactly what was paid for, not current truth. ")
     stale: Optional[StrictBool] = Field(default=None, description="Whether the active search index has changed since these results were produced. `true` does not mean the results are wrong — it means they are a snapshot of an index that has since moved. Always `false` on a `live` serve. ")
@@ -49,8 +50,11 @@ class SearchResponse(BaseModel):
     match_quality: Optional[StrictStr] = Field(default='none', description="Calibrated confidence in this result set — read this instead of thresholding a raw similarity score. `strong`: the top match is confidently on-intent, proceed. `weak`: above the relevance floor but inside the band where plausible-but-wrong matches live, verify the result before paying. `none`: nothing cleared the floor — `results` is empty and `reason` / `suggestion` say why. Results below the floor are never returned as near-misses. ")
     reason: Optional[StrictStr] = Field(default=None, description="Machine-readable cause of an empty result set, non-null exactly when `match_quality` is `none`. `below_relevance_floor`: candidates ranked but the best scored under the floor. `filter_collapsed_pool`: a caller filter cut the pool before ranking and nothing relevant survived — relax the filter. `no_catalog_coverage`: recall returned no candidates at all on an unfiltered query. `unsupported_filter_value`: a CATEGORICAL filter value (`type` / `protocol`) matches zero stored values, so it could never have matched — categorical only, since a continuous bound like `price` that matches nothing is reported as `filter_collapsed_pool` instead (the bound needs raising, the dimension is not unsupported). `index_unavailable`: no active index — an operational fault, paired with the `EMPTY_INDEX` warning. ")
     suggestion: Optional[StrictStr] = Field(default=None, description="Human/agent-readable explanation of `reason`, carrying the concrete numbers behind it (pool sizes, the best discarded score against the floor, the values actually stored for a filter). Non-null exactly when `reason` is. ")
-    results: List[SearchResult] = Field(description="Ranked `(Provider + Capability)` results; empty when the index is empty or nothing cleared the relevance floor. Results BELOW the floor are never returned — an empty list plus a `reason` is the honest answer, not a list of near-misses in the same shape as a genuine match. ")
-    __properties: ClassVar[List[str]] = ["query_trace_id", "query", "format", "markdown", "result_count", "served_from", "as_of", "stale", "payment_note", "applied_filters", "decomposition_source", "embedder_model", "candidates_considered", "warnings", "match_quality", "reason", "suggestion", "results"]
+    results: List[SearchResult] = Field(description="Ranked `(Provider + Capability)` results; empty when the index is empty or nothing cleared the relevance floor. Results BELOW the floor are never returned — an empty list plus a `reason` is the honest answer, not a list of near-misses in the same shape as a genuine match. Empty on a `compact` view response; read `compact_results`. ")
+    view: Optional[StrictStr] = Field(default=None, description="The view this response carries. Present as `compact` when the request asked for `view: \"compact\"`; absent means `full`. ")
+    compact_results: Optional[List[SearchCompactResult]] = Field(default=None, description="Ranked compact results, present only on a `compact` view response. `result_count` is their count. They are a separate field so that typed clients keep the full `SearchResult` shape for `results`. ")
+    omitted_results: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(default=None, description="Compact view only: how many ranked results were left out because even their minimum summary does not fit the per-result budget. Absent when none were left out. ")
+    __properties: ClassVar[List[str]] = ["query_trace_id", "query", "format", "markdown", "result_count", "served_from", "as_of", "stale", "payment_note", "applied_filters", "decomposition_source", "embedder_model", "candidates_considered", "warnings", "match_quality", "reason", "suggestion", "results", "view", "compact_results", "omitted_results"]
 
     @field_validator('format')
     def format_validate_enum(cls, value):
@@ -100,6 +104,16 @@ class SearchResponse(BaseModel):
 
         if value not in set(['below_relevance_floor', 'filter_collapsed_pool', 'no_catalog_coverage', 'unsupported_filter_value', 'index_unavailable']):
             raise ValueError("must be one of enum values ('below_relevance_floor', 'filter_collapsed_pool', 'no_catalog_coverage', 'unsupported_filter_value', 'index_unavailable')")
+        return value
+
+    @field_validator('view')
+    def view_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['full', 'compact']):
+            raise ValueError("must be one of enum values ('full', 'compact')")
         return value
 
     model_config = ConfigDict(
@@ -158,6 +172,13 @@ class SearchResponse(BaseModel):
                 if _item_results:
                     _items.append(_item_results.to_dict())
             _dict['results'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in compact_results (list)
+        _items = []
+        if self.compact_results:
+            for _item_compact_results in self.compact_results:
+                if _item_compact_results:
+                    _items.append(_item_compact_results.to_dict())
+            _dict['compact_results'] = _items
         return _dict
 
     @classmethod
@@ -187,6 +208,9 @@ class SearchResponse(BaseModel):
             "match_quality": obj.get("match_quality") if obj.get("match_quality") is not None else 'none',
             "reason": obj.get("reason"),
             "suggestion": obj.get("suggestion"),
-            "results": [SearchResult.from_dict(_item) for _item in obj["results"]] if obj.get("results") is not None else None
+            "results": [SearchResult.from_dict(_item) for _item in obj["results"]] if obj.get("results") is not None else None,
+            "view": obj.get("view"),
+            "compact_results": [SearchCompactResult.from_dict(_item) for _item in obj["compact_results"]] if obj.get("compact_results") is not None else None,
+            "omitted_results": obj.get("omitted_results")
         })
         return _obj

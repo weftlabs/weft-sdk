@@ -45,7 +45,31 @@ export interface SearchRequest {
      * @memberof SearchRequest
      */
     filters?: SearchFilterSpec;
+    /**
+     * Response view. Absent means `full`: the complete `SearchResult`
+     * rows in `results`. `compact` returns the hosted MCP agent view in
+     * `compact_results` (see `SearchCompactResult`). The compact view
+     * applies the same selection as hosted MCP search: it leaves out
+     * incomplete PayWithLocus gateway contracts. It does not add filters;
+     * send `weft_fetch_compatible: true` to get only results that
+     * `POST /api/v1/fetch` can pay.
+     *
+     * @type {string}
+     * @memberof SearchRequest
+     */
+    view?: SearchRequestViewEnum;
 }
+
+
+/**
+ * @export
+ */
+export const SearchRequestViewEnum = {
+    Full: 'full',
+    Compact: 'compact'
+} as const;
+export type SearchRequestViewEnum = typeof SearchRequestViewEnum[keyof typeof SearchRequestViewEnum];
+
 
 /**
  * Check if a given object implements the SearchRequest interface.
@@ -68,6 +92,7 @@ export function SearchRequestFromJSONTyped(json: any, ignoreDiscriminator: boole
         'query': json['query'],
         'maxResults': json['max_results'] == null ? undefined : json['max_results'],
         'filters': json['filters'] == null ? undefined : SearchFilterSpecFromJSON(json['filters']),
+        'view': json['view'] == null ? undefined : json['view'],
     };
 }
 
@@ -85,5 +110,6 @@ export function SearchRequestToJSONTyped(value?: SearchRequest | null, ignoreDis
         'query': value['query'],
         'max_results': value['maxResults'],
         'filters': SearchFilterSpecToJSON(value['filters']),
+        'view': value['view'],
     };
 }

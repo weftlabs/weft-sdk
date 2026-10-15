@@ -20,7 +20,7 @@ module Weft
       @api_client = api_client
     end
     # Get a buyer purchase
-    # @param id [Integer] Purchase ID
+    # @param id [GetPurchaseIdParameter] The opaque &#x60;purchase_id&#x60; (&#x60;pur_…&#x60;) that fetch returns, or the legacy integer &#x60;id&#x60;. Both resolve only within the caller&#39;s own purchases. New callers should store and send &#x60;purchase_id&#x60;.
     # @param [Hash] opts the optional parameters
     # @return [PurchaseResponse]
     def get_purchase(id, opts = {})
@@ -29,7 +29,7 @@ module Weft
     end
 
     # Get a buyer purchase
-    # @param id [Integer] Purchase ID
+    # @param id [GetPurchaseIdParameter] The opaque &#x60;purchase_id&#x60; (&#x60;pur_…&#x60;) that fetch returns, or the legacy integer &#x60;id&#x60;. Both resolve only within the caller&#39;s own purchases. New callers should store and send &#x60;purchase_id&#x60;.
     # @param [Hash] opts the optional parameters
     # @return [Array<(PurchaseResponse, Integer, Hash)>] PurchaseResponse data, response status code and response headers
     def get_purchase_with_http_info(id, opts = {})

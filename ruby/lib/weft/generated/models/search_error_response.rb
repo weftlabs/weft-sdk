@@ -122,7 +122,7 @@ module Weft
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @error.nil?
-      error_validator = EnumAttributeValidator.new('String', ["INVALID_QUERY", "INVALID_MAX_RESULTS", "INVALID_FILTERS", "UNKNOWN_PARAMETER", "SEARCH_UPSTREAM_ERROR", "SEARCH_BACKEND_MISCONFIGURED"])
+      error_validator = EnumAttributeValidator.new('String', ["INVALID_QUERY", "INVALID_MAX_RESULTS", "INVALID_FILTERS", "INVALID_VIEW", "UNKNOWN_PARAMETER", "SEARCH_UPSTREAM_ERROR", "SEARCH_BACKEND_MISCONFIGURED"])
       return false unless error_validator.valid?(@error)
       true
     end
@@ -130,7 +130,7 @@ module Weft
     # Custom attribute writer method checking allowed values (enum).
     # @param [Object] error Object to be assigned
     def error=(error)
-      validator = EnumAttributeValidator.new('String', ["INVALID_QUERY", "INVALID_MAX_RESULTS", "INVALID_FILTERS", "UNKNOWN_PARAMETER", "SEARCH_UPSTREAM_ERROR", "SEARCH_BACKEND_MISCONFIGURED"])
+      validator = EnumAttributeValidator.new('String', ["INVALID_QUERY", "INVALID_MAX_RESULTS", "INVALID_FILTERS", "INVALID_VIEW", "UNKNOWN_PARAMETER", "SEARCH_UPSTREAM_ERROR", "SEARCH_BACKEND_MISCONFIGURED"])
       unless validator.valid?(error)
         fail ArgumentError, "invalid value for \"error\", must be one of #{validator.allowable_values}."
       end

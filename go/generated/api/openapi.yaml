@@ -612,6 +612,16 @@ paths:
         the structured envelope; `Accept: text/markdown` returns a rendered
         Markdown digest of the same results — useful for piping into a chat
         UI or LLM prompt.
+
+        Compact view: send `view: "compact"` to get the agent view of the
+        hosted MCP `weft_search` tool. Each result is a small contract for the
+        next paid call (below 2,000 JSON bytes): typed inputs, the request
+        recipe, one access method with price, attribution, a ready `next_call`
+        to `POST /api/v1/fetch` when the request is determined, and the
+        authenticated `contract_url` for the full contract. Use it when you
+        give search results to a model. The compact rows are in
+        `compact_results`; `results` is empty. The compact view is JSON only
+        and needs the curated search backend.
       operationId: search
       requestBody:
         content:
@@ -655,9 +665,11 @@ paths:
                 $ref: "#/components/schemas/SearchErrorResponse"
           description: |
             Invalid request — empty/missing `query`, out-of-range
-            `max_results`, an unknown top-level parameter, or invalid
+            `max_results`, an unknown top-level parameter, invalid
             `filters` (unknown filter key/operator, bad enum value, or a
-            sub-filter without exactly one operator). See the `error` code.
+            sub-filter without exactly one operator), or an invalid `view`
+            (unknown value, `Accept: text/markdown`, or a backend without the
+            compact view). See the `error` code.
         "429":
           content:
             application/json:
@@ -705,11 +717,13 @@ paths:
           6. Replays the request with the protocol-specific payment credential.
           7. Streams the upstream artifact back, base64-encoded under
               `body_base64`, with `paid_usd`, `held_usd`, `payment_status`,
-              `tx_hash`, and `protocol`. `paid_usd`
+              `tx_hash`, `protocol`, and `purchase_id`. `paid_usd`
              is "0.00" until the charge is CONFIRMED settled — a signed-but-
              unsettled hold (the common case for x402, which settles
              asynchronously) reports its amount in `held_usd` instead, never
-             in `paid_usd`.
+             in `paid_usd`. `purchase_id` is the id that
+             `GET /api/v1/purchases/{id}` accepts, so a caller can read how a
+             pending charge ends.
 
         **Opt-in safety controls:** `allow_tempo_refill: false` prevents this
         request from creating, adopting, or enqueueing a Base-to-Tempo bridge.
@@ -1069,13 +1083,16 @@ paths:
     get:
       operationId: getPurchase
       parameters:
-      - description: Purchase ID
+      - description: |
+          The opaque `purchase_id` (`pur_…`) that fetch returns, or the
+          legacy integer `id`. Both resolve only within the caller's own
+          purchases. New callers should store and send `purchase_id`.
         explode: false
         in: path
         name: id
         required: true
         schema:
-          type: integer
+          $ref: "#/components/schemas/getPurchase_id_parameter"
         style: simple
       responses:
         "200":
@@ -2168,6 +2185,7 @@ components:
       - data
     Purchase:
       example:
+        purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
         amount_usd: amount_usd
         tx_hash: tx_hash
         recipient_address: recipient_address
@@ -2187,6 +2205,16 @@ components:
       properties:
         id:
           type: integer
+        purchase_id:
+          description: |
+            Opaque purchase id: the value fetch returns as `purchase_id` and
+            that `GET /api/v1/purchases/{id}` accepts. Prefer it over the
+            sequential `id`. Current servers always send this field; it is
+            optional in this schema so that a client also accepts a response
+            from an older server.
+          example: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
+          pattern: "^pur_[A-Za-z0-9_-]{24}$"
+          type: string
         status:
           enum:
           - signed
@@ -2300,7 +2328,8 @@ components:
           page: 6
           total_pages: 5
         data:
-        - amount_usd: amount_usd
+        - purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
+          amount_usd: amount_usd
           tx_hash: tx_hash
           recipient_address: recipient_address
           reject_reason: reject_reason
@@ -2316,7 +2345,8 @@ components:
           attribution_status: attributed
           settled_at: 2000-01-23T04:56:07.000+00:00
           status: signed
-        - amount_usd: amount_usd
+        - purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
+          amount_usd: amount_usd
           tx_hash: tx_hash
           recipient_address: recipient_address
           reject_reason: reject_reason
@@ -2345,6 +2375,7 @@ components:
     PurchaseResponse:
       example:
         data:
+          purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
           amount_usd: amount_usd
           tx_hash: tx_hash
           recipient_address: recipient_address
@@ -2528,6 +2559,7 @@ components:
     SearchRequest:
       additionalProperties: false
       example:
+        view: full
         query: send email from an agent
         max_results: 4
         filters:
@@ -2586,6 +2618,19 @@ components:
           type: integer
         filters:
           $ref: "#/components/schemas/SearchFilterSpec"
+        view:
+          description: |
+            Response view. Absent means `full`: the complete `SearchResult`
+            rows in `results`. `compact` returns the hosted MCP agent view in
+            `compact_results` (see `SearchCompactResult`). The compact view
+            applies the same selection as hosted MCP search: it leaves out
+            incomplete PayWithLocus gateway contracts. It does not add filters;
+            send `weft_fetch_compatible: true` to get only results that
+            `POST /api/v1/fetch` can pay.
+          enum:
+          - full
+          - compact
+          type: string
       required:
       - query
     SearchFilterSpec:
@@ -2889,9 +2934,123 @@ components:
         suggestion: suggestion
         format: json
         as_of: 2000-01-23T04:56:07.000+00:00
+        compact_results:
+        - request:
+            key: ""
+          completion: completion
+          access:
+            weft_fetch:
+              key: ""
+            protocol: protocol
+            price:
+              unit: unit
+              kind: kind
+              hint: hint
+              indexed_usd: indexed_usd
+            id: id
+          contract_gaps:
+          - contract_gaps
+          - contract_gaps
+          inputs:
+            key: ""
+          readiness:
+            key:
+              scope: scope
+              state: state
+          contract_detail: contract_detail
+          contract_url: https://openapi-generator.tech
+          example: ""
+          next_call:
+            path: /api/v1/fetch
+            method: POST
+            body:
+              key: ""
+            fill:
+            - fill
+            - fill
+          output:
+            key: ""
+          blocked_scopes:
+          - scope: scope
+            state: state
+          - scope: scope
+            state: state
+          docs:
+            website: https://openapi-generator.tech
+            llms_txt: https://openapi-generator.tech
+            api: https://openapi-generator.tech
+            homepage: https://openapi-generator.tech
+          provider:
+            name: name
+            id: id
+          attribution:
+            operation_id: operation_id
+            access_method_id: access_method_id
+            search_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          operation:
+            name: name
+            description: description
+            id: id
+        - request:
+            key: ""
+          completion: completion
+          access:
+            weft_fetch:
+              key: ""
+            protocol: protocol
+            price:
+              unit: unit
+              kind: kind
+              hint: hint
+              indexed_usd: indexed_usd
+            id: id
+          contract_gaps:
+          - contract_gaps
+          - contract_gaps
+          inputs:
+            key: ""
+          readiness:
+            key:
+              scope: scope
+              state: state
+          contract_detail: contract_detail
+          contract_url: https://openapi-generator.tech
+          example: ""
+          next_call:
+            path: /api/v1/fetch
+            method: POST
+            body:
+              key: ""
+            fill:
+            - fill
+            - fill
+          output:
+            key: ""
+          blocked_scopes:
+          - scope: scope
+            state: state
+          - scope: scope
+            state: state
+          docs:
+            website: https://openapi-generator.tech
+            llms_txt: https://openapi-generator.tech
+            api: https://openapi-generator.tech
+            homepage: https://openapi-generator.tech
+          provider:
+            name: name
+            id: id
+          attribution:
+            operation_id: operation_id
+            access_method_id: access_method_id
+            search_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          operation:
+            name: name
+            description: description
+            id: id
         served_from: live
         applied_filters: ""
         match_quality: none
+        view: full
         stale: true
         payment_note: payment_note
         candidates_considered: 0
@@ -3306,6 +3465,7 @@ components:
             - origin_domains
             provider_id: provider_id
             display_name: display_name
+        omitted_results: 1
       properties:
         query_trace_id:
           description: |
@@ -3341,7 +3501,9 @@ components:
             THIS, not `results.length`, for the count: on a `markdown` response
             `results` is empty by design, so `result_count > 0` with an empty
             `results` is a rendered table while `result_count == 0` is a genuine
-            zero-result.
+            zero-result. On a `compact` view response it counts
+            `compact_results`; there, `result_count == 0` with
+            `omitted_results` means every ranked result was too large to show.
           minimum: 0
           type: integer
         served_from:
@@ -3446,10 +3608,33 @@ components:
             empty or nothing cleared the relevance floor. Results BELOW the floor
             are never returned — an empty list plus a `reason` is the honest
             answer, not a list of near-misses in the same shape as a genuine
-            match.
+            match. Empty on a `compact` view response; read `compact_results`.
           items:
             $ref: "#/components/schemas/SearchResult"
           type: array
+        view:
+          description: |
+            The view this response carries. Present as `compact` when the
+            request asked for `view: "compact"`; absent means `full`.
+          enum:
+          - full
+          - compact
+          type: string
+        compact_results:
+          description: |
+            Ranked compact results, present only on a `compact` view response.
+            `result_count` is their count. They are a separate field so that
+            typed clients keep the full `SearchResult` shape for `results`.
+          items:
+            $ref: "#/components/schemas/SearchCompactResult"
+          type: array
+        omitted_results:
+          description: |
+            Compact view only: how many ranked results were left out because
+            even their minimum summary does not fit the per-result budget.
+            Absent when none were left out.
+          minimum: 1
+          type: integer
       required:
       - candidates_considered
       - embedder_model
@@ -3457,6 +3642,213 @@ components:
       - query_trace_id
       - results
       - warnings
+    SearchCompactResult:
+      description: |
+        One row of the compact agent view: the minimum contract for the next
+        paid call, below 2,000 JSON bytes. It is the hosted MCP `weft_search`
+        projection with REST references: `contract_url` replaces the MCP
+        `weft_contract` call, and `next_call` is a `POST /api/v1/fetch`
+        request instead of an MCP `weft_fetch` call. To stay in the budget,
+        the row drops optional fields in a fixed order (optional inputs, helper
+        docs, the example, the description, then summaries) and
+        `contract_detail` says what is left out. In the last resort the row
+        keeps the operation id, readiness states, the `weft_fetch` state,
+        `contract_url` and the search id, and can lose the input names, the
+        request recipe and price. The full contract at `contract_url` is
+        always complete. The search id is the
+        envelope `query_trace_id`; each row also carries it in `attribution`
+        or in `next_call.body`.
+      example:
+        request:
+          key: ""
+        completion: completion
+        access:
+          weft_fetch:
+            key: ""
+          protocol: protocol
+          price:
+            unit: unit
+            kind: kind
+            hint: hint
+            indexed_usd: indexed_usd
+          id: id
+        contract_gaps:
+        - contract_gaps
+        - contract_gaps
+        inputs:
+          key: ""
+        readiness:
+          key:
+            scope: scope
+            state: state
+        contract_detail: contract_detail
+        contract_url: https://openapi-generator.tech
+        example: ""
+        next_call:
+          path: /api/v1/fetch
+          method: POST
+          body:
+            key: ""
+          fill:
+          - fill
+          - fill
+        output:
+          key: ""
+        blocked_scopes:
+        - scope: scope
+          state: state
+        - scope: scope
+          state: state
+        docs:
+          website: https://openapi-generator.tech
+          llms_txt: https://openapi-generator.tech
+          api: https://openapi-generator.tech
+          homepage: https://openapi-generator.tech
+        provider:
+          name: name
+          id: id
+        attribution:
+          operation_id: operation_id
+          access_method_id: access_method_id
+          search_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        operation:
+          name: name
+          description: description
+          id: id
+      properties:
+        provider:
+          $ref: "#/components/schemas/SearchCompactResult_provider"
+        operation:
+          $ref: "#/components/schemas/SearchCompactResult_operation"
+        inputs:
+          additionalProperties: true
+          description: |
+            Typed business inputs (a bounded JSON schema), or the names and
+            locations of the required inputs when the full schema does not
+            fit. Read the full contract before you send an input not listed.
+          type: object
+        request:
+          additionalProperties: true
+          description: |
+            The request recipe: `method`, canonical `url`, and, when known,
+            the path, query, header and JSON body bindings of each input.
+          type: object
+        example: {}
+        access:
+          $ref: "#/components/schemas/SearchCompactAccess"
+        attribution:
+          $ref: "#/components/schemas/SearchCompactResult_attribution"
+        output:
+          additionalProperties: true
+          description: "Media type, execution mode, a bounded output summary and,\
+            \ for async work, the poll workflow."
+          type: object
+        docs:
+          $ref: "#/components/schemas/SearchHelperDocs"
+        contract_url:
+          description: |
+            Content-addressed full Weft contract. GET it with your Weft
+            credential (a buyer account key, an OAuth token with the `search`
+            scope, or a claimed `wbt_*` bootstrap bearer) before you build a
+            request the summary does not fully describe. A pending bootstrap
+            bearer gets `401` until a human approves the account.
+          format: uri
+          type: string
+        contract_detail:
+          description: What this summary leaves out of the full contract.
+          type: string
+        completion:
+          description: Completion guidance when the completion rules did not fit inline.
+          type: string
+        blocked_scopes:
+          items:
+            $ref: "#/components/schemas/SearchCompactResult_blocked_scopes_inner"
+          type: array
+        contract_gaps:
+          description: Contract fields that the review did not complete.
+          items:
+            type: string
+          type: array
+        readiness:
+          additionalProperties:
+            $ref: "#/components/schemas/SearchCompactResult_blocked_scopes_inner"
+          description: |
+            Independent readiness claims (`research`, `contract`, `runtime`,
+            `paid_terminal`), each with a `state` and, when it fits, a `scope`.
+        next_call:
+          $ref: "#/components/schemas/SearchCompactNextCall"
+      required:
+      - access
+      - contract_detail
+      - contract_url
+      - operation
+      - readiness
+    SearchCompactAccess:
+      description: The recommended access method for this operation.
+      example:
+        weft_fetch:
+          key: ""
+        protocol: protocol
+        price:
+          unit: unit
+          kind: kind
+          hint: hint
+          indexed_usd: indexed_usd
+        id: id
+      properties:
+        id:
+          description: The `access_method_id` to send to `POST /api/v1/fetch`.
+          type: string
+        protocol:
+          type: string
+        weft_fetch:
+          additionalProperties: true
+          description: "Whether the Weft fetch runtime can pay this access method\
+            \ (`state`, and `reason` and `coverage` when they fit)."
+          type: object
+        price:
+          $ref: "#/components/schemas/SearchCompactAccess_price"
+    SearchCompactNextCall:
+      description: |
+        A ready paid call, present when the request is determined and the
+        Weft fetch runtime can pay the access method. Replace each `{name}`
+        listed in `fill` in `body` (and add `max_cost_usd` or `body` when they
+        are listed), then send `body` as the JSON body of `POST /api/v1/fetch`
+        with an `Idempotency-Key` header. `body` uses the wire field names
+        (`max_cost_usd`, `search_id`); an SDK fetch call may name them
+        differently, so map each field and keep the attribution fields.
+      example:
+        path: /api/v1/fetch
+        method: POST
+        body:
+          key: ""
+        fill:
+        - fill
+        - fill
+      properties:
+        method:
+          enum:
+          - POST
+          type: string
+        path:
+          enum:
+          - /api/v1/fetch
+          type: string
+        body:
+          additionalProperties: true
+          description: "A `FetchRequest` with documented example values and `{name}`\
+            \ placeholders."
+          type: object
+        fill:
+          description: Names to replace before you send the request.
+          items:
+            type: string
+          type: array
+      required:
+      - body
+      - fill
+      - method
+      - path
     SearchResult:
       example:
         score: 0.20271230230023218
@@ -4233,6 +4625,7 @@ components:
           - INVALID_QUERY
           - INVALID_MAX_RESULTS
           - INVALID_FILTERS
+          - INVALID_VIEW
           - UNKNOWN_PARAMETER
           - SEARCH_UPSTREAM_ERROR
           - SEARCH_BACKEND_MISCONFIGURED
@@ -4351,6 +4744,7 @@ components:
         Successful fetch envelope. `body_base64` is the upstream artifact
         bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`,
         `tx_hash`, and `protocol` describe the payment and settlement state.
+        `purchase_id` names the payment for a later status read.
 
         To retrieve a SIWX-protected result, use HTTPS GET with
         `max_cost_usd: "0"`. Weft signs a fresh, resource-bound challenge with
@@ -4381,6 +4775,7 @@ components:
         protocol: x402
         held_usd: "0.002"
         payment_status: pending
+        purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
         paid_usd: "0.002"
         body_base64: body_base64
         tx_hash: tx_hash
@@ -4459,6 +4854,32 @@ components:
           nullable: true
           type: integer
           nullable: true
+        purchase_id:
+          description: |
+            The buyer purchase that paid for this fetch: an opaque id that
+            `GET /api/v1/purchases/{id}` accepts and that purchase rows carry
+            as `purchase_id`. It is not the sequential `Purchase.id`; do not
+            parse or order by it. That purchase reports its
+            own `status`, not `payment_status`: `signed` while the payment is
+            pending, then `settled` (charged its `amount_usd`, which can be
+            less than `held_usd`) or `declined`, `locked`, `expired`, or
+            `reverted` (not charged). A `settled` purchase with
+            `failure_reason: merchant_delivery_failed` was charged, but no
+            successful paid response was delivered. An idempotent
+            replay returns the same id, so bill at most once for each id.
+            `null` when no payment was made (`payment_status: not_required`).
+
+            The lookup needs purchase-history access: a `wk_*` key, a claimed
+            `wbt_*` bearer, or a REST OAuth token with the `balance` scope. An
+            OAuth token issued for the MCP server cannot call this endpoint.
+            Current servers always send this field. It is optional in this
+            schema so that a client also accepts a response from an older
+            server.
+          example: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
+          nullable: true
+          pattern: "^pur_[A-Za-z0-9_-]{24}$"
+          type: string
+          nullable: true
       required:
       - artifact_id
       - body_base64
@@ -4536,7 +4957,15 @@ components:
           type: string
         details:
           additionalProperties: true
-          description: Optional context. Shape varies by error code.
+          description: |
+            Optional context. Shape varies by error code.
+
+            `purchase_id` (opaque string) is present when the failure follows a
+            payment row for this request — a new, resumed, or replayed payment.
+            It is the id that `GET /api/v1/purchases/{id}` accepts: read that
+            purchase to learn whether the charge settled, instead of assuming
+            either outcome. It is absent when the request was refused before
+            any payment row existed.
           type: object
         policy:
           $ref: "#/components/schemas/SpendingPolicy"
@@ -4598,6 +5027,13 @@ components:
       oneOf:
       - $ref: "#/components/schemas/FetchErrorResponse"
       - $ref: "#/components/schemas/InsufficientScopeResponse"
+    getPurchase_id_parameter:
+      oneOf:
+      - description: The opaque `purchase_id` from a fetch or a purchase row.
+        pattern: "^pur_[A-Za-z0-9_-]{24}$"
+        type: string
+      - description: Legacy sequential purchase `id`.
+        type: integer
     MessageResponse_data:
       example:
         message: message
@@ -4657,6 +5093,74 @@ components:
       required:
       - code
       - message
+    SearchCompactResult_provider:
+      example:
+        name: name
+        id: id
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    SearchCompactResult_operation:
+      example:
+        name: name
+        description: description
+        id: id
+      properties:
+        id:
+          description: Catalog operation id. Send it as `operation_id` to `POST /api/v1/fetch`.
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      required:
+      - id
+    SearchCompactResult_attribution:
+      description: |
+        Labels to send with the paid fetch so the purchase links to this
+        search. Left out when `next_call.body` already carries them.
+      example:
+        operation_id: operation_id
+        access_method_id: access_method_id
+        search_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        search_id:
+          format: uuid
+          type: string
+        operation_id:
+          type: string
+        access_method_id:
+          type: string
+    SearchCompactResult_blocked_scopes_inner:
+      example:
+        scope: scope
+        state: state
+      properties:
+        scope:
+          type: string
+        state:
+          type: string
+    SearchCompactAccess_price:
+      example:
+        unit: unit
+        kind: kind
+        hint: hint
+        indexed_usd: indexed_usd
+      properties:
+        kind:
+          description: "Price kind, such as `fixed`, `dynamic`, `free` or `unknown`."
+          type: string
+        indexed_usd:
+          description: Indexed USD price. A `dynamic` price is not a cap.
+          type: string
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        hint:
+          type: string
     SearchEndpointCall_input_schema:
       anyOf:
       - type: boolean

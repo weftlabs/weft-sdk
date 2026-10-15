@@ -17,6 +17,7 @@ import { mapValues } from '../runtime';
  * Successful fetch envelope. `body_base64` is the upstream artifact
  * bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`,
  * `tx_hash`, and `protocol` describe the payment and settlement state.
+ * `purchase_id` names the payment for a later status read.
  *
  * To retrieve a SIWX-protected result, use HTTPS GET with
  * `max_cost_usd: "0"`. Weft signs a fresh, resource-bound challenge with
@@ -118,6 +119,31 @@ export interface FetchResponse {
      * @memberof FetchResponse
      */
     artifactId: number | null;
+    /**
+     * The buyer purchase that paid for this fetch: an opaque id that
+     * `GET /api/v1/purchases/{id}` accepts and that purchase rows carry
+     * as `purchase_id`. It is not the sequential `Purchase.id`; do not
+     * parse or order by it. That purchase reports its
+     * own `status`, not `payment_status`: `signed` while the payment is
+     * pending, then `settled` (charged its `amount_usd`, which can be
+     * less than `held_usd`) or `declined`, `locked`, `expired`, or
+     * `reverted` (not charged). A `settled` purchase with
+     * `failure_reason: merchant_delivery_failed` was charged, but no
+     * successful paid response was delivered. An idempotent
+     * replay returns the same id, so bill at most once for each id.
+     * `null` when no payment was made (`payment_status: not_required`).
+     *
+     * The lookup needs purchase-history access: a `wk_*` key, a claimed
+     * `wbt_*` bearer, or a REST OAuth token with the `balance` scope. An
+     * OAuth token issued for the MCP server cannot call this endpoint.
+     * Current servers always send this field. It is optional in this
+     * schema so that a client also accepts a response from an older
+     * server.
+     *
+     * @type {string}
+     * @memberof FetchResponse
+     */
+    purchaseId?: string | null;
 }
 
 
@@ -180,6 +206,7 @@ export function FetchResponseFromJSONTyped(json: any, ignoreDiscriminator: boole
         'txHash': json['tx_hash'],
         'protocol': json['protocol'],
         'artifactId': json['artifact_id'],
+        'purchaseId': json['purchase_id'] == null ? undefined : json['purchase_id'],
     };
 }
 
@@ -203,5 +230,6 @@ export function FetchResponseToJSONTyped(value?: FetchResponse | null, ignoreDis
         'tx_hash': value['txHash'],
         'protocol': value['protocol'],
         'artifact_id': value['artifactId'],
+        'purchase_id': value['purchaseId'],
     };
 }

@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   ErrorResponse,
+  GetPurchaseIdParameter,
   InsufficientScopeResponse,
   PurchaseListResponse,
   PurchaseResponse,
@@ -23,6 +24,8 @@ import type {
 import {
     ErrorResponseFromJSON,
     ErrorResponseToJSON,
+    GetPurchaseIdParameterFromJSON,
+    GetPurchaseIdParameterToJSON,
     InsufficientScopeResponseFromJSON,
     InsufficientScopeResponseToJSON,
     PurchaseListResponseFromJSON,
@@ -32,7 +35,7 @@ import {
 } from '../models/index';
 
 export interface GetPurchaseRequest {
-    id: number;
+    id: GetPurchaseIdParameter;
 }
 
 export interface ListPurchasesRequest {

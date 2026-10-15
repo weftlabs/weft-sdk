@@ -17,6 +17,9 @@ module Weft
   class Purchase < ApiModelBase
     attr_accessor :id
 
+    # Opaque purchase id: the value fetch returns as `purchase_id` and that `GET /api/v1/purchases/{id}` accepts. Prefer it over the sequential `id`. Current servers always send this field; it is optional in this schema so that a client also accepts a response from an older server.
+    attr_accessor :purchase_id
+
     attr_accessor :status
 
     # Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount.
@@ -75,6 +78,7 @@ module Weft
     def self.attribute_map
       {
         :'id' => :'id',
+        :'purchase_id' => :'purchase_id',
         :'status' => :'status',
         :'amount_usd' => :'amount_usd',
         :'recipient_address' => :'recipient_address',
@@ -107,6 +111,7 @@ module Weft
     def self.openapi_types
       {
         :'id' => :'Integer',
+        :'purchase_id' => :'String',
         :'status' => :'String',
         :'amount_usd' => :'String',
         :'recipient_address' => :'String',
@@ -160,6 +165,10 @@ module Weft
         self.id = attributes[:'id']
       else
         self.id = nil
+      end
+
+      if attributes.key?(:'purchase_id')
+        self.purchase_id = attributes[:'purchase_id']
       end
 
       if attributes.key?(:'status')
@@ -262,6 +271,11 @@ module Weft
         invalid_properties.push('invalid value for "id", id cannot be nil.')
       end
 
+      pattern = Regexp.new(/^pur_[A-Za-z0-9_-]{24}$/)
+      if !@purchase_id.nil? && @purchase_id !~ pattern
+        invalid_properties.push("invalid value for \"purchase_id\", must conform to the pattern #{pattern}.")
+      end
+
       if @status.nil?
         invalid_properties.push('invalid value for "status", status cannot be nil.')
       end
@@ -294,6 +308,7 @@ module Weft
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @id.nil?
+      return false if !@purchase_id.nil? && @purchase_id !~ Regexp.new(/^pur_[A-Za-z0-9_-]{24}$/)
       return false if @status.nil?
       status_validator = EnumAttributeValidator.new('String', ["signed", "settled", "locked", "rejected", "declined", "expired", "reverted"])
       return false unless status_validator.valid?(@status)
@@ -317,6 +332,21 @@ module Weft
       end
 
       @id = id
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] purchase_id Value to be assigned
+    def purchase_id=(purchase_id)
+      if purchase_id.nil?
+        fail ArgumentError, 'purchase_id cannot be nil'
+      end
+
+      pattern = Regexp.new(/^pur_[A-Za-z0-9_-]{24}$/)
+      if purchase_id !~ pattern
+        fail ArgumentError, "invalid value for \"purchase_id\", must conform to the pattern #{pattern}."
+      end
+
+      @purchase_id = purchase_id
     end
 
     # Custom attribute writer method checking allowed values (enum).
@@ -395,6 +425,7 @@ module Weft
       return true if self.equal?(o)
       self.class == o.class &&
           id == o.id &&
+          purchase_id == o.purchase_id &&
           status == o.status &&
           amount_usd == o.amount_usd &&
           recipient_address == o.recipient_address &&
@@ -421,7 +452,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [id, status, amount_usd, recipient_address, network, protocol, context, search_id, attribution_status, tx_hash, reject_reason, failure_reason, idempotency_key, signed_at, settled_at, artifact].hash
+      [id, purchase_id, status, amount_usd, recipient_address, network, protocol, context, search_id, attribution_status, tx_hash, reject_reason, failure_reason, idempotency_key, signed_at, settled_at, artifact].hash
     end
 
     # Builds the object from hash

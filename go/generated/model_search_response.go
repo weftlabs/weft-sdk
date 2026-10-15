@@ -29,7 +29,7 @@ type SearchResponse struct {
 	Format *string `json:"format,omitempty"`
 	// The flat comparison table, when `format` is `markdown`; null otherwise. Rendered deterministically from the same stored result the `json` view returns, so the two views of one search can never disagree.
 	Markdown *string `json:"markdown,omitempty"`
-	// How many `(Provider + Capability)` results the search produced. Read THIS, not `results.length`, for the count: on a `markdown` response `results` is empty by design, so `result_count > 0` with an empty `results` is a rendered table while `result_count == 0` is a genuine zero-result.
+	// How many `(Provider + Capability)` results the search produced. Read THIS, not `results.length`, for the count: on a `markdown` response `results` is empty by design, so `result_count > 0` with an empty `results` is a rendered table while `result_count == 0` is a genuine zero-result. On a `compact` view response it counts `compact_results`; there, `result_count == 0` with `omitted_results` means every ranked result was too large to show.
 	ResultCount *int32 `json:"result_count,omitempty"`
 	// `live` for a fresh serve; `snapshot` for an immutable replay of a completed search. A re-read is a snapshot and says so — read it with `as_of` and `stale`.
 	ServedFrom *string `json:"served_from,omitempty"`
@@ -52,8 +52,14 @@ type SearchResponse struct {
 	Reason *string `json:"reason,omitempty"`
 	// Human/agent-readable explanation of `reason`, carrying the concrete numbers behind it (pool sizes, the best discarded score against the floor, the values actually stored for a filter). Non-null exactly when `reason` is.
 	Suggestion *string `json:"suggestion,omitempty"`
-	// Ranked `(Provider + Capability)` results; empty when the index is empty or nothing cleared the relevance floor. Results BELOW the floor are never returned — an empty list plus a `reason` is the honest answer, not a list of near-misses in the same shape as a genuine match.
+	// Ranked `(Provider + Capability)` results; empty when the index is empty or nothing cleared the relevance floor. Results BELOW the floor are never returned — an empty list plus a `reason` is the honest answer, not a list of near-misses in the same shape as a genuine match. Empty on a `compact` view response; read `compact_results`.
 	Results []SearchResult `json:"results"`
+	// The view this response carries. Present as `compact` when the request asked for `view: \"compact\"`; absent means `full`.
+	View *string `json:"view,omitempty"`
+	// Ranked compact results, present only on a `compact` view response. `result_count` is their count. They are a separate field so that typed clients keep the full `SearchResult` shape for `results`.
+	CompactResults []SearchCompactResult `json:"compact_results,omitempty"`
+	// Compact view only: how many ranked results were left out because even their minimum summary does not fit the per-result budget. Absent when none were left out.
+	OmittedResults *int32 `json:"omitted_results,omitempty"`
 }
 
 type _SearchResponse SearchResponse
@@ -613,6 +619,102 @@ func (o *SearchResponse) SetResults(v []SearchResult) {
 	o.Results = v
 }
 
+// GetView returns the View field value if set, zero value otherwise.
+func (o *SearchResponse) GetView() string {
+	if o == nil || IsNil(o.View) {
+		var ret string
+		return ret
+	}
+	return *o.View
+}
+
+// GetViewOk returns a tuple with the View field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchResponse) GetViewOk() (*string, bool) {
+	if o == nil || IsNil(o.View) {
+		return nil, false
+	}
+	return o.View, true
+}
+
+// HasView returns a boolean if a field has been set.
+func (o *SearchResponse) HasView() bool {
+	if o != nil && !IsNil(o.View) {
+		return true
+	}
+
+	return false
+}
+
+// SetView gets a reference to the given string and assigns it to the View field.
+func (o *SearchResponse) SetView(v string) {
+	o.View = &v
+}
+
+// GetCompactResults returns the CompactResults field value if set, zero value otherwise.
+func (o *SearchResponse) GetCompactResults() []SearchCompactResult {
+	if o == nil || IsNil(o.CompactResults) {
+		var ret []SearchCompactResult
+		return ret
+	}
+	return o.CompactResults
+}
+
+// GetCompactResultsOk returns a tuple with the CompactResults field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchResponse) GetCompactResultsOk() ([]SearchCompactResult, bool) {
+	if o == nil || IsNil(o.CompactResults) {
+		return nil, false
+	}
+	return o.CompactResults, true
+}
+
+// HasCompactResults returns a boolean if a field has been set.
+func (o *SearchResponse) HasCompactResults() bool {
+	if o != nil && !IsNil(o.CompactResults) {
+		return true
+	}
+
+	return false
+}
+
+// SetCompactResults gets a reference to the given []SearchCompactResult and assigns it to the CompactResults field.
+func (o *SearchResponse) SetCompactResults(v []SearchCompactResult) {
+	o.CompactResults = v
+}
+
+// GetOmittedResults returns the OmittedResults field value if set, zero value otherwise.
+func (o *SearchResponse) GetOmittedResults() int32 {
+	if o == nil || IsNil(o.OmittedResults) {
+		var ret int32
+		return ret
+	}
+	return *o.OmittedResults
+}
+
+// GetOmittedResultsOk returns a tuple with the OmittedResults field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchResponse) GetOmittedResultsOk() (*int32, bool) {
+	if o == nil || IsNil(o.OmittedResults) {
+		return nil, false
+	}
+	return o.OmittedResults, true
+}
+
+// HasOmittedResults returns a boolean if a field has been set.
+func (o *SearchResponse) HasOmittedResults() bool {
+	if o != nil && !IsNil(o.OmittedResults) {
+		return true
+	}
+
+	return false
+}
+
+// SetOmittedResults gets a reference to the given int32 and assigns it to the OmittedResults field.
+func (o *SearchResponse) SetOmittedResults(v int32) {
+	o.OmittedResults = &v
+}
+
 func (o SearchResponse) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -665,6 +767,15 @@ func (o SearchResponse) ToMap() (map[string]interface{}, error) {
 		toSerialize["suggestion"] = o.Suggestion
 	}
 	toSerialize["results"] = o.Results
+	if !IsNil(o.View) {
+		toSerialize["view"] = o.View
+	}
+	if !IsNil(o.CompactResults) {
+		toSerialize["compact_results"] = o.CompactResults
+	}
+	if !IsNil(o.OmittedResults) {
+		toSerialize["omitted_results"] = o.OmittedResults
+	}
 	return toSerialize, nil
 }
 

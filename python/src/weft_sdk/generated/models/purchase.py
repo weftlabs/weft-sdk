@@ -20,6 +20,7 @@ import json
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
+from typing_extensions import Annotated
 from weft_sdk.generated.models.purchase_artifact import PurchaseArtifact
 from typing import Optional, Set
 from typing_extensions import Self
@@ -29,6 +30,7 @@ class Purchase(BaseModel):
     Purchase
     """ # noqa: E501
     id: StrictInt
+    purchase_id: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="Opaque purchase id: the value fetch returns as `purchase_id` and that `GET /api/v1/purchases/{id}` accepts. Prefer it over the sequential `id`. Current servers always send this field; it is optional in this schema so that a client also accepts a response from an older server. ")
     status: StrictStr
     amount_usd: StrictStr = Field(description="Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount.")
     recipient_address: StrictStr
@@ -44,7 +46,17 @@ class Purchase(BaseModel):
     signed_at: datetime
     settled_at: Optional[datetime]
     artifact: Optional[PurchaseArtifact]
-    __properties: ClassVar[List[str]] = ["id", "status", "amount_usd", "recipient_address", "network", "protocol", "context", "search_id", "attribution_status", "tx_hash", "reject_reason", "failure_reason", "idempotency_key", "signed_at", "settled_at", "artifact"]
+    __properties: ClassVar[List[str]] = ["id", "purchase_id", "status", "amount_usd", "recipient_address", "network", "protocol", "context", "search_id", "attribution_status", "tx_hash", "reject_reason", "failure_reason", "idempotency_key", "signed_at", "settled_at", "artifact"]
+
+    @field_validator('purchase_id')
+    def purchase_id_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if value is None:
+            return value
+
+        if not re.match(r"^pur_[A-Za-z0-9_-]{24}$", value):
+            raise ValueError(r"must validate the regular expression /^pur_[A-Za-z0-9_-]{24}$/")
+        return value
 
     @field_validator('status')
     def status_validate_enum(cls, value):
@@ -170,6 +182,7 @@ class Purchase(BaseModel):
 
         _obj = cls.model_validate({
             "id": obj.get("id"),
+            "purchase_id": obj.get("purchase_id"),
             "status": obj.get("status"),
             "amount_usd": obj.get("amount_usd"),
             "recipient_address": obj.get("recipient_address"),

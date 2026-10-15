@@ -19,7 +19,7 @@ import (
 // checks if the FetchResponse type satisfies the MappedNullable interface at compile time
 var _ MappedNullable = &FetchResponse{}
 
-// FetchResponse Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state.  To retrieve a SIWX-protected result, use HTTPS GET with `max_cost_usd: \"0\"`. Weft signs a fresh, resource-bound challenge with the same buyer wallet. Retrieval never falls back to payment and returns `not_required`, zero paid amount, and null held amount and transaction hash. Polls are fresh, including with repeated idempotency keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`. Providers must support smart-wallet signatures. Auth-only challenges also use this path; positive-budget purchases retain payment behavior.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
+// FetchResponse Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state. `purchase_id` names the payment for a later status read.  To retrieve a SIWX-protected result, use HTTPS GET with `max_cost_usd: \"0\"`. Weft signs a fresh, resource-bound challenge with the same buyer wallet. Retrieval never falls back to payment and returns `not_required`, zero paid amount, and null held amount and transaction hash. Polls are fresh, including with repeated idempotency keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`. Providers must support smart-wallet signatures. Auth-only challenges also use this path; positive-budget purchases retain payment behavior.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
 type FetchResponse struct {
 	// HTTP status returned by the upstream after the payment or SIWX authentication retry.
 	Status int32 `json:"status"`
@@ -39,6 +39,8 @@ type FetchResponse struct {
 	Protocol string `json:"protocol"`
 	// Internal artifact identifier if the response was persisted; `null` otherwise.
 	ArtifactId NullableInt32 `json:"artifact_id"`
+	// The buyer purchase that paid for this fetch: an opaque id that `GET /api/v1/purchases/{id}` accepts and that purchase rows carry as `purchase_id`. It is not the sequential `Purchase.id`; do not parse or order by it. That purchase reports its own `status`, not `payment_status`: `signed` while the payment is pending, then `settled` (charged its `amount_usd`, which can be less than `held_usd`) or `declined`, `locked`, `expired`, or `reverted` (not charged). A `settled` purchase with `failure_reason: merchant_delivery_failed` was charged, but no successful paid response was delivered. An idempotent replay returns the same id, so bill at most once for each id. `null` when no payment was made (`payment_status: not_required`).  The lookup needs purchase-history access: a `wk_*` key, a claimed `wbt_*` bearer, or a REST OAuth token with the `balance` scope. An OAuth token issued for the MCP server cannot call this endpoint. Current servers always send this field. It is optional in this schema so that a client also accepts a response from an older server.
+	PurchaseId NullableString `json:"purchase_id,omitempty" validate:"regexp=^pur_[A-Za-z0-9_-]{24}$"`
 }
 
 type _FetchResponse FetchResponse
@@ -293,6 +295,49 @@ func (o *FetchResponse) SetArtifactId(v int32) {
 	o.ArtifactId.Set(&v)
 }
 
+// GetPurchaseId returns the PurchaseId field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *FetchResponse) GetPurchaseId() string {
+	if o == nil || IsNil(o.PurchaseId.Get()) {
+		var ret string
+		return ret
+	}
+	return *o.PurchaseId.Get()
+}
+
+// GetPurchaseIdOk returns a tuple with the PurchaseId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *FetchResponse) GetPurchaseIdOk() (*string, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.PurchaseId.Get(), o.PurchaseId.IsSet()
+}
+
+// HasPurchaseId returns a boolean if a field has been set.
+func (o *FetchResponse) HasPurchaseId() bool {
+	if o != nil && o.PurchaseId.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetPurchaseId gets a reference to the given NullableString and assigns it to the PurchaseId field.
+func (o *FetchResponse) SetPurchaseId(v string) {
+	o.PurchaseId.Set(&v)
+}
+
+// SetPurchaseIdNil sets the value for PurchaseId to be an explicit nil
+func (o *FetchResponse) SetPurchaseIdNil() {
+	o.PurchaseId.Set(nil)
+}
+
+// UnsetPurchaseId ensures that no value is present for PurchaseId, not even an explicit nil
+func (o *FetchResponse) UnsetPurchaseId() {
+	o.PurchaseId.Unset()
+}
+
 func (o FetchResponse) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -312,6 +357,9 @@ func (o FetchResponse) ToMap() (map[string]interface{}, error) {
 	toSerialize["tx_hash"] = o.TxHash.Get()
 	toSerialize["protocol"] = o.Protocol
 	toSerialize["artifact_id"] = o.ArtifactId.Get()
+	if o.PurchaseId.IsSet() {
+		toSerialize["purchase_id"] = o.PurchaseId.Get()
+	}
 	return toSerialize, nil
 }
 

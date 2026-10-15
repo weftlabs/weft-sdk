@@ -19,7 +19,7 @@ module Weft
     # Stable error code.
     attr_accessor :error
 
-    # Optional context. Shape varies by error code.
+    # Optional context. Shape varies by error code.  `purchase_id` (opaque string) is present when the failure follows a payment row for this request — a new, resumed, or replayed payment. It is the id that `GET /api/v1/purchases/{id}` accepts: read that purchase to learn whether the charge settled, instead of assuming either outcome. It is absent when the request was refused before any payment row existed.
     attr_accessor :details
 
     attr_accessor :policy

@@ -34,6 +34,17 @@ export interface Purchase {
      */
     id: number;
     /**
+     * Opaque purchase id: the value fetch returns as `purchase_id` and
+     * that `GET /api/v1/purchases/{id}` accepts. Prefer it over the
+     * sequential `id`. Current servers always send this field; it is
+     * optional in this schema so that a client also accepts a response
+     * from an older server.
+     *
+     * @type {string}
+     * @memberof Purchase
+     */
+    purchaseId?: string;
+    /**
      *
      * @type {string}
      * @memberof Purchase
@@ -193,6 +204,7 @@ export function PurchaseFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     return {
 
         'id': json['id'],
+        'purchaseId': json['purchase_id'] == null ? undefined : json['purchase_id'],
         'status': json['status'],
         'amountUsd': json['amount_usd'],
         'recipientAddress': json['recipient_address'],
@@ -223,6 +235,7 @@ export function PurchaseToJSONTyped(value?: Purchase | null, ignoreDiscriminator
     return {
 
         'id': value['id'],
+        'purchase_id': value['purchaseId'],
         'status': value['status'],
         'amount_usd': value['amountUsd'],
         'recipient_address': value['recipientAddress'],

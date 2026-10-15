@@ -64,6 +64,7 @@ __all__ = [
     "FetchRequest",
     "FetchRequestBody",
     "FetchResponse",
+    "GetPurchaseIdParameter",
     "InsufficientScopeResponse",
     "MeApiKey",
     "MeApiKeyCreator",
@@ -90,6 +91,14 @@ __all__ = [
     "ResourceStats",
     "SearchAccessMethod",
     "SearchCapabilityRef",
+    "SearchCompactAccess",
+    "SearchCompactAccessPrice",
+    "SearchCompactNextCall",
+    "SearchCompactResult",
+    "SearchCompactResultAttribution",
+    "SearchCompactResultBlockedScopesInner",
+    "SearchCompactResultOperation",
+    "SearchCompactResultProvider",
     "SearchCuratedCallability",
     "SearchCuratedExecution",
     "SearchCuratedOperation",
@@ -175,6 +184,7 @@ from weft_sdk.generated.models.fetch_error_response import FetchErrorResponse as
 from weft_sdk.generated.models.fetch_request import FetchRequest as FetchRequest
 from weft_sdk.generated.models.fetch_request_body import FetchRequestBody as FetchRequestBody
 from weft_sdk.generated.models.fetch_response import FetchResponse as FetchResponse
+from weft_sdk.generated.models.get_purchase_id_parameter import GetPurchaseIdParameter as GetPurchaseIdParameter
 from weft_sdk.generated.models.insufficient_scope_response import InsufficientScopeResponse as InsufficientScopeResponse
 from weft_sdk.generated.models.me_api_key import MeApiKey as MeApiKey
 from weft_sdk.generated.models.me_api_key_creator import MeApiKeyCreator as MeApiKeyCreator
@@ -201,6 +211,14 @@ from weft_sdk.generated.models.resource_enrollment_response import ResourceEnrol
 from weft_sdk.generated.models.resource_stats import ResourceStats as ResourceStats
 from weft_sdk.generated.models.search_access_method import SearchAccessMethod as SearchAccessMethod
 from weft_sdk.generated.models.search_capability_ref import SearchCapabilityRef as SearchCapabilityRef
+from weft_sdk.generated.models.search_compact_access import SearchCompactAccess as SearchCompactAccess
+from weft_sdk.generated.models.search_compact_access_price import SearchCompactAccessPrice as SearchCompactAccessPrice
+from weft_sdk.generated.models.search_compact_next_call import SearchCompactNextCall as SearchCompactNextCall
+from weft_sdk.generated.models.search_compact_result import SearchCompactResult as SearchCompactResult
+from weft_sdk.generated.models.search_compact_result_attribution import SearchCompactResultAttribution as SearchCompactResultAttribution
+from weft_sdk.generated.models.search_compact_result_blocked_scopes_inner import SearchCompactResultBlockedScopesInner as SearchCompactResultBlockedScopesInner
+from weft_sdk.generated.models.search_compact_result_operation import SearchCompactResultOperation as SearchCompactResultOperation
+from weft_sdk.generated.models.search_compact_result_provider import SearchCompactResultProvider as SearchCompactResultProvider
 from weft_sdk.generated.models.search_curated_callability import SearchCuratedCallability as SearchCuratedCallability
 from weft_sdk.generated.models.search_curated_execution import SearchCuratedExecution as SearchCuratedExecution
 from weft_sdk.generated.models.search_curated_operation import SearchCuratedOperation as SearchCuratedOperation

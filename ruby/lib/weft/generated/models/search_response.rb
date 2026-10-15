@@ -27,7 +27,7 @@ module Weft
     # The flat comparison table, when `format` is `markdown`; null otherwise. Rendered deterministically from the same stored result the `json` view returns, so the two views of one search can never disagree.
     attr_accessor :markdown
 
-    # How many `(Provider + Capability)` results the search produced. Read THIS, not `results.length`, for the count: on a `markdown` response `results` is empty by design, so `result_count > 0` with an empty `results` is a rendered table while `result_count == 0` is a genuine zero-result.
+    # How many `(Provider + Capability)` results the search produced. Read THIS, not `results.length`, for the count: on a `markdown` response `results` is empty by design, so `result_count > 0` with an empty `results` is a rendered table while `result_count == 0` is a genuine zero-result. On a `compact` view response it counts `compact_results`; there, `result_count == 0` with `omitted_results` means every ranked result was too large to show.
     attr_accessor :result_count
 
     # `live` for a fresh serve; `snapshot` for an immutable replay of a completed search. A re-read is a snapshot and says so — read it with `as_of` and `stale`.
@@ -63,8 +63,17 @@ module Weft
     # Human/agent-readable explanation of `reason`, carrying the concrete numbers behind it (pool sizes, the best discarded score against the floor, the values actually stored for a filter). Non-null exactly when `reason` is.
     attr_accessor :suggestion
 
-    # Ranked `(Provider + Capability)` results; empty when the index is empty or nothing cleared the relevance floor. Results BELOW the floor are never returned — an empty list plus a `reason` is the honest answer, not a list of near-misses in the same shape as a genuine match.
+    # Ranked `(Provider + Capability)` results; empty when the index is empty or nothing cleared the relevance floor. Results BELOW the floor are never returned — an empty list plus a `reason` is the honest answer, not a list of near-misses in the same shape as a genuine match. Empty on a `compact` view response; read `compact_results`.
     attr_accessor :results
+
+    # The view this response carries. Present as `compact` when the request asked for `view: \"compact\"`; absent means `full`.
+    attr_accessor :view
+
+    # Ranked compact results, present only on a `compact` view response. `result_count` is their count. They are a separate field so that typed clients keep the full `SearchResult` shape for `results`.
+    attr_accessor :compact_results
+
+    # Compact view only: how many ranked results were left out because even their minimum summary does not fit the per-result budget. Absent when none were left out.
+    attr_accessor :omitted_results
 
     class EnumAttributeValidator
       attr_reader :datatype
@@ -108,7 +117,10 @@ module Weft
         :'match_quality' => :'match_quality',
         :'reason' => :'reason',
         :'suggestion' => :'suggestion',
-        :'results' => :'results'
+        :'results' => :'results',
+        :'view' => :'view',
+        :'compact_results' => :'compact_results',
+        :'omitted_results' => :'omitted_results'
       }
     end
 
@@ -142,7 +154,10 @@ module Weft
         :'match_quality' => :'String',
         :'reason' => :'String',
         :'suggestion' => :'String',
-        :'results' => :'Array<SearchResult>'
+        :'results' => :'Array<SearchResult>',
+        :'view' => :'String',
+        :'compact_results' => :'Array<SearchCompactResult>',
+        :'omitted_results' => :'Integer'
       }
     end
 
@@ -257,6 +272,20 @@ module Weft
       else
         self.results = nil
       end
+
+      if attributes.key?(:'view')
+        self.view = attributes[:'view']
+      end
+
+      if attributes.key?(:'compact_results')
+        if (value = attributes[:'compact_results']).is_a?(Array)
+          self.compact_results = value
+        end
+      end
+
+      if attributes.key?(:'omitted_results')
+        self.omitted_results = attributes[:'omitted_results']
+      end
     end
 
     # Show invalid properties with the reasons. Usually used together with valid?
@@ -296,6 +325,10 @@ module Weft
         invalid_properties.push('invalid value for "results", results cannot be nil.')
       end
 
+      if !@omitted_results.nil? && @omitted_results < 1
+        invalid_properties.push('invalid value for "omitted_results", must be greater than or equal to 1.')
+      end
+
       invalid_properties
     end
 
@@ -321,6 +354,9 @@ module Weft
       reason_validator = EnumAttributeValidator.new('String', ["below_relevance_floor", "filter_collapsed_pool", "no_catalog_coverage", "unsupported_filter_value", "index_unavailable"])
       return false unless reason_validator.valid?(@reason)
       return false if @results.nil?
+      view_validator = EnumAttributeValidator.new('String', ["full", "compact"])
+      return false unless view_validator.valid?(@view)
+      return false if !@omitted_results.nil? && @omitted_results < 1
       true
     end
 
@@ -452,6 +488,30 @@ module Weft
       @results = results
     end
 
+    # Custom attribute writer method checking allowed values (enum).
+    # @param [Object] view Object to be assigned
+    def view=(view)
+      validator = EnumAttributeValidator.new('String', ["full", "compact"])
+      unless validator.valid?(view)
+        fail ArgumentError, "invalid value for \"view\", must be one of #{validator.allowable_values}."
+      end
+      @view = view
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] omitted_results Value to be assigned
+    def omitted_results=(omitted_results)
+      if omitted_results.nil?
+        fail ArgumentError, 'omitted_results cannot be nil'
+      end
+
+      if omitted_results < 1
+        fail ArgumentError, 'invalid value for "omitted_results", must be greater than or equal to 1.'
+      end
+
+      @omitted_results = omitted_results
+    end
+
     # Checks equality by comparing each attribute.
     # @param [Object] Object to be compared
     def ==(o)
@@ -474,7 +534,10 @@ module Weft
           match_quality == o.match_quality &&
           reason == o.reason &&
           suggestion == o.suggestion &&
-          results == o.results
+          results == o.results &&
+          view == o.view &&
+          compact_results == o.compact_results &&
+          omitted_results == o.omitted_results
     end
 
     # @see the `==` method
@@ -486,7 +549,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [query_trace_id, query, format, markdown, result_count, served_from, as_of, stale, payment_note, applied_filters, decomposition_source, embedder_model, candidates_considered, warnings, match_quality, reason, suggestion, results].hash
+      [query_trace_id, query, format, markdown, result_count, served_from, as_of, stale, payment_note, applied_filters, decomposition_source, embedder_model, candidates_considered, warnings, match_quality, reason, suggestion, results, view, compact_results, omitted_results].hash
     end
 
     # Builds the object from hash
