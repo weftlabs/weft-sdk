@@ -65,6 +65,7 @@ def test_fetch_deserializes_siwx_receipt_without_payment(artifact_id: int | None
         "tx_hash": None,
         "protocol": "x402",
         "artifact_id": artifact_id,
+        "purchase_id": None,
     }
     response = RESTResponse(
         HTTPResponse(
@@ -87,5 +88,6 @@ def test_fetch_deserializes_siwx_receipt_without_payment(artifact_id: int | None
     assert result.held_usd is None
     assert result.tx_hash is None
     assert result.artifact_id == artifact_id
+    assert result.purchase_id is None
     assert result.body_base64 == "e30="
     assert result.to_dict() == receipt
