@@ -29,7 +29,7 @@ class FetchErrorResponse(BaseModel):
     Bespoke error envelope for `/api/v1/fetch`. Every error carries the buyer's current `policy`, `balance`, and a `dashboard_url` so a CLI can render an actionable message without a second round-trip.  `error` values include the fixed codes listed below plus the `POLICY_VIOLATION_<REASON>` family, where `<REASON>` is the violated policy field (`MAX_TX`, `DAILY`, or `WEEKLY` — see `PolicyViolation::REASONS`).
     """ # noqa: E501
     error: StrictStr = Field(description="Stable error code.")
-    details: Dict[str, Any] = Field(description="Optional context. Shape varies by error code.")
+    details: Dict[str, Any] = Field(description="Optional context. Shape varies by error code.  `purchase_id` (opaque string) is present when the failure follows a payment row for this request — a new, resumed, or replayed payment. It is the id that `GET /api/v1/purchases/{id}` accepts: read that purchase to learn whether the charge settled, instead of assuming either outcome. It is absent when the request was refused before any payment row existed. ")
     policy: SpendingPolicy
     balance: FetchBalanceSnapshot
     dashboard_url: StrictStr = Field(description="Deep-link to the dashboard's policy page.")

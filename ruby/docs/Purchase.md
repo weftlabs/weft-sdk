@@ -5,6 +5,7 @@
 | Name | Type | Description | Notes |
 | ---- | ---- | ----------- | ----- |
 | **id** | **Integer** |  |  |
+| **purchase_id** | **String** | Opaque purchase id: the value fetch returns as &#x60;purchase_id&#x60; and that &#x60;GET /api/v1/purchases/{id}&#x60; accepts. Prefer it over the sequential &#x60;id&#x60;. Current servers always send this field; it is optional in this schema so that a client also accepts a response from an older server.  | [optional] |
 | **status** | **String** |  |  |
 | **amount_usd** | **String** | Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount. |  |
 | **recipient_address** | **String** |  |  |
@@ -28,6 +29,7 @@ require 'weft-sdk'
 
 instance = Weft::Purchase.new(
   id: null,
+  purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d,
   status: null,
   amount_usd: null,
   recipient_address: null,

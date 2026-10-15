@@ -19,12 +19,13 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
+from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 
 class FetchResponse(BaseModel):
     """
-    Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state.  To retrieve a SIWX-protected result, use HTTPS GET with `max_cost_usd: \"0\"`. Weft signs a fresh, resource-bound challenge with the same buyer wallet. Retrieval never falls back to payment and returns `not_required`, zero paid amount, and null held amount and transaction hash. Polls are fresh, including with repeated idempotency keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`. Providers must support smart-wallet signatures. Auth-only challenges also use this path; positive-budget purchases retain payment behavior.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
+    Successful fetch envelope. `body_base64` is the upstream artifact bytes, base64-encoded. `paid_usd`, `held_usd`, `payment_status`, `tx_hash`, and `protocol` describe the payment and settlement state. `purchase_id` names the payment for a later status read.  To retrieve a SIWX-protected result, use HTTPS GET with `max_cost_usd: \"0\"`. Weft signs a fresh, resource-bound challenge with the same buyer wallet. Retrieval never falls back to payment and returns `not_required`, zero paid amount, and null held amount and transaction hash. Polls are fresh, including with repeated idempotency keys. A rejected or unsafe challenge returns `SIWX_RETRIEVAL_FAILED`. Providers must support smart-wallet signatures. Auth-only challenges also use this path; positive-budget purchases retain payment behavior.  `paid_usd` is \"0.00\" (never the nominal charge amount) until the charge is CONFIRMED settled on-chain — a signed-but-unsettled hold reports its amount in `held_usd` instead. This is a deliberate honesty fix: earlier versions of this endpoint returned the nominal amount in `paid_usd` unconditionally, even when the charge never settled.  **Money string format.** Every USD amount on this surface is exact to the micro-dollar and never narrower than two decimals: a whole-cent amount renders \"0.50\", a sub-cent amount keeps its real precision (\"0.000892\"), and zero renders \"0.00\". Amounts are never rounded — an agent reconciling its own spend reads the truth, not a display value. Parse these as decimals; do NOT compare them as strings against a bare zero literal.
     """ # noqa: E501
     status: StrictInt = Field(description="HTTP status returned by the upstream after the payment or SIWX authentication retry.")
     headers: Dict[str, StrictStr] = Field(description="Response headers from the upstream.")
@@ -35,7 +36,8 @@ class FetchResponse(BaseModel):
     tx_hash: Optional[StrictStr] = Field(description="Settlement transaction hash. Null until a settlement hash has been reported.")
     protocol: StrictStr = Field(description="Payment protocol selected for this fetch.")
     artifact_id: Optional[StrictInt] = Field(description="Internal artifact identifier if the response was persisted; `null` otherwise.")
-    __properties: ClassVar[List[str]] = ["status", "headers", "body_base64", "paid_usd", "held_usd", "payment_status", "tx_hash", "protocol", "artifact_id"]
+    purchase_id: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="The buyer purchase that paid for this fetch: an opaque id that `GET /api/v1/purchases/{id}` accepts and that purchase rows carry as `purchase_id`. It is not the sequential `Purchase.id`; do not parse or order by it. That purchase reports its own `status`, not `payment_status`: `signed` while the payment is pending, then `settled` (charged its `amount_usd`, which can be less than `held_usd`) or `declined`, `locked`, `expired`, or `reverted` (not charged). A `settled` purchase with `failure_reason: merchant_delivery_failed` was charged, but no successful paid response was delivered. An idempotent replay returns the same id, so bill at most once for each id. `null` when no payment was made (`payment_status: not_required`).  The lookup needs purchase-history access: a `wk_*` key, a claimed `wbt_*` bearer, or a REST OAuth token with the `balance` scope. An OAuth token issued for the MCP server cannot call this endpoint. Current servers always send this field. It is optional in this schema so that a client also accepts a response from an older server. ")
+    __properties: ClassVar[List[str]] = ["status", "headers", "body_base64", "paid_usd", "held_usd", "payment_status", "tx_hash", "protocol", "artifact_id", "purchase_id"]
 
     @field_validator('payment_status')
     def payment_status_validate_enum(cls, value):
@@ -49,6 +51,16 @@ class FetchResponse(BaseModel):
         """Validates the enum"""
         if value not in set(['x402', 'mpp']):
             raise ValueError("must be one of enum values ('x402', 'mpp')")
+        return value
+
+    @field_validator('purchase_id')
+    def purchase_id_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if value is None:
+            return value
+
+        if not re.match(r"^pur_[A-Za-z0-9_-]{24}$", value):
+            raise ValueError(r"must validate the regular expression /^pur_[A-Za-z0-9_-]{24}$/")
         return value
 
     model_config = ConfigDict(
@@ -110,6 +122,11 @@ class FetchResponse(BaseModel):
         if self.artifact_id is None and "artifact_id" in self.model_fields_set:
             _dict['artifact_id'] = None
 
+        # set to None if purchase_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.purchase_id is None and "purchase_id" in self.model_fields_set:
+            _dict['purchase_id'] = None
+
         return _dict
 
     @classmethod
@@ -130,6 +147,7 @@ class FetchResponse(BaseModel):
             "payment_status": obj.get("payment_status"),
             "tx_hash": obj.get("tx_hash"),
             "protocol": obj.get("protocol"),
-            "artifact_id": obj.get("artifact_id")
+            "artifact_id": obj.get("artifact_id"),
+            "purchase_id": obj.get("purchase_id")
         })
         return _obj

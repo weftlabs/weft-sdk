@@ -43,7 +43,7 @@ configuration = weft_sdk.generated.Configuration(
 with weft_sdk.generated.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = weft_sdk.generated.PurchasesApi(api_client)
-    id = 56 # int | Purchase ID
+    id = weft_sdk.generated.GetPurchaseIdParameter() # GetPurchaseIdParameter | The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.
 
     try:
         # Get a buyer purchase
@@ -61,7 +61,7 @@ with weft_sdk.generated.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **int**| Purchase ID |
+ **id** | [**GetPurchaseIdParameter**](.md)| The opaque &#x60;purchase_id&#x60; (&#x60;pur_…&#x60;) that fetch returns, or the legacy integer &#x60;id&#x60;. Both resolve only within the caller&#39;s own purchases. New callers should store and send &#x60;purchase_id&#x60;.  |
 
 ### Return type
 

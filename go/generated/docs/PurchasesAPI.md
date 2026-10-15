@@ -28,7 +28,7 @@ import (
 )
 
 func main() {
-	id := int32(56) // int32 | Purchase ID
+	id := openapiclient.getPurchase_id_parameter{Int32: new(int32)} // GetPurchaseIdParameter | The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -48,7 +48,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**id** | **int32** | Purchase ID |
+**id** | [**GetPurchaseIdParameter**](.md) | The opaque &#x60;purchase_id&#x60; (&#x60;pur_…&#x60;) that fetch returns, or the legacy integer &#x60;id&#x60;. Both resolve only within the caller&#39;s own purchases. New callers should store and send &#x60;purchase_id&#x60;.  |
 
 ### Other Parameters
 

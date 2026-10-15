@@ -5,6 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Id** | **int32** |  |
+**PurchaseId** | Pointer to **string** | Opaque purchase id: the value fetch returns as &#x60;purchase_id&#x60; and that &#x60;GET /api/v1/purchases/{id}&#x60; accepts. Prefer it over the sequential &#x60;id&#x60;. Current servers always send this field; it is optional in this schema so that a client also accepts a response from an older server.  | [optional]
 **Status** | **string** |  |
 **AmountUsd** | **string** | Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount. |
 **RecipientAddress** | **string** |  |
@@ -59,6 +60,31 @@ and a boolean to check if the value has been set.
 
 SetId sets Id field to given value.
 
+
+### GetPurchaseId
+
+`func (o *Purchase) GetPurchaseId() string`
+
+GetPurchaseId returns the PurchaseId field if non-nil, zero value otherwise.
+
+### GetPurchaseIdOk
+
+`func (o *Purchase) GetPurchaseIdOk() (*string, bool)`
+
+GetPurchaseIdOk returns a tuple with the PurchaseId field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetPurchaseId
+
+`func (o *Purchase) SetPurchaseId(v string)`
+
+SetPurchaseId sets PurchaseId field to given value.
+
+### HasPurchaseId
+
+`func (o *Purchase) HasPurchaseId() bool`
+
+HasPurchaseId returns a boolean if a field has been set.
 
 ### GetStatus
 

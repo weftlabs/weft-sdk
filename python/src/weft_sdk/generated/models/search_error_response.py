@@ -33,8 +33,8 @@ class SearchErrorResponse(BaseModel):
     @field_validator('error')
     def error_validate_enum(cls, value):
         """Validates the enum"""
-        if value not in set(['INVALID_QUERY', 'INVALID_MAX_RESULTS', 'INVALID_FILTERS', 'UNKNOWN_PARAMETER', 'SEARCH_UPSTREAM_ERROR', 'SEARCH_BACKEND_MISCONFIGURED']):
-            raise ValueError("must be one of enum values ('INVALID_QUERY', 'INVALID_MAX_RESULTS', 'INVALID_FILTERS', 'UNKNOWN_PARAMETER', 'SEARCH_UPSTREAM_ERROR', 'SEARCH_BACKEND_MISCONFIGURED')")
+        if value not in set(['INVALID_QUERY', 'INVALID_MAX_RESULTS', 'INVALID_FILTERS', 'INVALID_VIEW', 'UNKNOWN_PARAMETER', 'SEARCH_UPSTREAM_ERROR', 'SEARCH_BACKEND_MISCONFIGURED']):
+            raise ValueError("must be one of enum values ('INVALID_QUERY', 'INVALID_MAX_RESULTS', 'INVALID_FILTERS', 'INVALID_VIEW', 'UNKNOWN_PARAMETER', 'SEARCH_UPSTREAM_ERROR', 'SEARCH_BACKEND_MISCONFIGURED')")
         return value
 
     model_config = ConfigDict(

@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
 from pydantic import Field, StrictInt
-from typing import Optional
+from typing import Any, Optional
 from typing_extensions import Annotated
 from weft_sdk.generated.models.purchase_list_response import PurchaseListResponse
 from weft_sdk.generated.models.purchase_response import PurchaseResponse
@@ -43,7 +43,7 @@ class PurchasesApi:
     @validate_call
     def get_purchase(
         self,
-        id: Annotated[StrictInt, Field(description="Purchase ID")],
+        id: Annotated[Any, Field(description="The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`. ")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -60,8 +60,8 @@ class PurchasesApi:
         """Get a buyer purchase
 
 
-        :param id: Purchase ID (required)
-        :type id: int
+        :param id: The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.  (required)
+        :type id: GetPurchaseIdParameter
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -112,7 +112,7 @@ class PurchasesApi:
     @validate_call
     def get_purchase_with_http_info(
         self,
-        id: Annotated[StrictInt, Field(description="Purchase ID")],
+        id: Annotated[Any, Field(description="The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`. ")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -129,8 +129,8 @@ class PurchasesApi:
         """Get a buyer purchase
 
 
-        :param id: Purchase ID (required)
-        :type id: int
+        :param id: The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.  (required)
+        :type id: GetPurchaseIdParameter
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -181,7 +181,7 @@ class PurchasesApi:
     @validate_call
     def get_purchase_without_preload_content(
         self,
-        id: Annotated[StrictInt, Field(description="Purchase ID")],
+        id: Annotated[Any, Field(description="The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`. ")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -198,8 +198,8 @@ class PurchasesApi:
         """Get a buyer purchase
 
 
-        :param id: Purchase ID (required)
-        :type id: int
+        :param id: The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.  (required)
+        :type id: GetPurchaseIdParameter
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of

@@ -23,12 +23,38 @@ module Weft
 
     attr_accessor :filters
 
+    # Response view. Absent means `full`: the complete `SearchResult` rows in `results`. `compact` returns the hosted MCP agent view in `compact_results` (see `SearchCompactResult`). The compact view applies the same selection as hosted MCP search: it leaves out incomplete PayWithLocus gateway contracts. It does not add filters; send `weft_fetch_compatible: true` to get only results that `POST /api/v1/fetch` can pay.
+    attr_accessor :view
+
+    class EnumAttributeValidator
+      attr_reader :datatype
+      attr_reader :allowable_values
+
+      def initialize(datatype, allowable_values)
+        @allowable_values = allowable_values.map do |value|
+          case datatype.to_s
+          when /Integer/i
+            value.to_i
+          when /Float/i
+            value.to_f
+          else
+            value
+          end
+        end
+      end
+
+      def valid?(value)
+        !value || allowable_values.include?(value)
+      end
+    end
+
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
         :'query' => :'query',
         :'max_results' => :'max_results',
-        :'filters' => :'filters'
+        :'filters' => :'filters',
+        :'view' => :'view'
       }
     end
 
@@ -47,7 +73,8 @@ module Weft
       {
         :'query' => :'String',
         :'max_results' => :'Integer',
-        :'filters' => :'SearchFilterSpec'
+        :'filters' => :'SearchFilterSpec',
+        :'view' => :'String'
       }
     end
 
@@ -88,6 +115,10 @@ module Weft
       if attributes.key?(:'filters')
         self.filters = attributes[:'filters']
       end
+
+      if attributes.key?(:'view')
+        self.view = attributes[:'view']
+      end
     end
 
     # Show invalid properties with the reasons. Usually used together with valid?
@@ -127,6 +158,8 @@ module Weft
       return false if @query.to_s.length < 1
       return false if !@max_results.nil? && @max_results > 50
       return false if !@max_results.nil? && @max_results < 1
+      view_validator = EnumAttributeValidator.new('String', ["full", "compact"])
+      return false unless view_validator.valid?(@view)
       true
     end
 
@@ -166,6 +199,16 @@ module Weft
       @max_results = max_results
     end
 
+    # Custom attribute writer method checking allowed values (enum).
+    # @param [Object] view Object to be assigned
+    def view=(view)
+      validator = EnumAttributeValidator.new('String', ["full", "compact"])
+      unless validator.valid?(view)
+        fail ArgumentError, "invalid value for \"view\", must be one of #{validator.allowable_values}."
+      end
+      @view = view
+    end
+
     # Checks equality by comparing each attribute.
     # @param [Object] Object to be compared
     def ==(o)
@@ -173,7 +216,8 @@ module Weft
       self.class == o.class &&
           query == o.query &&
           max_results == o.max_results &&
-          filters == o.filters
+          filters == o.filters &&
+          view == o.view
     end
 
     # @see the `==` method
@@ -185,7 +229,7 @@ module Weft
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [query, max_results, filters].hash
+      [query, max_results, filters, view].hash
     end
 
     # Builds the object from hash

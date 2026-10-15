@@ -25,7 +25,7 @@ type PurchasesAPIService service
 type ApiGetPurchaseRequest struct {
 	ctx        context.Context
 	ApiService *PurchasesAPIService
-	id         int32
+	id         GetPurchaseIdParameter
 }
 
 func (r ApiGetPurchaseRequest) Execute() (*PurchaseResponse, *http.Response, error) {
@@ -36,10 +36,10 @@ func (r ApiGetPurchaseRequest) Execute() (*PurchaseResponse, *http.Response, err
 GetPurchase Get a buyer purchase
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id Purchase ID
+	@param id The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.
 	@return ApiGetPurchaseRequest
 */
-func (a *PurchasesAPIService) GetPurchase(ctx context.Context, id int32) ApiGetPurchaseRequest {
+func (a *PurchasesAPIService) GetPurchase(ctx context.Context, id GetPurchaseIdParameter) ApiGetPurchaseRequest {
 	return ApiGetPurchaseRequest{
 		ApiService: a,
 		ctx:        ctx,

@@ -26,7 +26,7 @@ Weft.configure do |config|
 end
 
 api_instance = Weft::PurchasesApi.new
-id = 56 # Integer | Purchase ID
+id = nil # GetPurchaseIdParameter | The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller's own purchases. New callers should store and send `purchase_id`.
 
 begin
   # Get a buyer purchase
@@ -59,7 +59,7 @@ end
 
 | Name | Type | Description | Notes |
 | ---- | ---- | ----------- | ----- |
-| **id** | **Integer** | Purchase ID |  |
+| **id** | [**GetPurchaseIdParameter**](.md) | The opaque &#x60;purchase_id&#x60; (&#x60;pur_…&#x60;) that fetch returns, or the legacy integer &#x60;id&#x60;. Both resolve only within the caller&#39;s own purchases. New callers should store and send &#x60;purchase_id&#x60;.  |  |
 
 ### Return type
 

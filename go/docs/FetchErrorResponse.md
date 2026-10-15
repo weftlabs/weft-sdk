@@ -5,7 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Error** | **string** | Stable error code. |
-**Details** | **map[string]interface{}** | Optional context. Shape varies by error code. |
+**Details** | **map[string]interface{}** | Optional context. Shape varies by error code.  &#x60;purchase_id&#x60; (opaque string) is present when the failure follows a payment row for this request — a new, resumed, or replayed payment. It is the id that &#x60;GET /api/v1/purchases/{id}&#x60; accepts: read that purchase to learn whether the charge settled, instead of assuming either outcome. It is absent when the request was refused before any payment row existed.  |
 **Policy** | [**SpendingPolicy**](SpendingPolicy.md) |  |
 **Balance** | [**FetchBalanceSnapshot**](FetchBalanceSnapshot.md) |  |
 **DashboardUrl** | **string** | Deep-link to the dashboard&#39;s policy page. |

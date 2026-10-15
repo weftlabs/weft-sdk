@@ -39,6 +39,7 @@ from weft_sdk.generated.models.fetch_error_response import FetchErrorResponse
 from weft_sdk.generated.models.fetch_request import FetchRequest
 from weft_sdk.generated.models.fetch_request_body import FetchRequestBody
 from weft_sdk.generated.models.fetch_response import FetchResponse
+from weft_sdk.generated.models.get_purchase_id_parameter import GetPurchaseIdParameter
 from weft_sdk.generated.models.insufficient_scope_response import InsufficientScopeResponse
 from weft_sdk.generated.models.me_api_key import MeApiKey
 from weft_sdk.generated.models.me_api_key_creator import MeApiKeyCreator
@@ -65,6 +66,14 @@ from weft_sdk.generated.models.resource_enrollment_response import ResourceEnrol
 from weft_sdk.generated.models.resource_stats import ResourceStats
 from weft_sdk.generated.models.search_access_method import SearchAccessMethod
 from weft_sdk.generated.models.search_capability_ref import SearchCapabilityRef
+from weft_sdk.generated.models.search_compact_access import SearchCompactAccess
+from weft_sdk.generated.models.search_compact_access_price import SearchCompactAccessPrice
+from weft_sdk.generated.models.search_compact_next_call import SearchCompactNextCall
+from weft_sdk.generated.models.search_compact_result import SearchCompactResult
+from weft_sdk.generated.models.search_compact_result_attribution import SearchCompactResultAttribution
+from weft_sdk.generated.models.search_compact_result_blocked_scopes_inner import SearchCompactResultBlockedScopesInner
+from weft_sdk.generated.models.search_compact_result_operation import SearchCompactResultOperation
+from weft_sdk.generated.models.search_compact_result_provider import SearchCompactResultProvider
 from weft_sdk.generated.models.search_curated_callability import SearchCuratedCallability
 from weft_sdk.generated.models.search_curated_execution import SearchCuratedExecution
 from weft_sdk.generated.models.search_curated_operation import SearchCuratedOperation

@@ -61,6 +61,16 @@ the structured envelope; `Accept: text/markdown` returns a rendered
 Markdown digest of the same results — useful for piping into a chat
 UI or LLM prompt.
 
+Compact view: send `view: "compact"` to get the agent view of the
+hosted MCP `weft_search` tool. Each result is a small contract for the
+next paid call (below 2,000 JSON bytes): typed inputs, the request
+recipe, one access method with price, attribution, a ready `next_call`
+to `POST /api/v1/fetch` when the request is determined, and the
+authenticated `contract_url` for the full contract. Use it when you
+give search results to a model. The compact rows are in
+`compact_results`; `results` is empty. The compact view is JSON only
+and needs the curated search backend.
+
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@return ApiSearchRequest
 */

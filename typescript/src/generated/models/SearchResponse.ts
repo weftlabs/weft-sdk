@@ -20,6 +20,13 @@ import {
     SearchFilterSpecToJSON,
     SearchFilterSpecToJSONTyped,
 } from './SearchFilterSpec';
+import type { SearchCompactResult } from './SearchCompactResult';
+import {
+    SearchCompactResultFromJSON,
+    SearchCompactResultFromJSONTyped,
+    SearchCompactResultToJSON,
+    SearchCompactResultToJSONTyped,
+} from './SearchCompactResult';
 import type { SearchResult } from './SearchResult';
 import {
     SearchResultFromJSON,
@@ -82,7 +89,9 @@ export interface SearchResponse {
      * THIS, not `results.length`, for the count: on a `markdown` response
      * `results` is empty by design, so `result_count > 0` with an empty
      * `results` is a rendered table while `result_count == 0` is a genuine
-     * zero-result.
+     * zero-result. On a `compact` view response it counts
+     * `compact_results`; there, `result_count == 0` with
+     * `omitted_results` means every ranked result was too large to show.
      *
      * @type {number}
      * @memberof SearchResponse
@@ -204,12 +213,38 @@ export interface SearchResponse {
      * empty or nothing cleared the relevance floor. Results BELOW the floor
      * are never returned — an empty list plus a `reason` is the honest
      * answer, not a list of near-misses in the same shape as a genuine
-     * match.
+     * match. Empty on a `compact` view response; read `compact_results`.
      *
      * @type {Array<SearchResult>}
      * @memberof SearchResponse
      */
     results: Array<SearchResult>;
+    /**
+     * The view this response carries. Present as `compact` when the
+     * request asked for `view: "compact"`; absent means `full`.
+     *
+     * @type {string}
+     * @memberof SearchResponse
+     */
+    view?: SearchResponseViewEnum;
+    /**
+     * Ranked compact results, present only on a `compact` view response.
+     * `result_count` is their count. They are a separate field so that
+     * typed clients keep the full `SearchResult` shape for `results`.
+     *
+     * @type {Array<SearchCompactResult>}
+     * @memberof SearchResponse
+     */
+    compactResults?: Array<SearchCompactResult>;
+    /**
+     * Compact view only: how many ranked results were left out because
+     * even their minimum summary does not fit the per-result budget.
+     * Absent when none were left out.
+     *
+     * @type {number}
+     * @memberof SearchResponse
+     */
+    omittedResults?: number;
 }
 
 
@@ -261,6 +296,15 @@ export const SearchResponseReasonEnum = {
 } as const;
 export type SearchResponseReasonEnum = typeof SearchResponseReasonEnum[keyof typeof SearchResponseReasonEnum];
 
+/**
+ * @export
+ */
+export const SearchResponseViewEnum = {
+    Full: 'full',
+    Compact: 'compact'
+} as const;
+export type SearchResponseViewEnum = typeof SearchResponseViewEnum[keyof typeof SearchResponseViewEnum];
+
 
 /**
  * Check if a given object implements the SearchResponse interface.
@@ -303,6 +347,9 @@ export function SearchResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'reason': json['reason'] == null ? undefined : json['reason'],
         'suggestion': json['suggestion'] == null ? undefined : json['suggestion'],
         'results': ((json['results'] as Array<any>).map(SearchResultFromJSON)),
+        'view': json['view'] == null ? undefined : json['view'],
+        'compactResults': json['compact_results'] == null ? undefined : ((json['compact_results'] as Array<any>).map(SearchCompactResultFromJSON)),
+        'omittedResults': json['omitted_results'] == null ? undefined : json['omitted_results'],
     };
 }
 
@@ -335,5 +382,8 @@ export function SearchResponseToJSONTyped(value?: SearchResponse | null, ignoreD
         'reason': value['reason'],
         'suggestion': value['suggestion'],
         'results': ((value['results'] as Array<any>).map(SearchResultToJSON)),
+        'view': value['view'],
+        'compact_results': value['compactResults'] == null ? undefined : ((value['compactResults'] as Array<any>).map(SearchCompactResultToJSON)),
+        'omitted_results': value['omittedResults'],
     };
 }

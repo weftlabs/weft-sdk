@@ -22,8 +22,10 @@ var _ MappedNullable = &Purchase{}
 
 // Purchase struct for Purchase
 type Purchase struct {
-	Id     int32  `json:"id"`
-	Status string `json:"status"`
+	Id int32 `json:"id"`
+	// Opaque purchase id: the value fetch returns as `purchase_id` and that `GET /api/v1/purchases/{id}` accepts. Prefer it over the sequential `id`. Current servers always send this field; it is optional in this schema so that a client also accepts a response from an older server.
+	PurchaseId *string `json:"purchase_id,omitempty" validate:"regexp=^pur_[A-Za-z0-9_-]{24}$"`
+	Status     string  `json:"status"`
 	// Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount.
 	AmountUsd        string         `json:"amount_usd"`
 	RecipientAddress string         `json:"recipient_address"`
@@ -99,6 +101,38 @@ func (o *Purchase) GetIdOk() (*int32, bool) {
 // SetId sets field value
 func (o *Purchase) SetId(v int32) {
 	o.Id = v
+}
+
+// GetPurchaseId returns the PurchaseId field value if set, zero value otherwise.
+func (o *Purchase) GetPurchaseId() string {
+	if o == nil || IsNil(o.PurchaseId) {
+		var ret string
+		return ret
+	}
+	return *o.PurchaseId
+}
+
+// GetPurchaseIdOk returns a tuple with the PurchaseId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Purchase) GetPurchaseIdOk() (*string, bool) {
+	if o == nil || IsNil(o.PurchaseId) {
+		return nil, false
+	}
+	return o.PurchaseId, true
+}
+
+// HasPurchaseId returns a boolean if a field has been set.
+func (o *Purchase) HasPurchaseId() bool {
+	if o != nil && !IsNil(o.PurchaseId) {
+		return true
+	}
+
+	return false
+}
+
+// SetPurchaseId gets a reference to the given string and assigns it to the PurchaseId field.
+func (o *Purchase) SetPurchaseId(v string) {
+	o.PurchaseId = &v
 }
 
 // GetStatus returns the Status field value
@@ -490,6 +524,9 @@ func (o Purchase) MarshalJSON() ([]byte, error) {
 func (o Purchase) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	toSerialize["id"] = o.Id
+	if !IsNil(o.PurchaseId) {
+		toSerialize["purchase_id"] = o.PurchaseId
+	}
 	toSerialize["status"] = o.Status
 	toSerialize["amount_usd"] = o.AmountUsd
 	toSerialize["recipient_address"] = o.RecipientAddress

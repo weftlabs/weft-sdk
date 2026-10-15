@@ -6,6 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **int** |  |
+**purchase_id** | **str** | Opaque purchase id: the value fetch returns as &#x60;purchase_id&#x60; and that &#x60;GET /api/v1/purchases/{id}&#x60; accepts. Prefer it over the sequential &#x60;id&#x60;. Current servers always send this field; it is optional in this schema so that a client also accepts a response from an older server.  | [optional]
 **status** | **str** |  |
 **amount_usd** | **str** | Exact decimal USD amount with up to six fractional digits. Settled rows report the amount that moved; pending and failed rows report their authorization amount. |
 **recipient_address** | **str** |  |

@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from weft_sdk.generated.models.search_filter_spec import SearchFilterSpec
@@ -31,7 +31,18 @@ class SearchRequest(BaseModel):
     query: Annotated[str, Field(min_length=1, strict=True, max_length=2000)] = Field(description="Free-text query. Required and non-empty.")
     max_results: Optional[Annotated[int, Field(le=50, strict=True, ge=1)]] = Field(default=10, description="Max number of hits to return. Invalid values are rejected, not clamped.")
     filters: Optional[SearchFilterSpec] = None
-    __properties: ClassVar[List[str]] = ["query", "max_results", "filters"]
+    view: Optional[StrictStr] = Field(default=None, description="Response view. Absent means `full`: the complete `SearchResult` rows in `results`. `compact` returns the hosted MCP agent view in `compact_results` (see `SearchCompactResult`). The compact view applies the same selection as hosted MCP search: it leaves out incomplete PayWithLocus gateway contracts. It does not add filters; send `weft_fetch_compatible: true` to get only results that `POST /api/v1/fetch` can pay. ")
+    __properties: ClassVar[List[str]] = ["query", "max_results", "filters", "view"]
+
+    @field_validator('view')
+    def view_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['full', 'compact']):
+            raise ValueError("must be one of enum values ('full', 'compact')")
+        return value
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -89,6 +100,7 @@ class SearchRequest(BaseModel):
         _obj = cls.model_validate({
             "query": obj.get("query"),
             "max_results": obj.get("max_results") if obj.get("max_results") is not None else 10,
-            "filters": SearchFilterSpec.from_dict(obj["filters"]) if obj.get("filters") is not None else None
+            "filters": SearchFilterSpec.from_dict(obj["filters"]) if obj.get("filters") is not None else None,
+            "view": obj.get("view")
         })
         return _obj

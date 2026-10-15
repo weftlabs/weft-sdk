@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **TxHash** | **NullableString** | Settlement transaction hash. Null until a settlement hash has been reported. |
 **Protocol** | **string** | Payment protocol selected for this fetch. |
 **ArtifactId** | **NullableInt32** | Internal artifact identifier if the response was persisted; &#x60;null&#x60; otherwise. |
+**PurchaseId** | Pointer to **NullableString** | The buyer purchase that paid for this fetch: an opaque id that &#x60;GET /api/v1/purchases/{id}&#x60; accepts and that purchase rows carry as &#x60;purchase_id&#x60;. It is not the sequential &#x60;Purchase.id&#x60;; do not parse or order by it. That purchase reports its own &#x60;status&#x60;, not &#x60;payment_status&#x60;: &#x60;signed&#x60; while the payment is pending, then &#x60;settled&#x60; (charged its &#x60;amount_usd&#x60;, which can be less than &#x60;held_usd&#x60;) or &#x60;declined&#x60;, &#x60;locked&#x60;, &#x60;expired&#x60;, or &#x60;reverted&#x60; (not charged). A &#x60;settled&#x60; purchase with &#x60;failure_reason: merchant_delivery_failed&#x60; was charged, but no successful paid response was delivered. An idempotent replay returns the same id, so bill at most once for each id. &#x60;null&#x60; when no payment was made (&#x60;payment_status: not_required&#x60;).  The lookup needs purchase-history access: a &#x60;wk_*&#x60; key, a claimed &#x60;wbt_*&#x60; bearer, or a REST OAuth token with the &#x60;balance&#x60; scope. An OAuth token issued for the MCP server cannot call this endpoint. Current servers always send this field. It is optional in this schema so that a client also accepts a response from an older server.  | [optional]
 
 ## Methods
 
@@ -253,5 +254,40 @@ SetArtifactId sets ArtifactId field to given value.
 `func (o *FetchResponse) UnsetArtifactId()`
 
 UnsetArtifactId ensures that no value is present for ArtifactId, not even an explicit nil
+### GetPurchaseId
+
+`func (o *FetchResponse) GetPurchaseId() string`
+
+GetPurchaseId returns the PurchaseId field if non-nil, zero value otherwise.
+
+### GetPurchaseIdOk
+
+`func (o *FetchResponse) GetPurchaseIdOk() (*string, bool)`
+
+GetPurchaseIdOk returns a tuple with the PurchaseId field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetPurchaseId
+
+`func (o *FetchResponse) SetPurchaseId(v string)`
+
+SetPurchaseId sets PurchaseId field to given value.
+
+### HasPurchaseId
+
+`func (o *FetchResponse) HasPurchaseId() bool`
+
+HasPurchaseId returns a boolean if a field has been set.
+
+### SetPurchaseIdNil
+
+`func (o *FetchResponse) SetPurchaseIdNil(b bool)`
+
+ SetPurchaseIdNil sets the value for PurchaseId to be an explicit nil
+
+### UnsetPurchaseId
+`func (o *FetchResponse) UnsetPurchaseId()`
+
+UnsetPurchaseId ensures that no value is present for PurchaseId, not even an explicit nil
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

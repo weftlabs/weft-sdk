@@ -9,6 +9,7 @@ Name | Type
 `query` | string
 `maxResults` | number
 `filters` | [SearchFilterSpec](SearchFilterSpec.md)
+`view` | string
 
 ## Example
 
@@ -20,6 +21,7 @@ const example = {
   "query": send email from an agent,
   "maxResults": null,
   "filters": null,
+  "view": null,
 } satisfies SearchRequest
 
 console.log(example)

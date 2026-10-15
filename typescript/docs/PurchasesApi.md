@@ -33,8 +33,8 @@ async function example() {
   const api = new PurchasesApi(config);
 
   const body = {
-    // number | Purchase ID
-    id: 56,
+    // GetPurchaseIdParameter | The opaque `purchase_id` (`pur_…`) that fetch returns, or the legacy integer `id`. Both resolve only within the caller\'s own purchases. New callers should store and send `purchase_id`.
+    id: ...,
   } satisfies GetPurchaseRequest;
 
   try {
@@ -54,7 +54,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **id** | `number` | Purchase ID | [Defaults to `undefined`] |
+| **id** | [](.md) | The opaque &#x60;purchase_id&#x60; (&#x60;pur_…&#x60;) that fetch returns, or the legacy integer &#x60;id&#x60;. Both resolve only within the caller\&#39;s own purchases. New callers should store and send &#x60;purchase_id&#x60;.  | [Defaults to `undefined`] |
 
 ### Return type
 

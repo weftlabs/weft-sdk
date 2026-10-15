@@ -26,6 +26,8 @@ type SearchRequest struct {
 	// Max number of hits to return. Invalid values are rejected, not clamped.
 	MaxResults *int32            `json:"max_results,omitempty"`
 	Filters    *SearchFilterSpec `json:"filters,omitempty"`
+	// Response view. Absent means `full`: the complete `SearchResult` rows in `results`. `compact` returns the hosted MCP agent view in `compact_results` (see `SearchCompactResult`). The compact view applies the same selection as hosted MCP search: it leaves out incomplete PayWithLocus gateway contracts. It does not add filters; send `weft_fetch_compatible: true` to get only results that `POST /api/v1/fetch` can pay.
+	View *string `json:"view,omitempty"`
 }
 
 type _SearchRequest SearchRequest
@@ -140,6 +142,38 @@ func (o *SearchRequest) SetFilters(v SearchFilterSpec) {
 	o.Filters = &v
 }
 
+// GetView returns the View field value if set, zero value otherwise.
+func (o *SearchRequest) GetView() string {
+	if o == nil || IsNil(o.View) {
+		var ret string
+		return ret
+	}
+	return *o.View
+}
+
+// GetViewOk returns a tuple with the View field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *SearchRequest) GetViewOk() (*string, bool) {
+	if o == nil || IsNil(o.View) {
+		return nil, false
+	}
+	return o.View, true
+}
+
+// HasView returns a boolean if a field has been set.
+func (o *SearchRequest) HasView() bool {
+	if o != nil && !IsNil(o.View) {
+		return true
+	}
+
+	return false
+}
+
+// SetView gets a reference to the given string and assigns it to the View field.
+func (o *SearchRequest) SetView(v string) {
+	o.View = &v
+}
+
 func (o SearchRequest) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -156,6 +190,9 @@ func (o SearchRequest) ToMap() (map[string]interface{}, error) {
 	}
 	if !IsNil(o.Filters) {
 		toSerialize["filters"] = o.Filters
+	}
+	if !IsNil(o.View) {
+		toSerialize["view"] = o.View
 	}
 	return toSerialize, nil
 }
