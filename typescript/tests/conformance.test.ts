@@ -116,12 +116,19 @@ function substitute(value: unknown): unknown {
   return value;
 }
 
-function wireResult(method: string, result: unknown): unknown {
+function wireResult(method: string, result: unknown, sent?: Json): unknown {
   const serialize = SERIALIZERS[method];
   if (!serialize) throw new Error(`no serializer for ${method}`);
   const wire = JSON.parse(JSON.stringify(serialize(result as never))) as {
     data?: { principalType?: string; principal_type?: string };
-  };
+  } & Record<string, unknown>;
+  // Generated models read an optional nullable field's null as undefined
+  // (`purchase_id` on a `not_required` fetch); the server sent null.
+  if (sent && typeof sent === "object" && !Array.isArray(sent)) {
+    for (const [key, value] of Object.entries(sent)) {
+      if (value === null && !(key in wire)) wire[key] = null;
+    }
+  }
   if (method === "me" && wire.data && "principalType" in wire.data) {
     expect(wire.data.principalType).toBe(wire.data.principal_type);
     delete wire.data.principalType;
@@ -351,9 +358,9 @@ describe("conformance client", () => {
         }
       } else {
         const result = await invoke(client);
-        expect(wireResult(testCase.call.method, result)).toEqual(
-          testCase.expectResult,
-        );
+        expect(
+          wireResult(testCase.call.method, result, testCase.response?.body),
+        ).toEqual(testCase.expectResult);
       }
 
       if (!testCase.expectRequest) return;
