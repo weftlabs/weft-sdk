@@ -18,12 +18,14 @@ in this document are seller administration surfaces and require an
 `ax_live_*` resource key. These credential types are not interchangeable.
 
 This document is a deliberate subset of the `/api/v1` surface, not an
-inventory of it. The seller-side management endpoints — `/api/v1/agents`,
-`/api/v1/webhook_endpoints`, and `/api/v1/analytics` — are reachable with
-an `ax_live_*` key but are intentionally left undocumented: they are
-dashboard-facing and not part of the published client contract. Nothing
-outside this document is a supported contract, and the response-validation
-gate in `config/environments/test.rb` enforces only what is declared here.
+inventory of it. The seller-side management endpoints — `/api/v1/agents`
+and `/api/v1/analytics` — are reachable with an `ax_live_*` key but are
+intentionally left undocumented: they are dashboard-facing and not part
+of the published client contract. `/api/v1/webhook_endpoints` stays
+routed and returns HTTP 410 with error code `gone` for index, show,
+create, update, and destroy. Nothing outside this document is a
+supported contract, and the response-validation gate in
+`config/environments/test.rb` enforces only what is declared here.
 
 Before claim, a `wbt_*` bearer is temporary and permits only search plus its
 own status/cancel operations for 30 minutes. Human approval binds it to the
@@ -137,6 +139,12 @@ Class | Method | HTTP request | Description
 *PurchasesAPI* | [**ListPurchases**](docs/PurchasesAPI.md#listpurchases) | **Get** /api/v1/purchases | List buyer purchases
 *ResourcesAPI* | [**EnrollResource**](docs/ResourcesAPI.md#enrollresource) | **Post** /api/v1/resources/enroll | Self-enroll a ghost resource (public, no auth)
 *SearchAPI* | [**Search**](docs/SearchAPI.md#search) | **Post** /api/v1/search | Search the Weft index
+*WebhooksAPI* | [**CreateWebhookEndpoint**](docs/WebhooksAPI.md#createwebhookendpoint) | **Post** /api/v1/webhook_endpoints | Create a webhook endpoint
+*WebhooksAPI* | [**DeleteWebhookEndpoint**](docs/WebhooksAPI.md#deletewebhookendpoint) | **Delete** /api/v1/webhook_endpoints/{id} | Delete a webhook endpoint
+*WebhooksAPI* | [**GetWebhookEndpoint**](docs/WebhooksAPI.md#getwebhookendpoint) | **Get** /api/v1/webhook_endpoints/{id} | Get a webhook endpoint
+*WebhooksAPI* | [**ListWebhookEndpoints**](docs/WebhooksAPI.md#listwebhookendpoints) | **Get** /api/v1/webhook_endpoints | List webhook endpoints
+*WebhooksAPI* | [**ReplaceWebhookEndpoint**](docs/WebhooksAPI.md#replacewebhookendpoint) | **Put** /api/v1/webhook_endpoints/{id} | Replace a webhook endpoint
+*WebhooksAPI* | [**UpdateWebhookEndpoint**](docs/WebhooksAPI.md#updatewebhookendpoint) | **Patch** /api/v1/webhook_endpoints/{id} | Update a webhook endpoint
 
 
 ## Documentation For Models

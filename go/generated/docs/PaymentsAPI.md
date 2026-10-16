@@ -83,6 +83,8 @@ Name | Type | Description  | Notes
 
 List payments
 
+
+
 ### Example
 
 ```go
