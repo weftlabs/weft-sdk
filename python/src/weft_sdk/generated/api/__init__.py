@@ -12,3 +12,4 @@ from weft_sdk.generated.api.payments_api import PaymentsApi
 from weft_sdk.generated.api.purchases_api import PurchasesApi
 from weft_sdk.generated.api.resources_api import ResourcesApi
 from weft_sdk.generated.api.search_api import SearchApi
+from weft_sdk.generated.api.webhooks_api import WebhooksApi

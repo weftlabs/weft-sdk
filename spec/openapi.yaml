@@ -27,12 +27,14 @@ info:
     `ax_live_*` resource key. These credential types are not interchangeable.
 
     This document is a deliberate subset of the `/api/v1` surface, not an
-    inventory of it. The seller-side management endpoints — `/api/v1/agents`,
-    `/api/v1/webhook_endpoints`, and `/api/v1/analytics` — are reachable with
-    an `ax_live_*` key but are intentionally left undocumented: they are
-    dashboard-facing and not part of the published client contract. Nothing
-    outside this document is a supported contract, and the response-validation
-    gate in `config/environments/test.rb` enforces only what is declared here.
+    inventory of it. The seller-side management endpoints — `/api/v1/agents`
+    and `/api/v1/analytics` — are reachable with an `ax_live_*` key but are
+    intentionally left undocumented: they are dashboard-facing and not part
+    of the published client contract. `/api/v1/webhook_endpoints` stays
+    routed and returns HTTP 410 with error code `gone` for index, show,
+    create, update, and destroy. Nothing outside this document is a
+    supported contract, and the response-validation gate in
+    `config/environments/test.rb` enforces only what is declared here.
 
     Before claim, a `wbt_*` bearer is temporary and permits only search plus its
     own status/cancel operations for 30 minutes. Human approval binds it to the
@@ -77,6 +79,10 @@ tags:
       changed?" without a second round-trip.
   - name: Payments
     description: Seller Organization payment receipts.
+  - name: Webhooks
+    description: |
+      Retired. Every `/api/v1/webhook_endpoints` operation returns HTTP 410
+      with error code `gone`. Stored rows are not read or delivered.
   - name: Purchases
     description: Buyer signing and settlement history.
   - name: Resources
@@ -325,6 +331,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+        "413":
+          description: Request body exceeds the 4 KiB limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/sign_in:
     post:
       summary: Sign in with email and password
@@ -349,6 +361,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Request body exceeds the 4 KiB limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/password/reset:
     post:
       summary: Request password reset
@@ -367,6 +385,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+        "413":
+          description: Request body exceeds the 4 KiB limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/password/update:
     post:
       summary: Update password with reset token
@@ -1067,6 +1091,225 @@ paths:
                 $ref: "#/components/schemas/InsufficientScopeResponse"
         "404":
           description: Purchase not found or owned by another buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/webhook_endpoints:
+    get:
+      tags: [Webhooks]
+      summary: List webhook endpoints
+      description: Retired. Returns HTTP 410 with error code `gone`.
+      operationId: listWebhookEndpoints
+      deprecated: true
+      security:
+        - bearerAuth: []
+      responses:
+        "410":
+          description: Webhook endpoint management is retired. `error.code` is `gone`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: gone
+                  message: Webhook endpoint management is no longer available.
+                  details: null
+                  request_id: req_01HX9F3K7B2N4P8Q1R6T8Y2Z5
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: |
+            The credential authenticated but has no organization context
+            (`ORGANIZATION_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Webhooks]
+      summary: Create a webhook endpoint
+      description: Retired. Returns HTTP 410 with error code `gone`. The body is ignored.
+      operationId: createWebhookEndpoint
+      deprecated: true
+      security:
+        - bearerAuth: []
+      responses:
+        "410":
+          description: Webhook endpoint management is retired. `error.code` is `gone`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: gone
+                  message: Webhook endpoint management is no longer available.
+                  details: null
+                  request_id: req_01HX9F3K7B2N4P8Q1R6T8Y2Z5
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: |
+            The credential authenticated but has no organization context
+            (`ORGANIZATION_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/webhook_endpoints/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Webhook endpoint ID. Ignored. The response is always HTTP 410.
+    get:
+      tags: [Webhooks]
+      summary: Get a webhook endpoint
+      description: Retired. Returns HTTP 410 with error code `gone`.
+      operationId: getWebhookEndpoint
+      deprecated: true
+      security:
+        - bearerAuth: []
+      responses:
+        "410":
+          description: Webhook endpoint management is retired. `error.code` is `gone`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: gone
+                  message: Webhook endpoint management is no longer available.
+                  details: null
+                  request_id: req_01HX9F3K7B2N4P8Q1R6T8Y2Z5
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: |
+            The credential authenticated but has no organization context
+            (`ORGANIZATION_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags: [Webhooks]
+      summary: Update a webhook endpoint
+      description: Retired. Returns HTTP 410 with error code `gone`. The body is ignored.
+      operationId: updateWebhookEndpoint
+      deprecated: true
+      security:
+        - bearerAuth: []
+      responses:
+        "410":
+          description: Webhook endpoint management is retired. `error.code` is `gone`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: gone
+                  message: Webhook endpoint management is no longer available.
+                  details: null
+                  request_id: req_01HX9F3K7B2N4P8Q1R6T8Y2Z5
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: |
+            The credential authenticated but has no organization context
+            (`ORGANIZATION_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags: [Webhooks]
+      summary: Replace a webhook endpoint
+      description: Retired. Returns HTTP 410 with error code `gone`. The body is ignored.
+      operationId: replaceWebhookEndpoint
+      deprecated: true
+      security:
+        - bearerAuth: []
+      responses:
+        "410":
+          description: Webhook endpoint management is retired. `error.code` is `gone`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: gone
+                  message: Webhook endpoint management is no longer available.
+                  details: null
+                  request_id: req_01HX9F3K7B2N4P8Q1R6T8Y2Z5
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: |
+            The credential authenticated but has no organization context
+            (`ORGANIZATION_REQUIRED`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Webhooks]
+      summary: Delete a webhook endpoint
+      description: Retired. Returns HTTP 410 with error code `gone`. Stored rows are kept.
+      operationId: deleteWebhookEndpoint
+      deprecated: true
+      security:
+        - bearerAuth: []
+      responses:
+        "410":
+          description: Webhook endpoint management is retired. `error.code` is `gone`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: gone
+                  message: Webhook endpoint management is no longer available.
+                  details: null
+                  request_id: req_01HX9F3K7B2N4P8Q1R6T8Y2Z5
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: |
+            The credential authenticated but has no organization context
+            (`ORGANIZATION_REQUIRED`).
           content:
             application/json:
               schema:
