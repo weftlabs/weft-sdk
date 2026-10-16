@@ -89,6 +89,7 @@ Name | Type | Description  | Notes
 **201** | API key created (includes raw key, shown only once) |  -  |
 **401** | Unauthorized |  -  |
 **422** | Validation error |  -  |
+**403** | The credential authenticated but cannot administer organization keys. Account-scoped keys have no organization context (&#x60;ORGANIZATION_REQUIRED&#x60;). A resource key with &#x60;product_id&#x60; set is product-scoped (&#x60;ORGANIZATION_SCOPE_REQUIRED&#x60;). A resource key with &#x60;product_id&#x60; nil keeps organization scope.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -164,7 +165,7 @@ This endpoint does not need any parameter.
 |-------------|-------------|------------------|
 **200** | List of API keys |  -  |
 **401** | Unauthorized |  -  |
-**403** | The credential authenticated but has no organization context (&#x60;ORGANIZATION_REQUIRED&#x60;). Account-scoped (buyer) keys cannot read this org-scoped endpoint.  |  -  |
+**403** | The credential authenticated but cannot administer organization keys. Account-scoped keys have no organization context (&#x60;ORGANIZATION_REQUIRED&#x60;). A resource key with &#x60;product_id&#x60; set is product-scoped (&#x60;ORGANIZATION_SCOPE_REQUIRED&#x60;). A resource key with &#x60;product_id&#x60; nil keeps organization scope.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -243,5 +244,6 @@ Name | Type | Description  | Notes
 **200** | API key revoked |  -  |
 **401** | Unauthorized |  -  |
 **404** | API key not found |  -  |
+**403** | The credential authenticated but cannot administer organization keys. Account-scoped keys have no organization context (&#x60;ORGANIZATION_REQUIRED&#x60;). A resource key with &#x60;product_id&#x60; set is product-scoped (&#x60;ORGANIZATION_SCOPE_REQUIRED&#x60;). A resource key with &#x60;product_id&#x60; nil keeps organization scope.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
