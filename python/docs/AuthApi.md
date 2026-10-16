@@ -144,6 +144,7 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Reset email sent |  -  |
+**413** | Request body exceeds the 4 KiB limit |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -211,6 +212,7 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Confirmation sent |  -  |
+**413** | Request body exceeds the 4 KiB limit |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -279,6 +281,7 @@ No authorization required
 |-------------|-------------|------------------|
 **200** | Signed in |  -  |
 **401** | Invalid credentials |  -  |
+**413** | Request body exceeds the 4 KiB limit |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
