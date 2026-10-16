@@ -82,7 +82,7 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** | Payment details |  -  |
 **401** | Unauthorized |  -  |
-**404** | Payment not found |  -  |
+**404** | Payment not found, including a payment outside the key&#39;s product scope.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -90,6 +90,12 @@ Name | Type | Description  | Notes
 > PaymentListResponse list_payments(page=page, per_page=per_page)
 
 List payments
+
+Seller payment receipts for the authenticated organization. A
+resource key with `product_id` set returns only payments whose
+`product_id` is that product. A resource key with `product_id` nil
+returns the organization. A payment outside that scope is not found.
+
 
 ### Example
 
