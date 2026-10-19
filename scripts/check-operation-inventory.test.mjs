@@ -46,6 +46,12 @@ const specOperations = [
   "getPayment",
   "listPurchases",
   "getPurchase",
+  "listWebhookEndpoints",
+  "createWebhookEndpoint",
+  "getWebhookEndpoint",
+  "updateWebhookEndpoint",
+  "replaceWebhookEndpoint",
+  "deleteWebhookEndpoint",
 ];
 
 function run(args) {

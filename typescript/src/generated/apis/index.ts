@@ -11,3 +11,4 @@ export * from './PaymentsApi';
 export * from './PurchasesApi';
 export * from './ResourcesApi';
 export * from './SearchApi';
+export * from './WebhooksApi';

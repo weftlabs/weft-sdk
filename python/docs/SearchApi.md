@@ -34,6 +34,16 @@ the structured envelope; `Accept: text/markdown` returns a rendered
 Markdown digest of the same results — useful for piping into a chat
 UI or LLM prompt.
 
+Compact view: send `view: "compact"` to get the agent view of the
+hosted MCP `weft_search` tool. Each result is a small contract for the
+next paid call (below 2,000 JSON bytes): typed inputs, the request
+recipe, one access method with price, attribution, a ready `next_call`
+to `POST /api/v1/fetch` when the request is determined, and the
+authenticated `contract_url` for the full contract. Use it when you
+give search results to a model. The compact rows are in
+`compact_results`; `results` is empty. The compact view is JSON only
+and needs the curated search backend.
+
 
 ### Example
 
@@ -107,7 +117,7 @@ Name | Type | Description  | Notes
 **401** | Unauthorized — missing or non-buyer-scoped API key |  -  |
 **403** | The OAuth access token authenticated but lacks the &#x60;search&#x60; scope (RFC 6750 &#x60;insufficient_scope&#x60;). Carries a &#x60;WWW-Authenticate: Bearer error&#x3D;\&quot;insufficient_scope\&quot;, scope&#x3D;\&quot;search\&quot;&#x60; header. &#x60;wk_&#x60; API keys are unscoped and never see this.  |  -  |
 **406** | The requested response format is not JSON or Markdown. |  -  |
-**422** | Invalid request — empty/missing &#x60;query&#x60;, out-of-range &#x60;max_results&#x60;, an unknown top-level parameter, or invalid &#x60;filters&#x60; (unknown filter key/operator, bad enum value, or a sub-filter without exactly one operator). See the &#x60;error&#x60; code.  |  -  |
+**422** | Invalid request — empty/missing &#x60;query&#x60;, out-of-range &#x60;max_results&#x60;, an unknown top-level parameter, invalid &#x60;filters&#x60; (unknown filter key/operator, bad enum value, or a sub-filter without exactly one operator), or an invalid &#x60;view&#x60; (unknown value, &#x60;Accept: text/markdown&#x60;, or a backend without the compact view). See the &#x60;error&#x60; code.  |  -  |
 **429** | Bootstrap search rate limit exceeded |  -  |
 **502** | Search service unavailable |  -  |
 **500** | Internal server error |  -  |

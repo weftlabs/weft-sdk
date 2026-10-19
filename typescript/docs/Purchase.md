@@ -7,6 +7,7 @@
 Name | Type
 ------------ | -------------
 `id` | number
+`purchaseId` | string
 `status` | string
 `amountUsd` | string
 `recipientAddress` | string
@@ -31,6 +32,7 @@ import type { Purchase } from '@weftlabs/sdk'
 // TODO: Update the object below with actual values
 const example = {
   "id": null,
+  "purchaseId": pur_4V3n9mQ0b7XyK2sLpR8tWc1d,
   "status": null,
   "amountUsd": null,
   "recipientAddress": null,

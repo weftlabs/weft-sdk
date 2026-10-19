@@ -81,6 +81,8 @@ end
 
 List payments
 
+Seller payment receipts for the authenticated organization. A resource key with `product_id` set returns only payments whose `product_id` is that product. A resource key with `product_id` nil returns the organization. A payment outside that scope is not found.
+
 ### Examples
 
 ```ruby

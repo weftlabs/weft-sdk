@@ -13,6 +13,7 @@
 | **tx_hash** | **String** | Settlement transaction hash. Null until a settlement hash has been reported. |  |
 | **protocol** | **String** | Payment protocol selected for this fetch. |  |
 | **artifact_id** | **Integer** | Internal artifact identifier if the response was persisted; &#x60;null&#x60; otherwise. |  |
+| **purchase_id** | **String** | The buyer purchase that paid for this fetch: an opaque id that &#x60;GET /api/v1/purchases/{id}&#x60; accepts and that purchase rows carry as &#x60;purchase_id&#x60;. It is not the sequential &#x60;Purchase.id&#x60;; do not parse or order by it. That purchase reports its own &#x60;status&#x60;, not &#x60;payment_status&#x60;: &#x60;signed&#x60; while the payment is pending, then &#x60;settled&#x60; (charged its &#x60;amount_usd&#x60;, which can be less than &#x60;held_usd&#x60;) or &#x60;declined&#x60;, &#x60;locked&#x60;, &#x60;expired&#x60;, or &#x60;reverted&#x60; (not charged). A &#x60;settled&#x60; purchase with &#x60;failure_reason: merchant_delivery_failed&#x60; was charged, but no successful paid response was delivered. An idempotent replay returns the same id, so bill at most once for each id. &#x60;null&#x60; when no payment was made (&#x60;payment_status: not_required&#x60;).  The lookup needs purchase-history access: a &#x60;wk_*&#x60; key, a claimed &#x60;wbt_*&#x60; bearer, or a REST OAuth token with the &#x60;balance&#x60; scope. An OAuth token issued for the MCP server cannot call this endpoint. Current servers always send this field. It is optional in this schema so that a client also accepts a response from an older server.  | [optional] |
 
 ## Example
 
@@ -28,6 +29,7 @@ instance = Weft::FetchResponse.new(
   payment_status: pending,
   tx_hash: null,
   protocol: null,
-  artifact_id: null
+  artifact_id: null,
+  purchase_id: pur_4V3n9mQ0b7XyK2sLpR8tWc1d
 )
 ```
