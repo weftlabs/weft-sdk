@@ -33,11 +33,13 @@ a merchant-principal `max_cost_usd` ceiling, and optional `method` / `body` /
   6. Replays the request with the protocol-specific payment credential.
   7. Streams the upstream artifact back, base64-encoded under
       `body_base64`, with `paid_usd`, `held_usd`, `payment_status`,
-      `tx_hash`, and `protocol`. `paid_usd`
+      `tx_hash`, `protocol`, and `purchase_id`. `paid_usd`
      is "0.00" until the charge is CONFIRMED settled — a signed-but-
      unsettled hold (the common case for x402, which settles
      asynchronously) reports its amount in `held_usd` instead, never
-     in `paid_usd`.
+     in `paid_usd`. `purchase_id` is the id that
+     `GET /api/v1/purchases/{id}` accepts, so a caller can read how a
+     pending charge ends.
 
 **Opt-in safety controls:** `allow_tempo_refill: false` prevents this
 request from creating, adopting, or enqueueing a Base-to-Tempo bridge.

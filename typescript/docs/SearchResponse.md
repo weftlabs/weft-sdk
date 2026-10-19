@@ -25,6 +25,9 @@ Name | Type
 `reason` | string
 `suggestion` | string
 `results` | [Array&lt;SearchResult&gt;](SearchResult.md)
+`view` | string
+`compactResults` | [Array&lt;SearchCompactResult&gt;](SearchCompactResult.md)
+`omittedResults` | number
 
 ## Example
 
@@ -51,6 +54,9 @@ const example = {
   "reason": null,
   "suggestion": null,
   "results": null,
+  "view": null,
+  "compactResults": null,
+  "omittedResults": null,
 } satisfies SearchResponse
 
 console.log(example)

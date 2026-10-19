@@ -146,6 +146,36 @@
         "go": "Purchase"
       },
       "reason": "Buyer purchase detail"
+    },
+    {
+      "operationId": "listWebhookEndpoints",
+      "classification": "excluded",
+      "reason": "retired, returns HTTP 410"
+    },
+    {
+      "operationId": "createWebhookEndpoint",
+      "classification": "excluded",
+      "reason": "retired, returns HTTP 410"
+    },
+    {
+      "operationId": "getWebhookEndpoint",
+      "classification": "excluded",
+      "reason": "retired, returns HTTP 410"
+    },
+    {
+      "operationId": "updateWebhookEndpoint",
+      "classification": "excluded",
+      "reason": "retired, returns HTTP 410"
+    },
+    {
+      "operationId": "replaceWebhookEndpoint",
+      "classification": "excluded",
+      "reason": "retired, returns HTTP 410"
+    },
+    {
+      "operationId": "deleteWebhookEndpoint",
+      "classification": "excluded",
+      "reason": "retired, returns HTTP 410"
     }
   ]
 }

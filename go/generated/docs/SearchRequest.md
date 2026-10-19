@@ -7,6 +7,7 @@ Name | Type | Description | Notes
 **Query** | **string** | Free-text query. Required and non-empty. |
 **MaxResults** | Pointer to **int32** | Max number of hits to return. Invalid values are rejected, not clamped. | [optional] [default to 10]
 **Filters** | Pointer to [**SearchFilterSpec**](SearchFilterSpec.md) |  | [optional]
+**View** | Pointer to **string** | Response view. Absent means &#x60;full&#x60;: the complete &#x60;SearchResult&#x60; rows in &#x60;results&#x60;. &#x60;compact&#x60; returns the hosted MCP agent view in &#x60;compact_results&#x60; (see &#x60;SearchCompactResult&#x60;). The compact view applies the same selection as hosted MCP search: it leaves out incomplete PayWithLocus gateway contracts. It does not add filters; send &#x60;weft_fetch_compatible: true&#x60; to get only results that &#x60;POST /api/v1/fetch&#x60; can pay.  | [optional]
 
 ## Methods
 
@@ -96,6 +97,31 @@ SetFilters sets Filters field to given value.
 `func (o *SearchRequest) HasFilters() bool`
 
 HasFilters returns a boolean if a field has been set.
+
+### GetView
+
+`func (o *SearchRequest) GetView() string`
+
+GetView returns the View field if non-nil, zero value otherwise.
+
+### GetViewOk
+
+`func (o *SearchRequest) GetViewOk() (*string, bool)`
+
+GetViewOk returns a tuple with the View field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetView
+
+`func (o *SearchRequest) SetView(v string)`
+
+SetView sets View field to given value.
+
+### HasView
+
+`func (o *SearchRequest) HasView() bool`
+
+HasView returns a boolean if a field has been set.
 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

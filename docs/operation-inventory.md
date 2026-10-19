@@ -30,6 +30,12 @@ generated clients.
 | `getPayment` | — | — | — | — | Excluded: organization-scoped seller ledger |
 | `listPurchases` | `purchases` | `purchases` | `purchases` | `Purchases` | Facade: Buyer purchase ledger |
 | `getPurchase` | `purchase` | `purchase` | `purchase` | `Purchase` | Facade: Buyer purchase detail |
+| `listWebhookEndpoints` | — | — | — | — | Excluded: retired, returns HTTP 410 |
+| `createWebhookEndpoint` | — | — | — | — | Excluded: retired, returns HTTP 410 |
+| `getWebhookEndpoint` | — | — | — | — | Excluded: retired, returns HTTP 410 |
+| `updateWebhookEndpoint` | — | — | — | — | Excluded: retired, returns HTTP 410 |
+| `replaceWebhookEndpoint` | — | — | — | — | Excluded: retired, returns HTTP 410 |
+| `deleteWebhookEndpoint` | — | — | — | — | Excluded: retired, returns HTTP 410 |
 <!-- operation-inventory:end -->
 
 CLI commands, output envelopes, and exit codes: [weft-cli contract](https://github.com/weftlabs/weft-cli/blob/main/docs/contract.md).

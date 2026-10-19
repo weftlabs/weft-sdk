@@ -75,7 +75,7 @@ example().catch(console.error);
 |-------------|-------------|------------------|
 | **200** | Payment details |  -  |
 | **401** | Unauthorized |  -  |
-| **404** | Payment not found |  -  |
+| **404** | Payment not found, including a payment outside the key\&#39;s product scope.  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -85,6 +85,8 @@ example().catch(console.error);
 > PaymentListResponse listPayments(page, perPage)
 
 List payments
+
+Seller payment receipts for the authenticated organization. A resource key with &#x60;product_id&#x60; set returns only payments whose &#x60;product_id&#x60; is that product. A resource key with &#x60;product_id&#x60; nil returns the organization. A payment outside that scope is not found.
 
 ### Example
 
