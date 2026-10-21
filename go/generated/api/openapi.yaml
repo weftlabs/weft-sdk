@@ -41,7 +41,7 @@ info:
     envelopes carrying additional context — see `SearchErrorResponse` and
     `FetchErrorResponse`.
   title: Weft API
-  version: 0.32.4
+  version: 0.32.5
 servers:
 - description: Production
   url: https://weft.network
