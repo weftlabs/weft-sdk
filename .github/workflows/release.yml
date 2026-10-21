@@ -9,10 +9,12 @@ name: Release
 #   3. Runs e2e against staging.weft.network using the LOCALLY-BUILT
 #      TypeScript SDK — exercising the exact artifact that will ship.
 #   4. Only after e2e is green:
-#        - commits the version bump to main via a short-lived weft-release-bot
-#          GitHub App installation token (minted per-run)
-#        - tags `v<version>` and `go/v<version>` on that commit
-#        - pushes commit + tags
+#        - opens a `release/v<version>` PR with the version bump via a
+#          short-lived weft-release-bot GitHub App installation token (minted
+#          per-run; the App token makes main's required checks run), and
+#          merges it once CodeQL/e2e/curation pass (main is protected)
+#        - tags `v<version>` and `go/v<version>` on the merged commit
+#          and pushes both tags atomically
 #      The tag push is what triggers the existing per-language publishers
 #      (typescript.yml / python.yml / ruby.yml / go.yml). Those workflows
 #      attach provenance attestations on publish (npm auto-provenance with
@@ -51,7 +53,8 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # e2e (~5m) + release PR checks (poll cap 30m, see release-via-pr.sh).
+    timeout-minutes: 50
     env:
       WEFT_STAGING_BASE_URL: https://staging.weft.network
       WEFT_API_KEY: ${{ secrets.E2E_BUYER_API_KEY }}
@@ -205,15 +208,17 @@ jobs:
           owner: weftlabs
           repositories: weft-sdk
           permission-contents: write
+          permission-pull-requests: write
 
-      - name: Commit version bump and create tags
-        # Only reached on e2e green. Commit the in-tree bump on main, then
-        # tag the commit. Both pushed with the weft-release-bot App
-        # installation token — required because tags pushed with the
-        # workflow's GITHUB_TOKEN do not trigger subsequent workflow runs,
-        # which would suppress the per-language publishers we depend on.
+      - name: Open release PR, merge it, and create tags
+        # Only reached on e2e green. Commit the in-tree bump, land it on main
+        # through a PR, then tag the merged commit. All pushed with the
+        # weft-release-bot App installation token — required because PRs and
+        # tags made with the workflow's GITHUB_TOKEN do not trigger other
+        # workflow runs (no required checks, no per-language publishers).
         env:
           BOT_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           # No `set -x` in this step: a shell trace would echo the token if it
           # ever appeared in a command argument. We also never put the token in
@@ -240,16 +245,20 @@ jobs:
           git add -A
           if git diff --cached --quiet; then
             echo "No bump diff to commit — main is already at v$VERSION"
+            MERGED_SHA="$SDK_SOURCE_SHA"
           else
             git commit -m "release: v$VERSION"
+            MERGED_SHA=""
           fi
-          # Verify main still matches the source that passed staging e2e, then
-          # push the bump commit AND both tags atomically so the
-          # update is all-or-nothing: either main advances to release:v$VERSION
-          # with both tags present (triggering the per-language publishers —
-          # typescript.yml/python.yml/ruby.yml on `v*`, go.yml on `go/v*`), or
-          # nothing moves. A split push could leave main bumped with no tags
-          # (no publish fires) and a re-run hitting inconsistent
-          # "tag exists / no bump diff" recovery paths.
-          ./scripts/push-release-refs.sh "$VERSION" "$SDK_SOURCE_SHA"
-          echo "Pushed v$VERSION and go/v$VERSION on commit $(git rev-parse HEAD)"
+          # The bump goes through a PR so main's required checks (CodeQL, e2e,
+          # curation) run; the App token makes those checks trigger (a
+          # GITHUB_TOKEN PR would never start them). Once the PR merges, both
+          # tags go on the merged commit in one atomic push. That push triggers
+          # the per-language publishers (typescript.yml/python.yml/ruby.yml on
+          # `v*`, go.yml on `go/v*`). If main moves while the PR waits, tagging
+          # refuses (the tested source is no longer what would ship).
+          if [ -z "$MERGED_SHA" ]; then
+            MERGED_SHA="$(./scripts/release-via-pr.sh "$VERSION" "$SDK_SOURCE_SHA")"
+          fi
+          ./scripts/push-release-refs.sh "$VERSION" "$MERGED_SHA" "$SDK_SOURCE_SHA"
+          echo "Pushed v$VERSION and go/v$VERSION on commit $MERGED_SHA"
