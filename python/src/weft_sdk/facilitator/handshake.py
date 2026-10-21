@@ -99,3 +99,31 @@ def build_facilitator_auth_headers(
         headers["settle"] = credential
         headers["verify"] = dict(credential)
     return headers
+
+
+CONSTRUCTION_WARN_THRESHOLD = 10
+_constructions = 0
+
+
+def note_middleware_construction() -> None:
+    """Warn once per process when the middleware is built over and over.
+
+    Construction is the facilitator sync, so a per-request construction is a
+    bug in the seller's wiring even though the sync itself is now shared.
+    """
+
+    global _constructions
+    _constructions += 1
+    if _constructions == CONSTRUCTION_WARN_THRESHOLD + 1:
+        console_warn(
+            "[weft] the payment middleware was constructed more than "
+            f"{CONSTRUCTION_WARN_THRESHOLD} "
+            "times. Construct it once at startup and reuse it; do not build it per request."
+        )
+
+
+def reset_middleware_constructions() -> None:
+    """Reset the construction counter. For tests."""
+
+    global _constructions
+    _constructions = 0

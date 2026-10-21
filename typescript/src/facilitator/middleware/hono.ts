@@ -9,7 +9,10 @@ import {
 } from "@x402/core/server";
 import { SchemeNetworkServer, Network } from "@x402/core/types";
 import { createFacilitatorClient, WeftFacilitatorConfig } from "../client";
-import { buildFacilitatorAuthHeaders } from "./handshake";
+import {
+  buildFacilitatorAuthHeaders,
+  noteMiddlewareConstruction,
+} from "./handshake";
 import {
   applyProductIdentity,
   WeftProductDeclaration,
@@ -264,6 +267,7 @@ export function weftPaymentMiddlewareHono(
   routes: WeftRoutesConfig,
   config?: WeftHonoMiddlewareConfig,
 ): HonoMiddleware {
+  noteMiddlewareConstruction();
   const facilitatorClient = createFacilitatorClient(
     config?.facilitator,
     buildFacilitatorAuthHeaders("hono", config?.apiKey, config ?? {}),

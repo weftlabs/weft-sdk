@@ -10,12 +10,14 @@ from __future__ import annotations
 import inspect
 import json
 import os
+import threading
+import time
 from collections.abc import Callable, Mapping
 from typing import Any, cast
 
 import httpx
 from x402.http import HTTPFacilitatorClient
-from x402.schemas import PaymentPayload, PaymentRequirements, SettleResponse
+from x402.schemas import PaymentPayload, PaymentRequirements, SettleResponse, SupportedResponse
 from x402.schemas.errors import SettleError
 from x402.schemas.v1 import PaymentPayloadV1, PaymentRequirementsV1
 
@@ -181,13 +183,66 @@ def _settle_failure(error: ValueError) -> Exception | None:
     return FacilitatorUnavailableError()
 
 
+# /supported is also the identity handshake: a call with a valid key makes the
+# facilitator record an sdk_handshake. A seller that builds the middleware per
+# request would otherwise handshake per request, so the result is shared per
+# process for each (url, handshake headers) key. A success is reused for the
+# TTL; a failure for the floor, so an outage cannot turn construction rate into
+# facilitator request rate.
+SUPPORTED_TTL_S = 6 * 60 * 60.0
+SUPPORTED_FAILURE_FLOOR_S = 30.0
+
+
+class _SharedSupported:
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.value: SupportedResponse | None = None
+        self.error: Exception | None = None
+        self.at = 0.0
+
+
+_shared_supported: dict[str, _SharedSupported] = {}
+_shared_supported_lock = threading.Lock()
+
+
+def reset_shared_supported() -> None:
+    """Forget every shared /supported result. For tests."""
+
+    with _shared_supported_lock:
+        _shared_supported.clear()
+
+
 class FacilitatorClient(HTTPFacilitatorClient):
     """x402 facilitator client with Weft settlement classification."""
 
-    def __init__(self, config: WeftFacilitatorConfig | str | None = None) -> None:
+    def __init__(
+        self,
+        config: WeftFacilitatorConfig | str | None = None,
+        share_key: str | None = None,
+    ) -> None:
         if isinstance(config, str):
             config = {"url": config}
         super().__init__(config)
+        self._share_key = share_key
+
+    def get_supported(self) -> SupportedResponse:
+        if self._share_key is None:
+            return super().get_supported()
+        with _shared_supported_lock:
+            entry = _shared_supported.setdefault(self._share_key, _SharedSupported())
+        with entry.lock:
+            age = time.monotonic() - entry.at
+            if entry.error is not None and age < SUPPORTED_FAILURE_FLOOR_S:
+                raise entry.error
+            if entry.value is not None and age < SUPPORTED_TTL_S:
+                return entry.value
+            try:
+                value = super().get_supported()
+            except Exception as error:
+                entry.value, entry.error, entry.at = None, error, time.monotonic()
+                raise
+            entry.value, entry.error, entry.at = value, None, time.monotonic()
+            return value
 
     async def settle(
         self,
@@ -226,4 +281,8 @@ def create_facilitator_client(
     client_config: dict[str, Any] = {"url": url}
     if create_headers is not None:
         client_config["create_headers"] = create_headers
-    return FacilitatorClient(client_config)
+    share_key = None
+    if weft_auth_headers is not None:
+        supported = dict(weft_auth_headers.get("supported", {}))
+        share_key = f"{url}\n{json.dumps(supported, sort_keys=True)}"
+    return FacilitatorClient(client_config, share_key)

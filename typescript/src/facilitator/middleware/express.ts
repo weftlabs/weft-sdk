@@ -10,7 +10,10 @@ import {
 } from "@x402/core/server";
 import { SchemeNetworkServer, Network } from "@x402/core/types";
 import { createFacilitatorClient, WeftFacilitatorConfig } from "../client";
-import { buildFacilitatorAuthHeaders } from "./handshake";
+import {
+  buildFacilitatorAuthHeaders,
+  noteMiddlewareConstruction,
+} from "./handshake";
 import {
   applyProductIdentity,
   WeftProductDeclaration,
@@ -288,6 +291,7 @@ export function weftPaymentMiddleware(
   routes: WeftRoutesConfig,
   config?: WeftExpressMiddlewareConfig,
 ): ExpressMiddleware {
+  noteMiddlewareConstruction();
   const facilitatorClient = createFacilitatorClient(
     config?.facilitator,
     buildFacilitatorAuthHeaders("express", config?.apiKey, config ?? {}),
