@@ -1,29 +1,55 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { invalidateFeeCache, getFeeInfo } from "../src/facilitator/fee";
 
-// Mock the client module
-vi.mock("../src/facilitator/client", () => ({
-  createFacilitatorClient: vi.fn(),
-  resolveUrl: vi.fn(() => "https://x402.weft.network"),
-  validateUrl: vi.fn(),
-  X402_FACILITATOR_URL: "https://x402.weft.network",
-  X402_FACILITATOR_URL_ENV: "X402_FACILITATOR_URL",
-}));
+// Real facilitator client; only the HTTP layer is stubbed.
+const mockFetch = vi.fn();
+const mockGetSupported = mockFetch;
 
-import { createFacilitatorClient } from "../src/facilitator/client";
-
-const mockGetSupported = vi.fn();
-const mockClient = { getSupported: mockGetSupported };
+function stubSupported(body: unknown) {
+  mockFetch.mockImplementation(
+    async () =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+  );
+}
 
 describe("getFeeInfo", () => {
   beforeEach(() => {
     invalidateFeeCache();
-    vi.mocked(createFacilitatorClient).mockReturnValue(mockClient as any);
-    mockGetSupported.mockReset();
+    mockFetch.mockReset();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("reads fee from a real-shaped /supported response (kinds, extensions, signers)", async () => {
+    stubSupported({
+      kinds: [{ x402Version: 2, scheme: "exact", network: "eip155:8453" }],
+      extensions: [],
+      signers: {},
+      fee: { amount: "0.001", asset: "USDC", network: "base" },
+    });
+
+    await expect(
+      getFeeInfo({ url: "https://facilitator.test" }),
+    ).resolves.toEqual({ amount: "0.001", asset: "USDC", network: "base" });
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://facilitator.test/supported",
+    );
+  });
+
+  it("throws on a non-2xx /supported", async () => {
+    mockFetch.mockResolvedValue(new Response("down", { status: 502 }));
+
+    await expect(getFeeInfo()).rejects.toThrow("/supported failed (502)");
   });
 
   it("fetches fee info from /supported", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: "0.001", asset: "USDC", network: "base-sepolia" },
     });
 
@@ -38,7 +64,7 @@ describe("getFeeInfo", () => {
   });
 
   it("caches fee info on subsequent calls", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: "0.001", asset: "USDC", network: "base-sepolia" },
     });
 
@@ -50,7 +76,7 @@ describe("getFeeInfo", () => {
   });
 
   it("refetches after cache invalidation", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: "0.001", asset: "USDC", network: "base-sepolia" },
     });
 
@@ -62,15 +88,15 @@ describe("getFeeInfo", () => {
   });
 
   it("throws when fee not found in response", async () => {
-    mockGetSupported.mockResolvedValue({});
+    stubSupported({});
 
     await expect(getFeeInfo()).rejects.toThrow(
-      "Fee information not found in /supported response"
+      "Fee information not found in /supported response",
     );
   });
 
   it("throws when fee amount is not a string", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: 0.001, asset: "USDC", network: "base-sepolia" },
     });
 
@@ -78,7 +104,7 @@ describe("getFeeInfo", () => {
   });
 
   it("throws when fee asset is not a string", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: "0.001", asset: 123, network: "base-sepolia" },
     });
 
@@ -86,7 +112,7 @@ describe("getFeeInfo", () => {
   });
 
   it("throws when fee network is not a string", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: "0.001", asset: "USDC", network: null },
     });
 
@@ -94,7 +120,7 @@ describe("getFeeInfo", () => {
   });
 
   it("respects custom TTL", async () => {
-    mockGetSupported.mockResolvedValue({
+    stubSupported({
       fee: { amount: "0.001", asset: "USDC", network: "base-sepolia" },
     });
 

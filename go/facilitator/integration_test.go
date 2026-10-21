@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -393,10 +394,10 @@ func TestResumeSkipsVerifyAndStillSettles(t *testing.T) {
 }
 
 func TestSyncRetryFloor(t *testing.T) {
-	var calls int
+	var calls atomic.Int32
 	facilitator := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/supported" {
-			calls++
+			calls.Add(1)
 			http.Error(w, "down", http.StatusBadGateway)
 			return
 		}
@@ -405,8 +406,19 @@ func TestSyncRetryFloor(t *testing.T) {
 	defer facilitator.Close()
 	start := time.Unix(1_700_000_000, 0)
 	previous := nowFunc
-	nowFunc = func() time.Time { return start }
-	defer func() { nowFunc = previous }()
+	// The background sync goroutine reads nowFunc and emitWarning after the
+	// request returns. Install both once, move the clock through an atomic, and
+	// restore only after the goroutine's warning arrives (channel send happens
+	// before receive), so no write to the shared vars overlaps its reads.
+	var offset atomic.Int64
+	warned := make(chan struct{}, 4)
+	previousWarn := emitWarning
+	emitWarning = func(string) { warned <- struct{}{} }
+	nowFunc = func() time.Time { return start.Add(time.Duration(offset.Load())) }
+	defer func() {
+		nowFunc = previous
+		emitWarning = previousWarn
+	}()
 	middleware := paidMiddleware(t, facilitator.URL, "wk_live_seller", true, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	server := httptest.NewServer(middleware)
 	defer server.Close()
@@ -417,21 +429,22 @@ func TestSyncRetryFloor(t *testing.T) {
 		}
 		resp.Body.Close()
 	}
-	if calls != 1 {
-		t.Fatalf("supported calls during the floor %d, want 1", calls)
+	if n := calls.Load(); n != 1 {
+		t.Fatalf("supported calls during the floor %d, want 1", n)
 	}
-	nowFunc = func() time.Time { return start.Add(syncRetryFloor) }
+	offset.Store(int64(syncRetryFloor))
 	resp, err := http.Get(server.URL + "/v1/search")
 	if err != nil {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
-	deadline := time.Now().Add(time.Second)
-	for calls < 2 && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	<-warned // first attempt (synchronous)
+	select {
+	case <-warned: // retry after the floor (background goroutine)
+	case <-time.After(time.Second):
 	}
-	if calls != 2 {
-		t.Fatalf("supported calls after the floor %d, want 2", calls)
+	if n := calls.Load(); n != 2 {
+		t.Fatalf("supported calls after the floor %d, want 2", n)
 	}
 }
 
