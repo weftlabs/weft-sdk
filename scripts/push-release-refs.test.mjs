@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -162,7 +162,7 @@ test("release-via-pr pushes the branch, opens a PR, auto-merges, returns the mer
   assert.equal(out.split("\n").pop(), "abc123");
   assert.equal(remoteRef(remote, "refs/heads/release/v0.26.0"), released);
   assert.equal(remoteRef(remote, "refs/heads/main"), base);
-  const calls = execFileSync("cat", [join(root, "gh.log")], { encoding: "utf8" });
+  const calls = readFileSync(join(root, "gh.log"), "utf8");
   assert.match(calls, /pr create .*--head release\/v0\.26\.0/);
   assert.match(calls, /pr merge .* 7 --auto --squash/);
 });
@@ -180,7 +180,7 @@ test("release-via-pr reuses an open PR and an existing branch on re-run", () => 
 
   assert.equal(out.split("\n").pop(), "def456");
   assert.equal(remoteRef(remote, "refs/heads/release/v0.26.0"), released);
-  const calls = execFileSync("cat", [join(root, "gh.log")], { encoding: "utf8" });
+  const calls = readFileSync(join(root, "gh.log"), "utf8");
   assert.doesNotMatch(calls, /pr create/);
 });
 
