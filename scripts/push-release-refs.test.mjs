@@ -12,7 +12,17 @@ const script = fileURLToPath(
 const prScript = fileURLToPath(new URL("./release-via-pr.sh", import.meta.url));
 
 function git(cwd, ...args) {
-  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "Test",
+      GIT_AUTHOR_EMAIL: "test@example.com",
+      GIT_COMMITTER_NAME: "Test",
+      GIT_COMMITTER_EMAIL: "test@example.com",
+    },
+  }).trim();
 }
 
 function commit(cwd, message) {
