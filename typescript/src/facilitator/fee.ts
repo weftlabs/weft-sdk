@@ -1,4 +1,4 @@
-import { createFacilitatorClient, WeftFacilitatorConfig } from "./client";
+import { resolveUrl, validateUrl, WeftFacilitatorConfig } from "./client";
 
 export interface FeeInfo {
   amount: string;
@@ -40,10 +40,16 @@ export async function getFeeInfo(
 
   // Fee data is public. The seller's auth headers stay off this call: a valid
   // key on `/supported` is an identity handshake, not a fee lookup.
-  const client = createFacilitatorClient(config && { url: config.url });
-  const supported = await client.getSupported();
+  // Read /supported raw: the upstream client's response schema drops `fee`.
+  const url = resolveUrl(config && { url: config.url });
+  validateUrl(url);
+  const response = await fetch(`${url}/supported`);
+  if (!response.ok) {
+    throw new Error(`Facilitator /supported failed (${response.status})`);
+  }
+  const supported = (await response.json()) as { fee?: FeeInfo };
 
-  const fee = (supported as { fee?: FeeInfo }).fee;
+  const fee = supported.fee;
   if (!fee) {
     throw new Error("Fee information not found in /supported response");
   }
