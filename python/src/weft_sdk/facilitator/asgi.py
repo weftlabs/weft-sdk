@@ -22,7 +22,7 @@ from x402.server import x402ResourceServer
 
 from .client import WeftFacilitatorConfig, create_facilitator_client
 from .extensions import register_dynamic_extensions
-from .handshake import ADAPTER_NAME, build_facilitator_auth_headers
+from .handshake import ADAPTER_NAME, build_facilitator_auth_headers, note_middleware_construction
 from .product import apply_product_identity
 from .replay import payment_resume_candidate, resume_payment_result
 from .settlement import (
@@ -248,6 +248,7 @@ class WeftASGIMiddleware:
         facilitator_config: WeftFacilitatorConfig | None = (
             dict(facilitator) if isinstance(facilitator, Mapping) else None
         )
+        note_middleware_construction()
         auth_headers = build_facilitator_auth_headers(
             ADAPTER_NAME,
             _config_value(self._config, "api_key", "apiKey"),

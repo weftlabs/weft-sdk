@@ -11,12 +11,95 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 )
 
 const syncRetryFloor = 30 * time.Second
+
+// supportedTTL bounds how long a successful /supported result is reused.
+const supportedTTL = 6 * time.Hour
+
+// constructionWarnThreshold is how many constructions a process may make
+// before one warning tells the seller to construct the middleware once.
+const constructionWarnThreshold = 10
+
+// /supported is also the identity handshake: a call with a valid key makes the
+// facilitator record an sdk_handshake. A seller that builds the middleware per
+// request would otherwise handshake per request, so the result is shared per
+// process for each (url, handshake headers) key. A success is reused for
+// supportedTTL; a failure for syncRetryFloor, so an outage cannot turn
+// construction rate into facilitator request rate.
+type sharedSupported struct {
+	mu  sync.Mutex
+	at  time.Time
+	err error
+}
+
+var (
+	sharedSupportedMu sync.Mutex
+	sharedSupportedBy = map[string]*sharedSupported{}
+	constructions     int
+)
+
+func resetSharedSupported() {
+	sharedSupportedMu.Lock()
+	defer sharedSupportedMu.Unlock()
+	sharedSupportedBy = map[string]*sharedSupported{}
+	constructions = 0
+}
+
+func noteConstruction() {
+	sharedSupportedMu.Lock()
+	constructions++
+	warnNow := constructions == constructionWarnThreshold+1
+	sharedSupportedMu.Unlock()
+	if warnNow {
+		warn(fmt.Sprintf("the payment middleware was constructed more than %d times. Construct it once at startup and reuse it; do not build it per request.", constructionWarnThreshold))
+	}
+}
+
+// supportedKey identifies one handshake: the facilitator and the headers it sees.
+func supportedKey(url string, headers map[string]string) string {
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var b strings.Builder
+	b.WriteString(url)
+	for _, name := range names {
+		b.WriteString("\n" + name + ": " + headers[name])
+	}
+	return b.String()
+}
+
+func (g *paymentGate) getSupported(ctx context.Context) error {
+	sharedSupportedMu.Lock()
+	entry := sharedSupportedBy[g.syncKey]
+	if entry == nil {
+		entry = &sharedSupported{}
+		sharedSupportedBy[g.syncKey] = entry
+	}
+	sharedSupportedMu.Unlock()
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if !entry.at.IsZero() {
+		age := nowFunc().Sub(entry.at)
+		if entry.err != nil && age < syncRetryFloor {
+			return entry.err
+		}
+		if entry.err == nil && age < supportedTTL {
+			return nil
+		}
+	}
+	_, err := g.client.GetSupported(ctx)
+	entry.at, entry.err = nowFunc(), err
+	return err
+}
 
 // nowFunc is the clock for facilitator re-sync. Tests replace it.
 var nowFunc = time.Now
@@ -87,7 +170,9 @@ func PaymentMiddleware(routes []Route, cfg MiddlewareConfig) (func(http.Handler)
 	if err := refuseRoutePaymentFlows(compiled, cfg.Schemes); err != nil {
 		return nil, err
 	}
-	client, err := NewFacilitatorClient(facilitatorConfig(cfg, declaration))
+	noteConstruction()
+	facilitator, derived := facilitatorConfig(cfg, declaration)
+	client, err := NewFacilitatorClient(facilitator)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +183,7 @@ func PaymentMiddleware(routes []Route, cfg MiddlewareConfig) (func(http.Handler)
 	gate := &paymentGate{
 		routes:      compiled,
 		client:      client,
+		syncKey:     supportedKey(client.URL(), derived.Supported),
 		schemes:     cfg.Schemes,
 		syncOnStart: syncOnStart,
 		resume:      cfg.Resume,
@@ -112,6 +198,7 @@ func PaymentMiddleware(routes []Route, cfg MiddlewareConfig) (func(http.Handler)
 type paymentGate struct {
 	routes      []compiledRoute
 	client      *HTTPFacilitatorClient
+	syncKey     string
 	schemes     []Scheme
 	syncOnStart bool
 	resume      ResumeVerifiedPayment
@@ -222,7 +309,7 @@ func (g *paymentGate) sync(ctx context.Context) {
 	}
 	g.syncing = true
 	g.mu.Unlock()
-	_, err := g.client.GetSupported(ctx)
+	err := g.getSupported(ctx)
 	g.mu.Lock()
 	g.syncing = false
 	if err != nil {
@@ -577,7 +664,7 @@ func declarationMap(cfg MiddlewareConfig) map[string]any {
 	return out
 }
 
-func facilitatorConfig(cfg MiddlewareConfig, declaration map[string]any) *Config {
+func facilitatorConfig(cfg MiddlewareConfig, declaration map[string]any) (*Config, AuthHeaders) {
 	base := cfg.Facilitator
 	if base == nil {
 		base = &Config{}
@@ -613,7 +700,7 @@ func facilitatorConfig(cfg MiddlewareConfig, declaration map[string]any) *Config
 		}
 		return MergeSellerWins(selected, sellerPath), nil
 	}
-	return &copied
+	return &copied, derived
 }
 
 func stringMap(value map[string]any) map[string]string {

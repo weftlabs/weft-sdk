@@ -208,3 +208,27 @@ export function buildFacilitatorAuthHeaders(
     ...(verify !== undefined && { verify }),
   };
 }
+
+const CONSTRUCTION_WARN_THRESHOLD = 10;
+let constructions = 0;
+
+/**
+ * Warn once per process when the middleware is constructed over and over.
+ * Construction is the facilitator sync, so a per-request construction is a
+ * bug in the seller's wiring even though the sync itself is now shared.
+ */
+export function noteMiddlewareConstruction(): void {
+  constructions += 1;
+  if (constructions === CONSTRUCTION_WARN_THRESHOLD + 1) {
+    console.warn(
+      "[weft] the payment middleware was constructed more than " +
+        `${CONSTRUCTION_WARN_THRESHOLD} times. Construct it once at startup ` +
+        "and reuse it; do not build it per request.",
+    );
+  }
+}
+
+/** Reset the construction counter. For tests. */
+export function resetMiddlewareConstructions(): void {
+  constructions = 0;
+}

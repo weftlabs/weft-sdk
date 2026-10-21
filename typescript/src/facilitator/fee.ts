@@ -38,7 +38,9 @@ export async function getFeeInfo(
     return feeCache.feeInfo;
   }
 
-  const client = createFacilitatorClient(config);
+  // Fee data is public. The seller's auth headers stay off this call: a valid
+  // key on `/supported` is an identity handshake, not a fee lookup.
+  const client = createFacilitatorClient(config && { url: config.url });
   const supported = await client.getSupported();
 
   const fee = (supported as { fee?: FeeInfo }).fee;

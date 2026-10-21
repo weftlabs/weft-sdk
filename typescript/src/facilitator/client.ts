@@ -1,6 +1,7 @@
 import { HTTPFacilitatorClient, FacilitatorConfig } from "@x402/core/server";
 import type {
   PaymentPayload,
+  SupportedResponse,
   PaymentRequirements,
   SettleResponse,
 } from "@x402/core/types";
@@ -40,7 +41,56 @@ function isUnavailableSettleError(error: unknown): boolean {
   );
 }
 
+/**
+ * `/supported` is also the identity handshake: a call with a valid key makes
+ * the facilitator record an `sdk_handshake`. A seller that constructs the
+ * middleware per request would otherwise handshake per request, so the result
+ * is shared per process for each (url, handshake headers) key. A success is
+ * reused for `SUPPORTED_TTL_MS`; a failure for `SUPPORTED_FAILURE_FLOOR_MS`,
+ * so an outage cannot turn construction rate into facilitator request rate.
+ */
+const SUPPORTED_TTL_MS = 6 * 60 * 60 * 1000;
+const SUPPORTED_FAILURE_FLOOR_MS = 30_000;
+
+interface SharedSupported {
+  at: number;
+  ttl: number;
+  promise: Promise<SupportedResponse>;
+}
+
+const sharedSupported = new Map<string, SharedSupported>();
+
+/** Forget every shared `/supported` result. For tests. */
+export function resetSharedSupported(): void {
+  sharedSupported.clear();
+}
+
 class WeftHTTPFacilitatorClient extends HTTPFacilitatorClient {
+  constructor(
+    config: FacilitatorConfig,
+    private readonly shareKey?: string,
+  ) {
+    super(config);
+  }
+
+  override getSupported(): Promise<SupportedResponse> {
+    const key = this.shareKey;
+    if (key === undefined) return super.getSupported();
+    const hit = sharedSupported.get(key);
+    if (hit && Date.now() - hit.at < hit.ttl) return hit.promise;
+    const entry: SharedSupported = {
+      at: Date.now(),
+      ttl: SUPPORTED_TTL_MS,
+      promise: super.getSupported(),
+    };
+    entry.promise.catch(() => {
+      entry.at = Date.now();
+      entry.ttl = SUPPORTED_FAILURE_FLOOR_MS;
+    });
+    sharedSupported.set(key, entry);
+    return entry.promise;
+  }
+
   override async settle(
     paymentPayload: PaymentPayload,
     paymentRequirements: PaymentRequirements,
@@ -184,8 +234,11 @@ export function createFacilitatorClient(
         }
       : sellerCreateAuthHeaders;
 
-  return new WeftHTTPFacilitatorClient({
-    url,
-    createAuthHeaders,
-  });
+  // Only clients built with SDK handshake headers share `/supported`; the
+  // key is the identity the handshake would announce.
+  const shareKey = weftAuthHeaders
+    ? `${url}\n${JSON.stringify(weftAuthHeaders.supported ?? {})}`
+    : undefined;
+
+  return new WeftHTTPFacilitatorClient({ url, createAuthHeaders }, shareKey);
 }
