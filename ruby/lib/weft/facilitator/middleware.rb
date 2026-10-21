@@ -26,6 +26,7 @@ module Weft
         @sync_on_start = !@config.key?('sync_facilitator_on_start') || @config['sync_facilitator_on_start']
         @resume = @config['resume_verified_payment']
         declaration = product_declaration(@config)
+        SharedSupported.note_construction
         @client = build_client(declaration)
         @server = ResourceServer.new(@client)
         Array(@config['schemes']).each do |entry|
@@ -501,7 +502,7 @@ module Weft
           end
           merged
         end
-        Client.new(url: url, create_headers: create_headers)
+        Client.new(url: url, create_headers: create_headers, share_headers: derived['supported'] || {})
       end
 
       def stringify_config(config)

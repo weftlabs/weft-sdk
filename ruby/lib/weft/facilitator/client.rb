@@ -71,13 +71,81 @@ module Weft
             'supported: { ... } }, but received a flat headers object.'
     end
 
+    # /supported is also the identity handshake: a call with a valid key makes
+    # the facilitator record an sdk_handshake. A seller that builds the
+    # middleware per request would otherwise handshake per request, so the
+    # result is shared per process for each (url, handshake headers) key. A
+    # success is reused for TTL_S; a failure for FAILURE_FLOOR_S, so an outage
+    # cannot turn construction rate into facilitator request rate. Concurrent
+    # callers share one call. Ruby keeps the state across fork: a worker forked
+    # after the call reuses it, a worker forked before makes its own one call.
+    module SharedSupported
+      TTL_S = 6 * 60 * 60
+      FAILURE_FLOOR_S = 30
+      CONSTRUCTION_WARN_THRESHOLD = 10
+
+      Entry = Struct.new(:mutex, :at, :value, :error)
+
+      @entries = {}
+      @mutex = Mutex.new
+      @constructions = 0
+      @clock = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
+
+      class << self
+        # Replaceable clock in seconds. Tests use it.
+        attr_accessor :clock
+
+        def fetch(key)
+          entry = @mutex.synchronize { @entries[key] ||= Entry.new(Mutex.new) }
+          entry.mutex.synchronize do
+            age = entry.at && (@clock.call - entry.at)
+            raise entry.error if entry.error && age < FAILURE_FLOOR_S
+            return entry.value if entry.error.nil? && entry.at && age < TTL_S
+
+            begin
+              value = yield
+              entry.value = value
+              entry.error = nil
+              value
+            rescue StandardError => e
+              entry.value = nil
+              entry.error = e
+              raise
+            ensure
+              entry.at = @clock.call
+            end
+          end
+        end
+
+        # Warn once per process when the middleware is built over and over.
+        def note_construction
+          count = @mutex.synchronize { @constructions += 1 }
+          return unless count == CONSTRUCTION_WARN_THRESHOLD + 1
+
+          warn "[weft] the payment middleware was constructed more than #{CONSTRUCTION_WARN_THRESHOLD} " \
+               'times. Construct it once at startup and reuse it; do not build it per request.'
+        end
+
+        # Forget every shared result and the construction count. Tests use it.
+        def reset!
+          @mutex.synchronize do
+            @entries = {}
+            @constructions = 0
+          end
+        end
+      end
+    end
+
     class Client
-      def initialize(url: nil, create_headers: nil, timeout_ms: DEFAULT_TIMEOUT_MS)
+      # share_headers: the SDK handshake headers for /supported. When given,
+      # /supported is shared per process for (url, share_headers).
+      def initialize(url: nil, create_headers: nil, timeout_ms: DEFAULT_TIMEOUT_MS, share_headers: nil)
         resolved = Facilitator.resolve_url(url.nil? ? nil : { 'url' => url })
         Facilitator.validate_url(resolved)
         @url = trim_trailing_slashes(resolved)
         @create_headers = create_headers
         @timeout_ms = timeout_ms
+        @share_key = share_headers && "#{@url}\n#{JSON.generate(share_headers.sort.to_h)}"
       end
 
       def trim_trailing_slashes(value)
@@ -99,6 +167,12 @@ module Weft
       end
 
       def supported
+        return fetch_supported unless @share_key
+
+        SharedSupported.fetch(@share_key) { fetch_supported }
+      end
+
+      def fetch_supported
         last_error = nil
         SUPPORTED_RETRIES.times do |attempt|
           begin
@@ -110,6 +184,7 @@ module Weft
         end
         raise last_error || StandardError, 'Facilitator getSupported failed'
       end
+      private :fetch_supported
 
       private
 
