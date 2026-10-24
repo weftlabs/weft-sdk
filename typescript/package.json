@@ -81,9 +81,9 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@typescript-eslint/eslint-plugin": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.0",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@typescript-eslint/eslint-plugin": "^8.71.2",
-    "@typescript-eslint/parser": "^8.71.2",
     "@x402/core": "2.28.0",
     "eslint": "^10.13.0",
     "express": "^5.3.0",
@@ -92,7 +92,7 @@
     "prettier": "3.9.10",
     "tsup": "^9.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.2.4",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },
   "files": [
@@ -104,5 +104,5 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@10.33.4"
+  "packageManager": "pnpm@10.34.8"
 }
