@@ -2,11 +2,13 @@ PATH
   remote: .
   specs:
     weft-sdk (0.32.5)
+      base64 (~> 0.3)
       typhoeus (~> 1.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
+    base64 (0.3.0)
     drb (2.2.3)
     ethon (0.18.0)
       ffi (>= 1.15.0)
@@ -34,6 +36,7 @@ DEPENDENCIES
   weft-sdk!
 
 CHECKSUMS
+  base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   ethon (0.18.0) sha256=b598afc9f30448cb068b850714b7d6948e941476095d04f90a4ac65b8d6efcb2
   ffi (1.17.4) sha256=bcd1642e06f0d16fc9e09ac6d49c3a7298b9789bcb58127302f934e437d60acf
