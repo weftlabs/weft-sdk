@@ -10,5 +10,6 @@ Gem::Specification.new do |spec|
   spec.metadata['homepage_uri'] = 'https://github.com/weftlabs/weft-sdk'
   spec.metadata['source_code_uri'] = 'https://github.com/weftlabs/weft-sdk'
 
+  spec.add_dependency 'base64', '~> 0.3'
   spec.add_dependency 'typhoeus', '~> 1.0'
 end
