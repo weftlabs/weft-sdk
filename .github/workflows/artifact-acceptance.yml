@@ -21,6 +21,13 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or pull request replaces the older run. The
+# suite installs the published artifacts into a clean environment and publishes
+# nothing, so a superseded run has no value.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   clean-install:
     runs-on: ubuntu-latest
