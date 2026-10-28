@@ -57,7 +57,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.11"
           cache: pip
@@ -96,7 +96,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.11"
           cache: pip
