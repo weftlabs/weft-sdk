@@ -336,7 +336,8 @@ async def test_unpaid_paid_error_and_facilitator_down(capsys: pytest.CaptureFixt
     try:
         status, headers, body = await _http(app, "GET", "/v1/search", {"x-model": "gpt"})
         assert status == 402
-        assert body == b"{}"
+        # x402 2.26 added an error body to the 402; 2.25 sends {}. Both are in range.
+        assert json.loads(body) in ({}, {"error": "Payment required"})
         challenge = decode_payment_required_header(headers["payment-required"])
         dumped = challenge.model_dump(by_alias=True)
         assert dumped["resource"]["serviceName"] == "Acme Pricing API"
