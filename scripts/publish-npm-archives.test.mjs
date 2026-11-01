@@ -54,14 +54,14 @@ test("waits for registry propagation without submitting another publish", async 
   api.get = async (path) => {
     if (path.includes("/")) {
       reads.set(path, (reads.get(path) ?? 0) + 1);
-      if (reads.get(path) < 4) return null;
+      if (reads.get(path) < 9) return null;
     }
     return get(path);
   };
   await publishArchives(packages(), "v0.25.0", api);
   assert.deepEqual(api.published, ["sdk.tgz"]);
-  assert.equal(reads.get("%40weftlabs%2Fsdk/0.25.0"), 4);
-  assert.equal(waits.length, 2);
+  assert.equal(reads.get("%40weftlabs%2Fsdk/0.25.0"), 9);
+  assert.equal(waits.length, 7);
 });
 
 test("stops after bounded readback when a published SDK stays absent", async () => {
@@ -71,7 +71,8 @@ test("stops after bounded readback when a published SDK stays absent", async () 
   api.get = async (path) => (path.includes("/") ? null : {});
   await assert.rejects(publishArchives(packages(), "v0.25.0", api));
   assert.deepEqual(api.published, ["sdk.tgz"]);
-  assert.equal(waits.length, 5);
+  assert.equal(waits.length, 11);
+  assert.ok(waits.every((ms) => ms === 5_000));
 });
 
 for (const [label, options] of [
