@@ -50,7 +50,7 @@ module Weft
     end
 
     def parse_scheme_and_host(url)
-      return ['', ''] if url.match?(/[\x00-\x20\x7f]/)
+      return ['', ''] if url.match?(/[\x00-\x20\x7f\\]/)
 
       uri = URI.parse(url)
       [uri.scheme.to_s.downcase, uri.hostname.to_s.downcase]
@@ -63,7 +63,7 @@ module Weft
 
       octets = host.split('.', -1)
       octets.length == 4 && octets[0] == '127' &&
-        octets.all? { |octet| octet.match?(/\A\d{1,3}\z/) && octet.to_i <= 255 }
+        octets.all? { |octet| octet.match?(/\A(0|[1-9][0-9]{0,2})\z/) && octet.to_i <= 255 }
     end
 
     def config_url(config)

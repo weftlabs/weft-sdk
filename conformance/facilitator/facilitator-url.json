@@ -183,5 +183,35 @@
     "fn": "validateUrl",
     "args": {"url": "http://local\nhost:7676"},
     "expectError": true
+  },
+  {
+    "name": "http url with a backslash before loopback userinfo is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "http://evil.example\\@localhost"},
+    "expectError": true
+  },
+  {
+    "name": "https url with a backslash is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "https://x402.example\\path"},
+    "expectError": true
+  },
+  {
+    "name": "http url on a loopback address with a zero octet is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.0.0.0:7676"},
+    "expectError": false
+  },
+  {
+    "name": "http url on a 127 address with a leading-zero octet is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.0.0.099"},
+    "expectError": true
+  },
+  {
+    "name": "http url on a 127 address with a zero-padded octet is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.000.0.1"},
+    "expectError": true
   }
 ]

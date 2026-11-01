@@ -117,7 +117,9 @@ function isLoopbackHost(host: string): boolean {
   return (
     octets.length === 4 &&
     octets[0] === "127" &&
-    octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255)
+    octets.every(
+      (octet) => /^(0|[1-9][0-9]{0,2})$/.test(octet) && Number(octet) <= 255,
+    )
   );
 }
 
@@ -137,7 +139,7 @@ export function validateUrl(url: string): void {
 
   let parsed: URL | undefined;
   try {
-    parsed = /[\x00-\x20\x7f]/.test(url) ? undefined : new URL(url);
+    parsed = /[\x00-\x20\x7f\\]/.test(url) ? undefined : new URL(url);
   } catch {
     parsed = undefined;
   }
@@ -151,8 +153,19 @@ export function validateUrl(url: string): void {
     );
   }
 
-  const host = parsed.hostname.replace(/^\[(.*)\]$/, "$1").toLowerCase();
-  if (parsed.protocol === "http:" && !isLoopbackHost(host)) {
+  // Check the host as written. The URL parser rewrites some hosts (for
+  // example `127.000.0.1` to `127.0.0.1`); the other SDKs see the raw
+  // spelling, so a rewritten host is refused here too, for parity.
+  const authority = url.slice(url.indexOf("//") + 2).split(/[/?#]/)[0];
+  const writtenHost = authority
+    .slice(authority.lastIndexOf("@") + 1)
+    .replace(/:\d*$/, "")
+    .toLowerCase();
+  const host = writtenHost.replace(/^\[(.*)\]$/, "$1");
+  if (
+    parsed.protocol === "http:" &&
+    (writtenHost !== parsed.hostname || !isLoopbackHost(host))
+  ) {
     throw new Error(
       "Insecure URL: use https://. Plain http:// is allowed only for " +
         `localhost, 127.0.0.0/8 and ::1, got host: ${host}`,

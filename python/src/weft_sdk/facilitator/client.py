@@ -40,8 +40,8 @@ class FacilitatorUnavailableError(Exception):
         super().__init__(FACILITATOR_UNAVAILABLE_ERROR)
 
 
-_CONTROL_OR_SPACE = re.compile(r"[\x00-\x20\x7f]")
-_IPV4_OCTET = re.compile(r"\d{1,3}")
+_UNSAFE_URL_CHARS = re.compile(r"[\x00-\x20\x7f\\]")
+_IPV4_OCTET = re.compile(r"0|[1-9][0-9]{0,2}")
 
 
 def _is_loopback_host(host: str) -> bool:
@@ -69,7 +69,7 @@ def validate_url(url: str) -> None:
         raise ValueError("Invalid URL: URL cannot be empty")
 
     scheme = host = ""
-    if not _CONTROL_OR_SPACE.search(url):
+    if not _UNSAFE_URL_CHARS.search(url):
         try:
             parts = urlsplit(url)
             scheme, host = parts.scheme.lower(), (parts.hostname or "").lower()

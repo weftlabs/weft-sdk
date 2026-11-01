@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -61,7 +62,7 @@ func ValidateURL(rawURL string) error {
 		return fmt.Errorf("%w: URL cannot be empty", ErrInvalidURL)
 	}
 	scheme, host := "", ""
-	if !strings.ContainsFunc(rawURL, func(r rune) bool { return r <= 0x20 || r == 0x7f }) {
+	if !strings.ContainsFunc(rawURL, func(r rune) bool { return r <= 0x20 || r == 0x7f || r == '\\' }) {
 		if parsed, err := url.Parse(rawURL); err == nil {
 			scheme, host = strings.ToLower(parsed.Scheme), strings.ToLower(parsed.Hostname())
 		}
@@ -75,6 +76,9 @@ func ValidateURL(rawURL string) error {
 	return nil
 }
 
+// ipv4Octet allows no leading zeros: resolvers send "099" to DNS, not 127/8.
+var ipv4Octet = regexp.MustCompile(`^(0|[1-9][0-9]{0,2})$`)
+
 // isLoopbackHost reports whether plain http:// may reach host.
 func isLoopbackHost(host string) bool {
 	if host == "localhost" || host == "::1" {
@@ -85,7 +89,7 @@ func isLoopbackHost(host string) bool {
 		return false
 	}
 	for _, octet := range octets {
-		if len(octet) < 1 || len(octet) > 3 || strings.Trim(octet, "0123456789") != "" {
+		if !ipv4Octet.MatchString(octet) {
 			return false
 		}
 		if n, _ := strconv.Atoi(octet); n > 255 {
