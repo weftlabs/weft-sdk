@@ -10,10 +10,12 @@ from __future__ import annotations
 import inspect
 import json
 import os
+import re
 import threading
 import time
 from collections.abc import Callable, Mapping
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 import httpx
 from x402.http import HTTPFacilitatorClient
@@ -38,13 +40,52 @@ class FacilitatorUnavailableError(Exception):
         super().__init__(FACILITATOR_UNAVAILABLE_ERROR)
 
 
+_CONTROL_OR_SPACE = re.compile(r"[\x00-\x20\x7f]")
+_IPV4_OCTET = re.compile(r"\d{1,3}")
+
+
+def _is_loopback_host(host: str) -> bool:
+    """True for the hosts plain ``http://`` may reach: localhost, 127.0.0.0/8, ::1."""
+
+    if host in ("localhost", "::1"):
+        return True
+    octets = host.split(".")
+    return (
+        len(octets) == 4
+        and octets[0] == "127"
+        and all(_IPV4_OCTET.fullmatch(octet) and int(octet) <= 255 for octet in octets)
+    )
+
+
 def validate_url(url: str) -> None:
-    """Reject an empty URL or a URL without an http(s) scheme."""
+    """Refuse a URL that the API key must not be sent to.
+
+    The URL must use ``https://``. Plain ``http://`` is allowed only for
+    loopback hosts, for local development. Callers validate before they build
+    a client, so a refused URL never receives a request.
+    """
 
     if not url or url.strip() == "":
         raise ValueError("Invalid URL: URL cannot be empty")
-    if not url.startswith("http://") and not url.startswith("https://"):
-        raise ValueError(f"Invalid URL format: URL must start with http:// or https://, got: {url}")
+
+    scheme = host = ""
+    if not _CONTROL_OR_SPACE.search(url):
+        try:
+            parts = urlsplit(url)
+            scheme, host = parts.scheme.lower(), (parts.hostname or "").lower()
+        except ValueError:
+            pass
+    if scheme not in ("http", "https") or not host:
+        raise ValueError(
+            "Invalid URL format: URL must start with http:// or https:// and name a host, "
+            f"got: {url}"
+        )
+
+    if scheme == "http" and not _is_loopback_host(host):
+        raise ValueError(
+            "Insecure URL: use https://. Plain http:// is allowed only for "
+            f"localhost, 127.0.0.0/8 and ::1, got host: {host}"
+        )
 
 
 def resolve_url(config: WeftFacilitatorConfig | None = None) -> str:

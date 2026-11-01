@@ -251,7 +251,9 @@ const fee = await getFeeInfo();
 ```
 
 The default facilitator URL is `https://x402.weft.network`; override it through
-the helper configuration or `X402_FACILITATOR_URL`.
+the helper configuration or `X402_FACILITATOR_URL`. The URL must use `https://`;
+plain `http://` is accepted only for `localhost`, `127.0.0.0/8` and `::1`. The
+same rule applies to the client `baseUrl`.
 
 ## Charging for your own API
 

@@ -16,6 +16,7 @@ import {
   type SearchResponse,
 } from "./generated";
 import { normalizeWeftError } from "./error";
+import { validateUrl } from "./facilitator/client";
 
 export interface WeftClientOptions {
   apiKey: string;
@@ -79,11 +80,12 @@ export class WeftClient {
       );
     }
 
+    const baseUrl = options.baseUrl ?? "https://weft.network";
+    validateUrl(baseUrl);
+
     const configuration = new Configuration({
       accessToken: credential,
-      basePath: withoutTrailingSlashes(
-        options.baseUrl ?? "https://weft.network",
-      ),
+      basePath: withoutTrailingSlashes(baseUrl),
       fetchApi: options.fetchApi,
     });
 

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/weftlabs/weft-sdk/go/facilitator"
 	"github.com/weftlabs/weft-sdk/go/generated"
 )
 
@@ -120,6 +121,9 @@ func NewClient(options Options) (*Client, error) {
 	base := options.BaseURL
 	if base == "" {
 		base = defaultBaseURL
+	}
+	if err := facilitator.ValidateURL(base); err != nil {
+		return nil, validation(err.Error())
 	}
 	base = strings.TrimRight(base, "/")
 	httpClient := options.HTTPClient

@@ -301,6 +301,9 @@ func assertFacilitatorURL(t *testing.T, testCase map[string]any) {
 		if (err != nil) != testCase["expectError"].(bool) {
 			t.Fatalf("validate error %v, want error %v", err, testCase["expectError"])
 		}
+		if contains := stringOr(testCase["errorContains"]); err != nil && !strings.Contains(err.Error(), contains) {
+			t.Fatalf("validate error %q, want it to contain %q", err, contains)
+		}
 	default:
 		t.Fatalf("unknown url function %v", testCase["fn"])
 	}

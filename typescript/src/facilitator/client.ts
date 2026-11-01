@@ -106,14 +106,56 @@ class WeftHTTPFacilitatorClient extends HTTPFacilitatorClient {
   }
 }
 
+/**
+ * True for the hosts plain `http://` may reach: `localhost`, `127.0.0.0/8`
+ * and `::1`. Every other host must use `https://`, because the URL receives
+ * the API key.
+ */
+function isLoopbackHost(host: string): boolean {
+  if (host === "localhost" || host === "::1") return true;
+  const octets = host.split(".");
+  return (
+    octets.length === 4 &&
+    octets[0] === "127" &&
+    octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255)
+  );
+}
+
+/**
+ * Refuse a URL that the API key must not be sent to.
+ *
+ * The URL must use `https://`. Plain `http://` is allowed only for loopback
+ * hosts, for local development. Callers validate before they build a client,
+ * so a refused URL never receives a request.
+ *
+ * @param url - The facilitator or API base URL
+ */
 export function validateUrl(url: string): void {
   if (!url || url.trim() === "") {
     throw new Error("Invalid URL: URL cannot be empty");
   }
 
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+  let parsed: URL | undefined;
+  try {
+    parsed = /[\x00-\x20\x7f]/.test(url) ? undefined : new URL(url);
+  } catch {
+    parsed = undefined;
+  }
+  if (
+    !parsed ||
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.hostname === ""
+  ) {
     throw new Error(
-      `Invalid URL format: URL must start with http:// or https://, got: ${url}`,
+      `Invalid URL format: URL must start with http:// or https:// and name a host, got: ${url}`,
+    );
+  }
+
+  const host = parsed.hostname.replace(/^\[(.*)\]$/, "$1").toLowerCase();
+  if (parsed.protocol === "http:" && !isLoopbackHost(host)) {
+    throw new Error(
+      "Insecure URL: use https://. Plain http:// is allowed only for " +
+        `localhost, 127.0.0.0/8 and ::1, got host: ${host}`,
     );
   }
 }

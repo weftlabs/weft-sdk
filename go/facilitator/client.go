@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -50,14 +52,47 @@ type HTTPFacilitatorClient struct {
 	auth       func(path string) (map[string]string, error)
 }
 
-func ValidateURL(url string) error {
-	if url == "" || strings.TrimSpace(url) == "" {
+// ValidateURL refuses a URL that the API key must not be sent to. The URL
+// must use https://. Plain http:// is allowed only for loopback hosts
+// (localhost, 127.0.0.0/8, ::1), for local development. Callers validate
+// before they build a client, so a refused URL never receives a request.
+func ValidateURL(rawURL string) error {
+	if rawURL == "" || strings.TrimSpace(rawURL) == "" {
 		return fmt.Errorf("%w: URL cannot be empty", ErrInvalidURL)
 	}
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		return fmt.Errorf("%w: URL must start with http:// or https://, got: %s", ErrInvalidURL, url)
+	scheme, host := "", ""
+	if !strings.ContainsFunc(rawURL, func(r rune) bool { return r <= 0x20 || r == 0x7f }) {
+		if parsed, err := url.Parse(rawURL); err == nil {
+			scheme, host = strings.ToLower(parsed.Scheme), strings.ToLower(parsed.Hostname())
+		}
+	}
+	if (scheme != "http" && scheme != "https") || host == "" {
+		return fmt.Errorf("%w: URL must start with http:// or https:// and name a host, got: %s", ErrInvalidURL, rawURL)
+	}
+	if scheme == "http" && !isLoopbackHost(host) {
+		return fmt.Errorf("%w: insecure URL: use https://. Plain http:// is allowed only for localhost, 127.0.0.0/8 and ::1, got host: %s", ErrInvalidURL, host)
 	}
 	return nil
+}
+
+// isLoopbackHost reports whether plain http:// may reach host.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" || host == "::1" {
+		return true
+	}
+	octets := strings.Split(host, ".")
+	if len(octets) != 4 || octets[0] != "127" {
+		return false
+	}
+	for _, octet := range octets {
+		if len(octet) < 1 || len(octet) > 3 || strings.Trim(octet, "0123456789") != "" {
+			return false
+		}
+		if n, _ := strconv.Atoi(octet); n > 255 {
+			return false
+		}
+	}
+	return true
 }
 
 func ResolveURL(config *Config) string {

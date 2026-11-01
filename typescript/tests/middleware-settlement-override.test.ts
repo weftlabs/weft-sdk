@@ -40,7 +40,7 @@ import type { PaymentResumeCandidate } from "../src/facilitator/middleware/repla
  * These tests pin the forwarding, not the shape of the challenge.
  */
 
-const FACILITATOR_URL = "http://facilitator.test";
+const FACILITATOR_URL = "https://facilitator.test";
 const NETWORK = "eip155:84532";
 const PAY_TO = "0x000000000000000000000000000000000000dEaD";
 const ASSET = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";

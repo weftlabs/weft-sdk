@@ -9,7 +9,7 @@ import type { Network, SchemeNetworkServer } from "@x402/core/types";
  */
 
 const NETWORK: Network = "eip155:84532";
-const URL_ = "http://facilitator.test";
+const URL_ = "https://facilitator.test";
 const fakeScheme = {
   scheme: "exact",
   defaultAssetTransferMethod: "authorization",

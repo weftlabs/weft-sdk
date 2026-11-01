@@ -13,6 +13,7 @@ from uuid import UUID
 from urllib3.exceptions import HTTPError as TransportError
 
 from .error import WeftError, normalize_api_exception
+from .facilitator.client import validate_url
 from .generated.api.account_api import AccountApi
 from .generated.api.balance_api import BalanceApi
 from .generated.api.fetch_api import FetchApi
@@ -100,6 +101,7 @@ class Client:
                 raise ValueError("access_token is required")
             raise ValueError("api_key or access_token is required")
 
+        validate_url(base_url)
         configuration = Configuration(
             host=base_url.rstrip("/"),
             access_token=credential,

@@ -46,6 +46,17 @@ class ClientTest < Minitest::Test
     end
   end
 
+  def test_refuses_remote_http_url_before_the_api_key_is_used
+    error = assert_raises(ArgumentError) { Weft::Facilitator::Client.new(url: 'http://x402.example') }
+    assert_includes error.message, 'use https://'
+
+    previous = ENV.fetch('X402_FACILITATOR_URL', nil)
+    ENV['X402_FACILITATOR_URL'] = 'http://x402.example'
+    assert_raises(ArgumentError) { Weft::Facilitator::Client.new }
+  ensure
+    ENV['X402_FACILITATOR_URL'] = previous
+  end
+
   def test_falls_back_to_default_on_empty_url
     # Empty string is treated as "not provided" — falls back to default
     client = Weft::Facilitator::Client.new(url: '')

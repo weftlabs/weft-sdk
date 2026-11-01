@@ -632,7 +632,9 @@ function assertFacilitatorUrl(testCase: Record<string, unknown>): void {
     }
     if (testCase.fn === "validateUrl") {
       if (testCase.expectError === true) {
-        expect(() => validateUrl(args.url ?? "")).toThrow();
+        expect(() => validateUrl(args.url ?? "")).toThrow(
+          (testCase.errorContains as string | undefined) ?? "",
+        );
       } else {
         expect(() => validateUrl(args.url ?? "")).not.toThrow();
       }

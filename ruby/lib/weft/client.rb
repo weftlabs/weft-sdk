@@ -4,6 +4,7 @@ require 'json'
 
 require_relative 'error'
 require_relative 'generated'
+require_relative 'facilitator/client'
 
 module Weft
   # Buyer façade over the generated API client.
@@ -19,6 +20,7 @@ module Weft
         raise ArgumentError, credential_error(api_key, access_token)
       end
 
+      Facilitator.validate_url(base_url.to_s)
       configuration = Configuration.new
       apply_base_url(configuration, base_url)
       configuration.access_token = credential
@@ -120,6 +122,7 @@ module Weft
       uri = URI.parse(stripped)
       configuration.scheme = uri.scheme || 'https'
       configuration.host = uri.host || trim_trailing_slashes(stripped)
+      configuration.host = "#{uri.host}:#{uri.port}" if uri.host && uri.port != uri.default_port
       path = collapse_slashes(uri.path.to_s)
       path = trim_trailing_slashes(path)
       path = strip_leading_slashes(path)
