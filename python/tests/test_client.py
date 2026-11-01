@@ -77,6 +77,13 @@ class TestCreateFacilitatorClient:
         with pytest.raises(ValueError, match="URL must start with http://"):
             create_facilitator_client({"url": "not-a-url"})
 
+    def test_refuses_remote_http_url_before_the_api_key_is_used(self, monkeypatch):
+        with pytest.raises(ValueError, match="use https://"):
+            create_facilitator_client({"url": "http://x402.example"})
+        monkeypatch.setenv(X402_FACILITATOR_URL_ENV, "http://x402.example")
+        with pytest.raises(ValueError, match="use https://"):
+            create_facilitator_client()
+
     def test_async_create_auth_headers_rejected_at_construction(self):
         async def headers() -> dict[str, dict[str, str]]:
             return {}

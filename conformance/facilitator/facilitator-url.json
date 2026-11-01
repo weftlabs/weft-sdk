@@ -79,5 +79,139 @@
     "fn": "validateUrl",
     "args": {"url": "ftp://x402.weft.network"},
     "expectError": true
+  },
+  {
+    "name": "http url on 127.0.0.1 is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.0.0.1:8080"},
+    "expectError": false
+  },
+  {
+    "name": "http url anywhere in 127.0.0.0/8 is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.255.255.254/x402"},
+    "expectError": false
+  },
+  {
+    "name": "http url on ::1 is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "http://[::1]:7676"},
+    "expectError": false
+  },
+  {
+    "name": "http localhost host is case-insensitive",
+    "fn": "validateUrl",
+    "args": {"url": "http://LOCALHOST:7676"},
+    "expectError": false
+  },
+  {
+    "name": "https url with a port and path is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "https://x402.example:8443/base"},
+    "expectError": false
+  },
+  {
+    "name": "http url on a remote host is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://x402.weft.network"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url on a private address is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://10.0.0.1:7676"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url outside 127.0.0.0/8 is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://128.0.0.1"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url on the unspecified address is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://0.0.0.0:7676"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url on an IPv6 address other than ::1 is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://[::2]:7676"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url whose host only starts with localhost is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://localhost.evil.example"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url whose host only starts with a loopback address is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.0.0.1.evil.example"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "http url with loopback userinfo on a remote host is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://localhost@evil.example"},
+    "expectError": true,
+    "errorContains": "use https://"
+  },
+  {
+    "name": "https url without a host is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "https://"},
+    "expectError": true
+  },
+  {
+    "name": "url with leading whitespace is rejected",
+    "fn": "validateUrl",
+    "args": {"url": " https://x402.weft.network"},
+    "expectError": true
+  },
+  {
+    "name": "url with an embedded newline is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "http://local\nhost:7676"},
+    "expectError": true
+  },
+  {
+    "name": "http url with a backslash before loopback userinfo is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "http://evil.example\\@localhost"},
+    "expectError": true
+  },
+  {
+    "name": "https url with a backslash is rejected",
+    "fn": "validateUrl",
+    "args": {"url": "https://x402.example\\path"},
+    "expectError": true
+  },
+  {
+    "name": "http url on a loopback address with a zero octet is accepted",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.0.0.0:7676"},
+    "expectError": false
+  },
+  {
+    "name": "http url on a 127 address with a leading-zero octet is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.0.0.099"},
+    "expectError": true
+  },
+  {
+    "name": "http url on a 127 address with a zero-padded octet is refused",
+    "fn": "validateUrl",
+    "args": {"url": "http://127.000.0.1"},
+    "expectError": true
   }
 ]

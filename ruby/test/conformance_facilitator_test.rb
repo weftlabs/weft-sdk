@@ -173,7 +173,8 @@ class ConformanceFacilitatorTest < Minitest::Test
       assert_equal test_case['expect'], Weft::Facilitator.resolve_url(args['config'])
     elsif test_case['fn'] == 'validateUrl'
       if test_case['expectError']
-        assert_raises(ArgumentError) { Weft::Facilitator.validate_url(args['url'] || '') }
+        error = assert_raises(ArgumentError) { Weft::Facilitator.validate_url(args['url'] || '') }
+        assert_includes error.message, test_case['errorContains'].to_s
       else
         Weft::Facilitator.validate_url(args['url'] || '')
       end

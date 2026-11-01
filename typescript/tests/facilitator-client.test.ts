@@ -19,6 +19,26 @@ describe("validateUrl", () => {
     expect(() => validateUrl("http://localhost:7676")).not.toThrow();
   });
 
+  it("refuses a remote http URL before any request carries the API key", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const headers = {
+      supported: { Authorization: "Bearer wk_secret" },
+      settle: { "X-API-Key": "wk_secret" },
+    };
+
+    expect(() =>
+      createFacilitatorClient({ url: "http://x402.example" }, headers),
+    ).toThrow("use https://");
+    vi.stubEnv(X402_FACILITATOR_URL_ENV, "http://x402.example");
+    expect(() => createFacilitatorClient(undefined, headers)).toThrow(
+      "use https://",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
   it("rejects empty string", () => {
     expect(() => validateUrl("")).toThrow("URL cannot be empty");
   });
@@ -100,7 +120,7 @@ describe("settlement HTTP status", () => {
     );
 
     await expect(
-      createFacilitatorClient({ url: "http://facilitator.test" }).settle(
+      createFacilitatorClient({ url: "https://facilitator.test" }).settle(
         paymentPayload,
         paymentRequirements,
       ),
@@ -128,7 +148,7 @@ describe("settlement HTTP status", () => {
     );
 
     await expect(
-      createFacilitatorClient({ url: "http://facilitator.test" }).settle(
+      createFacilitatorClient({ url: "https://facilitator.test" }).settle(
         paymentPayload,
         paymentRequirements,
       ),
@@ -153,7 +173,7 @@ describe("settlement HTTP status", () => {
     );
 
     await expect(
-      createFacilitatorClient({ url: "http://facilitator.test" }).settle(
+      createFacilitatorClient({ url: "https://facilitator.test" }).settle(
         paymentPayload,
         paymentRequirements,
       ),

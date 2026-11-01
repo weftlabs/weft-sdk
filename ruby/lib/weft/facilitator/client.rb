@@ -28,14 +28,42 @@ module Weft
       DEFAULT_URL
     end
 
+    # Refuses a URL that the API key must not be sent to. The URL must use
+    # https://. Plain http:// is allowed only for loopback hosts (localhost,
+    # 127.0.0.0/8, ::1), for local development. Callers validate before they
+    # build a client, so a refused URL never receives a request.
     def validate_url(url)
       if url.nil? || url.strip.empty?
         raise ArgumentError, 'Invalid URL: URL cannot be empty'
       end
-      return if url.start_with?('http://') || url.start_with?('https://')
+
+      scheme, host = parse_scheme_and_host(url)
+      unless %w[http https].include?(scheme) && !host.empty?
+        raise ArgumentError,
+              "Invalid URL format: URL must start with http:// or https:// and name a host, got: #{url}"
+      end
+      return if scheme == 'https' || loopback_host?(host)
 
       raise ArgumentError,
-            "Invalid URL format: URL must start with http:// or https://, got: #{url}"
+            'Insecure URL: use https://. Plain http:// is allowed only for ' \
+            "localhost, 127.0.0.0/8 and ::1, got host: #{host}"
+    end
+
+    def parse_scheme_and_host(url)
+      return ['', ''] if url.match?(/[\x00-\x20\x7f\\]/)
+
+      uri = URI.parse(url)
+      [uri.scheme.to_s.downcase, uri.hostname.to_s.downcase]
+    rescue URI::Error
+      ['', '']
+    end
+
+    def loopback_host?(host)
+      return true if %w[localhost ::1].include?(host)
+
+      octets = host.split('.', -1)
+      octets.length == 4 && octets[0] == '127' &&
+        octets.all? { |octet| octet.match?(/\A(0|[1-9][0-9]{0,2})\z/) && octet.to_i <= 255 }
     end
 
     def config_url(config)

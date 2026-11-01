@@ -1246,5 +1246,54 @@
       "artifact_id": 9,
       "purchase_id": "pur_4V3n9mQ0b7XyK2sLpR8tWc1d"
     }
+  },
+  {
+    "name": "http baseUrl on a loopback host is allowed",
+    "call": {
+      "method": "me",
+      "args": {}
+    },
+    "client": {
+      "credential": "wk_test",
+      "baseUrl": "http://127.0.0.1:3000"
+    },
+    "expectRequest": {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "query": {},
+      "headers": {
+        "authorization": "Bearer wk_test"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "data": {
+          "principal_type": "user",
+          "id": 1,
+          "email": "agent@example.com",
+          "status": "active",
+          "buyer_enabled": true,
+          "seller_enabled": false,
+          "provisioning_status": "ready",
+          "wallet": null
+        }
+      }
+    },
+    "expectResult": {
+      "data": {
+        "principal_type": "user",
+        "id": 1,
+        "email": "agent@example.com",
+        "status": "active",
+        "buyer_enabled": true,
+        "seller_enabled": false,
+        "provisioning_status": "ready",
+        "wallet": null
+      }
+    }
   }
 ]

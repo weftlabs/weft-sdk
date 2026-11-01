@@ -2,6 +2,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+import urllib3.connection
 from urllib3 import HTTPResponse
 
 from weft_sdk import Client
@@ -11,6 +12,19 @@ from weft_sdk.generated.rest import RESTResponse
 def test_requires_buyer_api_key() -> None:
     with pytest.raises(ValueError, match="api_key is required"):
         Client(api_key=" ")
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    ["http://api.example", "http://evil.example\\@localhost", "http://127.0.0.099"],
+)
+def test_refused_base_url_never_opens_a_connection(base_url: str) -> None:
+    with patch.object(
+        urllib3.connection.HTTPConnection, "connect", side_effect=AssertionError("connected")
+    ) as connect:
+        with pytest.raises(ValueError):
+            Client(api_key="wk_secret", base_url=base_url).me()
+    connect.assert_not_called()
 
 
 def test_routes_supported_buyer_operations() -> None:

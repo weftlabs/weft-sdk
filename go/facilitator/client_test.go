@@ -3,9 +3,11 @@ package facilitator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -98,6 +100,17 @@ func TestNewFacilitatorClient(t *testing.T) {
 		_, err := NewFacilitatorClient(&Config{URL: "not-a-url"})
 		if err == nil {
 			t.Fatal("expected error for invalid URL")
+		}
+	})
+
+	t.Run("refuses remote http URL before the API key is used", func(t *testing.T) {
+		_, err := NewFacilitatorClient(&Config{URL: "http://x402.example"})
+		if !errors.Is(err, ErrInvalidURL) || !strings.Contains(err.Error(), "use https://") {
+			t.Fatalf("expected insecure URL error, got %v", err)
+		}
+		t.Setenv(EnvURL, "http://x402.example")
+		if _, err := NewFacilitatorClient(nil); !errors.Is(err, ErrInvalidURL) {
+			t.Fatalf("expected insecure env URL error, got %v", err)
 		}
 	})
 

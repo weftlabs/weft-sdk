@@ -319,8 +319,9 @@ def _assert_facilitator_url(case: dict[str, Any], monkeypatch: pytest.MonkeyPatc
         return
     if case["fn"] == "validateUrl":
         if case["expectError"] is True:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError) as raised:
                 validate_url(args.get("url") or "")
+            assert case.get("errorContains", "") in str(raised.value)
         else:
             validate_url(args.get("url") or "")
         return

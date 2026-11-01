@@ -106,14 +106,69 @@ class WeftHTTPFacilitatorClient extends HTTPFacilitatorClient {
   }
 }
 
+/**
+ * True for the hosts plain `http://` may reach: `localhost`, `127.0.0.0/8`
+ * and `::1`. Every other host must use `https://`, because the URL receives
+ * the API key.
+ */
+function isLoopbackHost(host: string): boolean {
+  if (host === "localhost" || host === "::1") return true;
+  const octets = host.split(".");
+  return (
+    octets.length === 4 &&
+    octets[0] === "127" &&
+    octets.every(
+      (octet) => /^(0|[1-9][0-9]{0,2})$/.test(octet) && Number(octet) <= 255,
+    )
+  );
+}
+
+/**
+ * Refuse a URL that the API key must not be sent to.
+ *
+ * The URL must use `https://`. Plain `http://` is allowed only for loopback
+ * hosts, for local development. Callers validate before they build a client,
+ * so a refused URL never receives a request.
+ *
+ * @param url - The facilitator or API base URL
+ */
 export function validateUrl(url: string): void {
   if (!url || url.trim() === "") {
     throw new Error("Invalid URL: URL cannot be empty");
   }
 
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+  let parsed: URL | undefined;
+  try {
+    parsed = /[\x00-\x20\x7f\\]/.test(url) ? undefined : new URL(url);
+  } catch {
+    parsed = undefined;
+  }
+  if (
+    !parsed ||
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.hostname === ""
+  ) {
     throw new Error(
-      `Invalid URL format: URL must start with http:// or https://, got: ${url}`,
+      `Invalid URL format: URL must start with http:// or https:// and name a host, got: ${url}`,
+    );
+  }
+
+  // Check the host as written. The URL parser rewrites some hosts (for
+  // example `127.000.0.1` to `127.0.0.1`); the other SDKs see the raw
+  // spelling, so a rewritten host is refused here too, for parity.
+  const authority = url.slice(url.indexOf("//") + 2).split(/[/?#]/)[0];
+  const writtenHost = authority
+    .slice(authority.lastIndexOf("@") + 1)
+    .replace(/:\d*$/, "")
+    .toLowerCase();
+  const host = writtenHost.replace(/^\[(.*)\]$/, "$1");
+  if (
+    parsed.protocol === "http:" &&
+    (writtenHost !== parsed.hostname || !isLoopbackHost(host))
+  ) {
+    throw new Error(
+      "Insecure URL: use https://. Plain http:// is allowed only for " +
+        `localhost, 127.0.0.0/8 and ::1, got host: ${host}`,
     );
   }
 }

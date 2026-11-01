@@ -30,7 +30,7 @@ import type {
  */
 
 const NETWORK: Network = "eip155:84532";
-const FACILITATOR_URL = "http://facilitator.test";
+const FACILITATOR_URL = "https://facilitator.test";
 const PAY_TO = "0x0000000000000000000000000000000000000001";
 const ASSET = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
