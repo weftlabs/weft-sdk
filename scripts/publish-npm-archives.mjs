@@ -65,12 +65,13 @@ export async function publishArchives(
   let existing = await get(path);
   if (!existing) {
     await publish(archive);
-    // npm can briefly return 404 after accepting a publish. Retry only the
-    // read; never submit another publish after an uncertain result.
-    for (let attempt = 0; attempt < 6; attempt += 1) {
+    // npm can return 404 for about a minute after it accepts a publish
+    // (0.32.5 and 0.32.6 both exceeded 10 s). Retry only the read; never
+    // submit another publish after an uncertain result.
+    for (let attempt = 0; attempt < 12; attempt += 1) {
       existing = await get(path);
       if (existing) break;
-      if (attempt < 5) await wait(2_000);
+      if (attempt < 11) await wait(5_000);
     }
   }
   assert.equal(
