@@ -1,13 +1,13 @@
 # Source of truth for the Weft public API (see docs/api-standards.md).
 #
 # Edit this file first. docs/api-reference.md is GENERATED from it by
-# `pnpm run docs:generate` and gated by the `docs-drift` CI job.
+# `pnpm run docs:generate` and gated by the `Static checks` CI job.
 # test/docs/api_docs_sync_test.rb asserts every operation declared here is a
 # real Rails route and is rendered in that reference.
 openapi: 3.1.0
 info:
   title: Weft API
-  version: 0.32.6
+  version: 0.32.7
   description: |
     The Weft API powers the `weft` CLI, the hosted MCP server
     (`weft.network/mcp`), and third-party applications that discover and pay
