@@ -84,16 +84,16 @@
     "@typescript-eslint/eslint-plugin": "^8.72.1",
     "@typescript-eslint/parser": "^8.72.1",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@x402/core": "2.28.0",
+    "@x402/core": "2.30.0",
     "eslint": "^10.14.0",
     "express": "^5.3.0",
     "fast-check": "^4.10.2",
-    "hono": "^4.13.16",
+    "hono": "^4.13.17",
     "prettier": "3.9.10",
     "tsup": "^9.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
   },
   "files": [
     "dist",
