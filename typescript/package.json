@@ -81,19 +81,19 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "@typescript-eslint/eslint-plugin": "^8.72.1",
-    "@typescript-eslint/parser": "^8.72.1",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@x402/core": "2.28.0",
-    "eslint": "^10.14.0",
+    "@x402/core": "2.31.0",
+    "eslint": "^10.15.0",
     "express": "^5.3.0",
     "fast-check": "^4.10.2",
-    "hono": "^4.13.16",
-    "prettier": "3.9.10",
+    "hono": "^4.13.18",
+    "prettier": "3.10.1",
     "tsup": "^9.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "files": [
     "dist",
