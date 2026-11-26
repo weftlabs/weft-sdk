@@ -10,27 +10,27 @@ GEM
   specs:
     base64 (0.3.0)
     drb (2.2.3)
-    ethon (0.19.1)
+    ethon (0.19.2)
       ffi (>= 1.15.0)
       logger
     ffi (1.17.4)
     ffi (1.17.4-arm64-darwin)
     logger (1.7.0)
-    minitest (6.0.6)
+    minitest (6.1.0)
       drb (~> 2.0)
-      prism (~> 1.5)
+      prism (>= 1.5, < 3)
     minitest-mock (5.27.0)
-    prism (1.9.0)
+    prism (2.1.0)
     rake (13.4.2)
-    typhoeus (1.7.1)
-      ethon (>= 0.19.1, < 0.20.0)
+    typhoeus (1.8.0)
+      ethon (>= 0.19.2, < 0.20.0)
 
 PLATFORMS
   arm64-darwin-24
   ruby
 
 DEPENDENCIES
-  minitest (~> 6.0)
+  minitest (~> 6.1)
   minitest-mock (~> 5.27)
   rake (~> 13.4)
   weft-sdk!
@@ -38,15 +38,15 @@ DEPENDENCIES
 CHECKSUMS
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
-  ethon (0.19.1) sha256=f309dec67cfdefaf96b3d1ee0ed4f186eac518f131340f607bb3df3b4e13ddc4
+  ethon (0.19.2) sha256=805717b6d0e6221e8a1d654270e839709846219df2e326d59642f595ae6de7b2
   ffi (1.17.4) sha256=bcd1642e06f0d16fc9e09ac6d49c3a7298b9789bcb58127302f934e437d60acf
   ffi (1.17.4-arm64-darwin) sha256=19071aaf1419251b0a46852abf960e77330a3b334d13a4ab51d58b31a937001b
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
-  minitest (6.0.6) sha256=153ea36d1d987a62942382b61075745042a2b3123b1cd48f4c3675af9cc7d6f1
+  minitest (6.1.0) sha256=ff373595aa8888631e8a5463986a76b3845346ae6d7fa46e139c1633d418076e
   minitest-mock (5.27.0) sha256=7040ed7185417a966920987eaa6eaf1be4ea1fc5b25bb03ff4703f98564a55b0
-  prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
+  prism (2.1.0) sha256=1c0a7c6dea0e93183390fb123f007564dbe663198e2f86ad87204151147601f3
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
-  typhoeus (1.7.1) sha256=86dcb6d787ee08e34947c9436b24af3c4b02880dc83c466b6ca4dbfc53c2ee7f
+  typhoeus (1.8.0) sha256=c196d607908bc3350a191af673c24cf3ce6052c5ab0f6d485e55b3b36a28b421
   weft-sdk (0.32.13)
 
 BUNDLED WITH
