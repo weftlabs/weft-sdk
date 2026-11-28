@@ -294,16 +294,16 @@ describe("a route extension callback lands on the 402 challenge", () => {
     });
   });
 
-  it("resolves per request, not once at construction", async () => {
-    const middleware = weftPaymentMiddleware(routesWith(fromBody), baseConfig);
+  it("isolates extension values across overlapping requests", async () => {
+    const resolve = vi.fn(fromBody);
+    const middleware = weftPaymentMiddleware(routesWith(resolve), baseConfig);
+    const challenges = await Promise.all([
+      driveExpress(middleware),
+      driveExpress(middleware, { body: { model: "turbo", max_tokens: 8 } }),
+    ]);
+    const [first, second] = challenges.map(decodeChallenge);
 
-    const first = decodeChallenge(await driveExpress(middleware));
-    const second = decodeChallenge(
-      await driveExpress(middleware, {
-        body: { model: "turbo", max_tokens: 8 },
-      }),
-    );
-
+    expect(resolve).toHaveBeenCalledTimes(2);
     expect(first.extensions?.[KEY]).toEqual({
       info: { model: "flux", max_tokens: 512 },
     });
