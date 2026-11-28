@@ -1,6 +1,6 @@
 module Weft
   module SDK
-    VERSION = '0.32.13'
+    VERSION = '0.32.14'
   end
 end
 
