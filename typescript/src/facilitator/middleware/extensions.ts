@@ -112,6 +112,13 @@ export const WEFT_REQUEST_INFO_SCHEMA = {
  */
 export const MAX_EXTENSION_BYTES = 16 * 1024;
 
+type ExtensionContext = Pick<PaymentRequiredContext, "transportContext"> & {
+  paymentRequiredResponse: Pick<
+    PaymentRequiredContext["paymentRequiredResponse"],
+    "extensions"
+  >;
+};
+
 /**
  * Recover the HTTP request from the enrichment context.
  *
@@ -121,9 +128,7 @@ export const MAX_EXTENSION_BYTES = 16 * 1024;
  * @param context - Payment-required enrichment context from `@x402/core`
  * @returns The request context, or undefined off the HTTP transport
  */
-function requestOf(
-  context: PaymentRequiredContext,
-): HTTPRequestContext | undefined {
+function requestOf(context: ExtensionContext): HTTPRequestContext | undefined {
   const transport = context.transportContext as
     { request?: HTTPRequestContext } | undefined;
   return transport?.request;
@@ -141,7 +146,7 @@ function requestOf(
  * @param key - The extension key to remove
  * @returns Always undefined, so the hook makes no assignment of its own
  */
-function dropKey(context: PaymentRequiredContext, key: string): undefined {
+function dropKey(context: ExtensionContext, key: string): undefined {
   delete context.paymentRequiredResponse.extensions?.[key];
   return undefined;
 }
@@ -189,7 +194,7 @@ function byteLength(text: string): number {
  * @returns The projected size in bytes, or undefined when the map will not serialize
  */
 function projectedBytes(
-  context: PaymentRequiredContext,
+  context: ExtensionContext,
   key: string,
   value: unknown,
 ): number | undefined {
@@ -216,13 +221,14 @@ function projectedBytes(
  * @param warn - Sink for anything that will not ship
  * @returns An extension to register on the resource server
  */
-export function dynamicExtension(
-  key: string,
-  warn: Warn,
-): ResourceServerExtension {
+export function dynamicExtension(key: string, warn: Warn) {
   return {
     key,
-    async enrichPaymentRequiredResponse(declaration, context) {
+    async enrichPaymentRequiredResponse(
+      declaration: unknown,
+      context: ExtensionContext,
+    ) {
+      if (declaration === undefined) return dropKey(context, key);
       if (typeof declaration !== "function") {
         return undefined;
       }
@@ -312,7 +318,7 @@ export function dynamicExtension(
 
       return value;
     },
-  };
+  } satisfies ResourceServerExtension;
 }
 
 /**
@@ -361,9 +367,8 @@ function dynamicExtensionKeys(routes: WeftRoutesConfig): string[] {
  * Upstream reads `routeConfig.extensions` straight off the shared, long-lived
  * route config, so a per-request value cannot be written there without racing
  * every concurrent request. `registerExtension` is the path that *is* request
- * scoped: the enrichment hook runs while the challenge for one request is
- * being built, and its return value replaces that request's copy of the key —
- * which is the same object the verify and settle steps go on to see.
+ * scoped: its HTTP hook awaits the seller's callbacks before Core reads the
+ * declarations for the challenge, verification, and settlement.
  *
  * A config with no callbacks registers nothing at all.
  *
@@ -392,7 +397,46 @@ export function registerDynamicExtensions(
     return;
   }
 
-  for (const key of keys) {
-    server.registerExtension(dynamicExtension(key, warn));
+  const byRequest = new WeakMap<HTTPRequestContext, Map<string, unknown>>();
+  const extensions = new Map(
+    keys.map((key) => [key, dynamicExtension(key, warn)]),
+  );
+
+  for (const extension of extensions.values()) {
+    server.registerExtension({
+      ...extension,
+      transportHooks: {
+        http: {
+          async onProtectedRequest(declaration, request, route) {
+            if (typeof declaration !== "function" || byRequest.has(request))
+              return;
+
+            // Resolve once in route order so all dynamic keys share the byte cap.
+            const declarations = { ...route.extensions };
+            for (const [key, value] of Object.entries(declarations)) {
+              const resolver = extensions.get(key);
+              if (typeof value !== "function" || !resolver) continue;
+              const resolved = await resolver.enrichPaymentRequiredResponse(
+                value,
+                {
+                  transportContext: { request },
+                  paymentRequiredResponse: { extensions: declarations },
+                },
+              );
+              if (resolved !== undefined) declarations[key] = resolved;
+            }
+            byRequest.set(request, new Map(Object.entries(declarations)));
+          },
+        },
+      },
+      enrichDeclaration(declaration, request) {
+        // Core 2.32 copies declarations before enriching the challenge. Supply
+        // the resolved seller value here so lifecycle hooks see it as well.
+        const declarations = byRequest.get(request as HTTPRequestContext);
+        return declarations && typeof declaration === "function"
+          ? declarations.get(extension.key)
+          : declaration;
+      },
+    });
   }
 }
