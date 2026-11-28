@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    weft-sdk (0.32.13)
+    weft-sdk (0.32.14)
       base64 (~> 0.3)
       typhoeus (~> 1.0)
 
@@ -47,7 +47,7 @@ CHECKSUMS
   prism (2.1.0) sha256=1c0a7c6dea0e93183390fb123f007564dbe663198e2f86ad87204151147601f3
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
   typhoeus (1.8.0) sha256=c196d607908bc3350a191af673c24cf3ce6052c5ab0f6d485e55b3b36a28b421
-  weft-sdk (0.32.13)
+  weft-sdk (0.32.14)
 
 BUNDLED WITH
   4.0.5
